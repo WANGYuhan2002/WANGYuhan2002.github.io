@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yuhan Wang</title>
+<meta name="description" content="Yuhan Wang — Seismology &amp; Wave Physics group, Department of Earth and Planetary Sciences, ETH Zürich.">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<script>
+/* Theme before first paint (LoveIt-style: stored choice, else system). */
+(function(){var t=null;try{t=localStorage.getItem('theme')}catch(e){}
+var dark=t?t==='dark':window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches;
+document.documentElement.setAttribute('theme',dark?'dark':'light');})();
+</script>
+<style>
+:root{
+  --bg:#ffffff; --fg:#161209; --muted:#a9a9b3; --header:#fafafa; --header-fg:#161209;
+  --link:#2d96bd; --hover:#ef3982; --rule:#f0f0f0; --toc:#f5f5f5; --toc-title:#ededed;
+  --code:#f5f5f5; --shadow:rgba(0,0,0,.08); --btn:#f8f8f8; --btn-fg:#a9a9b3;
+  --sky1:#e6f1f6; --sky2:#cfe5ee; --l1:#d9e6ec; --l2:#bfd4de; --l3:#a3bfcd; --l4:#88a9ba; --ray:#2d96bd; --ray2:#ef3982;
+}
+:root[theme="dark"]{
+  --bg:#292a2d; --fg:#a9a9b3; --muted:#5d5d5f; --header:#252627; --header-fg:#a9a9b3;
+  --link:#55bde2; --hover:#bdebfc; --rule:#363636; --toc:#272c34; --toc-title:#20252b;
+  --code:#20252b; --shadow:rgba(0,0,0,.35); --btn:#252627; --btn-fg:#5d5d5f;
+  --sky1:#24303a; --sky2:#2a3946; --l1:#2c3b46; --l2:#33495a; --l3:#3b576c; --l4:#446680; --ray:#55bde2; --ray2:#ef77a8;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%; scroll-padding-top:5rem}
+body{margin:0; background:var(--bg); color:var(--fg);
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei UI","Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size:16px; line-height:1.5rem; transition:color .3s ease, background-color .3s ease}
+a{color:var(--fg); text-decoration:none; transition:color .2s ease}
+a:hover{color:var(--link)}
+.content a, .post-meta a.author, .post-footer a.read-more{color:var(--link)}
+.content a:hover, .post-meta a.author:hover, .post-footer a.read-more:hover{color:var(--hover)}
+a:focus-visible, button:focus-visible, input:focus-visible{outline:2px solid var(--link); outline-offset:2px; border-radius:3px}
+button{font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer}
+svg.i{width:1em; height:1em; vertical-align:-.125em; fill:currentColor; flex:none}
+.skip{position:absolute; left:-999px; top:0}
+.skip:focus{left:1rem; top:1rem; z-index:200; background:var(--bg); padding:.25rem .5rem}
+.tbd{font-style:italic; color:var(--muted); border-bottom:1px dotted var(--muted); cursor:help}
+
+/* ---------- Header (desktop) ---------- */
+header.desktop{position:fixed; top:0; left:0; right:0; height:4rem; z-index:100;
+  background:var(--header); box-shadow:0 1px 0 var(--shadow)}
+.header-wrapper{display:flex; align-items:center; justify-content:space-between;
+  height:100%; padding:0 clamp(1rem,7vw,5.5rem)}
+.header-title{font-size:1.5rem; font-weight:700; letter-spacing:-.01em}
+.header-title a{color:var(--header-fg)}
+.menu{display:flex; align-items:center; gap:0}
+.menu-item{padding:0 .65rem; color:var(--header-fg)}
+.menu-item.active{font-weight:900}
+.menu .delimiter{border-left:1.5px solid var(--header-fg); height:1.2rem; margin:0 .4rem; padding:0}
+.lang{display:inline-flex; align-items:center; gap:.3rem}
+.lang svg{width:.7em}
+.search{position:relative; display:flex; align-items:center}
+.search input{width:0; padding:0; border:0; height:1.9rem; background:transparent; color:var(--fg);
+  font:inherit; font-size:.95rem; transition:width .3s ease, padding .3s ease; outline:none; border-radius:4px}
+.search.open input{width:12rem; padding:0 .5rem; background:var(--bg); box-shadow:inset 0 0 0 1px var(--rule)}
+.search-dropdown{position:absolute; top:2.6rem; right:0; width:min(26rem,90vw); background:var(--bg);
+  box-shadow:0 .5rem 1.5rem var(--shadow); border-radius:6px; padding:.4rem 0; display:none; z-index:120}
+.search-dropdown.show{display:block}
+.search-dropdown a{display:block; padding:.45rem .9rem; line-height:1.35}
+.search-dropdown a:hover,.search-dropdown a:focus{background:var(--toc)}
+.search-dropdown .s-title{font-weight:600}
+.search-dropdown .s-sum{display:block; color:var(--muted); font-size:.82rem}
+.search-dropdown mark{background:none; color:var(--hover); font-weight:700}
+.search-dropdown .s-none{padding:.45rem .9rem; color:var(--muted); font-size:.9rem}
+
+/* ---------- Header (mobile) ---------- */
+header.mobile{display:none; position:fixed; top:0; left:0; right:0; z-index:100;
+  background:var(--header); box-shadow:0 1px 0 var(--shadow)}
+header.mobile .bar{height:3.5rem; display:flex; align-items:center; justify-content:space-between; padding:0 1rem}
+header.mobile .header-title{font-size:1.25rem}
+.menu-toggle{width:1.6rem; height:1.6rem; position:relative}
+.menu-toggle span{position:absolute; left:0; width:100%; height:2px; background:var(--header-fg); transition:transform .25s ease, opacity .25s ease}
+.menu-toggle span:nth-child(1){top:.35rem}.menu-toggle span:nth-child(2){top:.75rem}.menu-toggle span:nth-child(3){top:1.15rem}
+.menu-toggle.active span:nth-child(1){transform:translateY(.4rem) rotate(45deg)}
+.menu-toggle.active span:nth-child(2){opacity:0}
+.menu-toggle.active span:nth-child(3){transform:translateY(-.4rem) rotate(-45deg)}
+header.mobile .menu{display:none; flex-direction:column; text-align:center; padding:.25rem 0 1rem; gap:0;
+  border-top:1px solid var(--rule)}
+header.mobile .menu.active{display:flex}
+header.mobile .menu-item{display:block; padding:.55rem 0; width:100%}
+header.mobile .search{padding:.5rem 1rem}
+header.mobile .search input{width:100%; padding:0 .6rem; background:var(--bg); box-shadow:inset 0 0 0 1px var(--rule)}
+header.mobile .search-dropdown{top:3rem; left:1rem; right:1rem; width:auto}
+
+/* ---------- Page ---------- */
+main{min-height:calc(100vh - 7rem)}
+.page{width:min(690px, 100%); margin:0 auto; padding:6rem 1rem 2rem; position:relative}
+.page.single{width:min(690px,100%)}
+
+/* Home profile */
+.home-profile{text-align:center; padding:6vh 0 1.5rem}
+.home-avatar{display:inline-block; padding:.5rem}
+.avatar{width:6rem; height:6rem; border-radius:50%; display:grid; place-items:center; margin:0 auto;
+  border:2px dashed var(--muted); color:var(--muted); font-weight:600; letter-spacing:.06em;
+  transition:transform .3s ease}
+.avatar:hover{transform:translateY(-.75rem)}
+.home-title{font-size:1.25rem; font-weight:700; margin:0; padding:.5rem}
+.home-subtitle{font-size:1rem; font-weight:400; margin:0; padding:.25rem .5rem; min-height:1.5rem}
+.typeit-cursor{display:inline-block; width:1px; height:1.05em; background:currentColor; vertical-align:-.15em; margin-left:2px}
+@media (prefers-reduced-motion: no-preference){ .typeit-cursor{animation:blink 1s steps(1) infinite} @keyframes blink{50%{opacity:0}} }
+.links{padding:.5rem; font-size:1.5rem; display:flex; justify-content:center; flex-wrap:wrap; gap:.35rem .25rem}
+.links a, .links span{padding:0 .3rem; display:inline-flex}
+.links .tbd-icon{color:var(--muted); opacity:.55; border:0; cursor:help}
+
+/* Summary */
+.summary{padding-top:1rem; padding-bottom:.8rem; border-bottom:1px dashed var(--rule)}
+.featured-image-preview{display:block; width:100%; padding:30% 0 0; position:relative; margin:.6rem auto; border-radius:4px; overflow:hidden}
+.featured-image-preview svg{position:absolute; inset:0; width:100%; height:100%; display:block;
+  transition:transform .4s ease}
+.featured-image-preview:hover svg{transform:scale(1.02)}
+.single-title{margin:1rem 0 .5rem; font-size:1.6rem; font-weight:700; line-height:140%}
+.post-meta{font-size:.875rem; color:var(--muted); display:flex; flex-wrap:wrap; gap:.15rem .7rem; align-items:baseline}
+.post-meta .author{font-size:1rem}
+.post-meta span{display:inline-flex; align-items:center; gap:.3rem}
+.summary .content{color:var(--muted); margin:.7rem 0; line-height:1.75}
+.post-footer{display:flex; justify-content:space-between; align-items:center; gap:1rem; font-size:.875rem; margin-top:.5rem}
+.post-tags{text-align:right}
+.post-tags svg{margin-right:.3rem}
+.post-footer a.read-more{white-space:nowrap}
+.post-tags svg{color:var(--muted)}
+.summary.placeholder .single-title{color:var(--muted); font-weight:600}
+.pagination{display:flex; justify-content:center; gap:2.2rem; margin:2rem 0 0; padding:0; list-style:none; font-size:.8rem; font-weight:700}
+.pagination a{color:var(--muted); padding:.3rem .2rem}
+.pagination .active a{color:var(--fg); border-bottom:3px solid var(--fg); padding-bottom:.45rem}
+
+/* Archive */
+.archive .single-title{text-align:right; padding-bottom:.4rem}
+.group-title{margin:1.5rem 0 1rem; font-size:1.25rem; font-weight:700}
+.archive-item{display:flex; justify-content:space-between; align-items:center; margin:.25rem 0 .25rem 1.5rem; line-height:2.25rem}
+.archive-item-link{min-width:10%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
+.archive-item-date{min-width:4em; text-align:right; color:var(--muted); font-variant-numeric:tabular-nums}
+.archive-item.tbd-item .archive-item-link{color:var(--muted); font-style:italic}
+
+/* Tag cloud */
+.tag-cloud-tags{margin:1.2rem 0}
+.tag-cloud-tags a{display:inline-block; margin:5px 10px; transition:transform .3s ease-out, color .3s ease-out}
+.tag-cloud-tags a:hover,.tag-cloud-tags a:focus{transform:scale(1.2); color:var(--link)}
+.tag-cloud-tags sup{color:var(--muted)}
+
+/* About */
+.about .single-title{text-align:right}
+.about-profile{text-align:center; margin:1rem 0 1.25rem}
+.about-profile .name{display:block; margin-top:.6rem; color:var(--muted); font-size:.85rem; letter-spacing:.06em; text-transform:uppercase}
+.content{line-height:1.75}
+.content ul{padding-left:1.25rem}
+.content li{margin:.2rem 0}
+.content h2{font-size:1.4rem; margin:2rem 0 .75rem; line-height:1.4}
+.content h2::before{content:"#"; color:var(--link); margin-right:.4rem}
+.content blockquote{margin:1rem 0; padding:.5rem 1rem; border-left:.25rem solid var(--link); background:var(--toc)}
+.content blockquote p{margin:.25rem 0}
+
+/* Single post + TOC */
+.single .post-meta{margin-bottom:1rem}
+.single .post-meta .author{display:block; width:100%}
+.toc{background:var(--toc); margin:1rem 0 1.5rem; border-radius:4px}
+.toc-title{display:flex; justify-content:space-between; align-items:center; padding:0 .75rem; line-height:2.2em;
+  background:var(--toc-title); font-weight:700; border-radius:4px 4px 0 0}
+.toc ul{list-style:none; margin:0; padding:.4rem 1rem .5rem 1.4rem}
+.toc li{margin:.15rem 0}
+.toc a::before{content:"|"; font-weight:bolder; margin-right:.5rem; color:var(--link)}
+.toc a.active{font-weight:700; color:var(--link)}
+.toc a.active::before{color:var(--hover)}
+@media (min-width:1200px){
+  .toc.auto{position:absolute; left:calc(100% + 1rem); top:7.6rem; width:15rem; background:none; margin:0;
+    border-left:4px solid var(--rule); border-radius:0}
+  .toc.auto .toc-title{background:none; text-transform:uppercase; font-size:1.2rem; padding:0 1rem; margin:.4rem 0}
+  .toc.auto ul{padding:.2rem 1rem .4rem 1rem}
+  .toc.auto.fixed{position:fixed; top:5.5rem; left:calc(50% + 345px + 1rem)}
+}
+.post-info{margin-top:2.5rem; padding-top:1rem; border-top:1px dashed var(--rule); font-size:.875rem;
+  display:flex; justify-content:space-between; flex-wrap:wrap; gap:.5rem}
+.post-info .nav a{color:var(--fg)}
+.post-info .nav a:hover{color:var(--link)}
+
+/* 404 */
+.notfound{text-align:center; padding-top:20vh}
+.notfound h1{font-size:2rem}
+
+/* Footer */
+footer.footer{text-align:center; font-size:.875rem; line-height:1.4rem; padding:1rem 1rem 1.5rem}
+footer .footer-line{margin:.1rem 0}
+footer .sep{margin:0 .25rem}
+
+/* Fixed buttons */
+.fixed-button{position:fixed; right:1.5rem; bottom:1.5rem; width:2.6rem; height:2.6rem; border-radius:2rem;
+  display:grid; place-items:center; background:var(--btn); color:var(--btn-fg); font-size:1rem;
+  box-shadow:0 0 .25rem var(--shadow); opacity:0; visibility:hidden; transition:opacity .3s ease, color .2s ease; z-index:90}
+.fixed-button.show{opacity:1; visibility:visible}
+.fixed-button:hover{color:var(--fg)}
+
+@media (max-width:680px){
+  header.desktop{display:none}
+  header.mobile{display:block}
+  .page{padding-top:5rem}
+  .single-title{font-size:1.4rem}
+  .post-footer{flex-direction:column; align-items:flex-start}
+  .post-tags{text-align:left}
+  .archive-item{margin-left:.5rem}
+  .home-profile{padding-top:2vh}
+  .fixed-button{right:1rem; bottom:1rem}
+}
+@media (prefers-reduced-motion: reduce){ *{transition:none!important; animation:none!important} }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="desktop" id="header-desktop">
+  <div class="header-wrapper">
+    <div class="header-title"><a href="#/" title="Yuhan Wang">Yuhan Wang</a></div>
+    <nav class="menu" aria-label="Main">
+      <a class="menu-item" data-nav="home" href="#/">Home</a>
+      <a class="menu-item" data-nav="posts" href="#/posts/">Posts</a>
+      <a class="menu-item" data-nav="tomography" href="#/tags/tomography/">Tomography</a>
+      <a class="menu-item" data-nav="tags" href="#/tags/">Tags</a>
+      <a class="menu-item" data-nav="about" href="#/about/">About</a>
+      <span class="menu-item delimiter" aria-hidden="true"></span>
+      <span class="menu-item lang" title="Language">English <svg class="i" viewBox="0 0 320 512"><path d="M285.5 273 91.1 467.3a24 24 0 0 1-33.9 0l-22.7-22.7a24 24 0 0 1 0-33.9L188.5 256 34.5 101.3a24 24 0 0 1 0-33.9l22.7-22.7a24 24 0 0 1 33.9 0L285.5 239a24 24 0 0 1 0 34z"/></svg></span>
+      <span class="menu-item search" id="search-desktop">
+        <input type="search" placeholder="Search titles or contents..." aria-label="Search" autocomplete="off">
+        <button class="search-toggle" type="button" aria-label="Open search"><svg class="i" viewBox="0 0 512 512"><path d="M505 442.7 405.3 343c-4.5-4.5-10.6-7-17-7H372c27.6-35.3 44-79.7 44-128C416 93.1 322.9 0 208 0S0 93.1 0 208s93.1 208 208 208c48.3 0 92.7-16.4 128-44v16.3c0 6.4 2.5 12.5 7 17l99.7 99.7a23.9 23.9 0 0 0 33.9 0l28.3-28.3a24.1 24.1 0 0 0 .1-34zM208 336a128 128 0 1 1 0-256 128 128 0 0 1 0 256z"/></svg></button>
+        <div class="search-dropdown" role="listbox" aria-label="Search results"></div>
+      </span>
+      <button class="menu-item theme-switch" type="button" aria-label="Switch theme" title="Switch Theme"><svg class="i" viewBox="0 0 512 512"><path d="M8 256c0 136.966 111.033 248 248 248s248-111.034 248-248S392.966 8 256 8 8 119.033 8 256zm248 184V72c101.705 0 184 82.311 184 184 0 101.705-82.311 184-184 184z"/></svg></button>
+    </nav>
+  </div>
+</header>
+
+<header class="mobile" id="header-mobile">
+  <div class="bar">
+    <div class="header-title"><a href="#/" title="Yuhan Wang">Yuhan Wang</a></div>
+    <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="menu-mobile"><span></span><span></span><span></span></button>
+  </div>
+  <nav class="menu" id="menu-mobile" aria-label="Main (mobile)">
+    <span class="search" id="search-mobile">
+      <input type="search" placeholder="Search titles or contents..." aria-label="Search" autocomplete="off">
+      <div class="search-dropdown" role="listbox" aria-label="Search results"></div>
+    </span>
+    <a class="menu-item" data-nav="home" href="#/">Home</a>
+    <a class="menu-item" data-nav="posts" href="#/posts/">Posts</a>
+    <a class="menu-item" data-nav="tomography" href="#/tags/tomography/">Tomography</a>
+    <a class="menu-item" data-nav="tags" href="#/tags/">Tags</a>
+    <a class="menu-item" data-nav="about" href="#/about/">About</a>
+    <button class="menu-item theme-switch" type="button" aria-label="Switch theme"><svg class="i" viewBox="0 0 512 512"><path d="M8 256c0 136.966 111.033 248 248 248s248-111.034 248-248S392.966 8 256 8 8 119.033 8 256zm248 184V72c101.705 0 184 82.311 184 184 0 101.705-82.311 184-184 184z"/></svg></button>
+    <span class="menu-item lang">English</span>
+  </nav>
+</header>
+
+<main id="main" tabindex="-1">
+  <noscript>
+    <div class="page">
+      <h1 class="single-title">Yuhan Wang</h1>
+      <p>Seismology &amp; Wave Physics group, Department of Earth and Planetary Sciences, ETH Zürich.</p>
+      <p><a href="https://cos.ethz.ch/people/person-detail.yuhan-wang.html">ETH profile</a> · <a href="https://github.com/WANGYuhan2002">GitHub</a> · <a href="https://scholar.google.com/citations?user=DLRFdHEAAAAJ&amp;hl=en">Google Scholar</a> · <a href="https://orcid.org/0000-0001-6451-1166">ORCID</a> · <a href="https://www.linkedin.com/in/yuhan-wang-aa2564214/">LinkedIn</a></p>
+      <p>Co-organised <a href="https://wangyuhan2002.github.io/2026-tomo-workshop/">Tomographic Summer Chill</a> (ETH Zürich, 30–31 July 2026).</p>
+    </div>
+  </noscript>
+  <div id="app"></div>
+</main>
+
+<footer class="footer">
+  <div class="footer-line">Single-file HTML<span class="sep">|</span>Layout inspired by the LoveIt theme</div>
+  <div class="footer-line">© 2026 <a href="#/about/">Yuhan Wang</a></div>
+</footer>
+
+<a class="fixed-button" id="back-to-top" href="#top" aria-label="Back to top"><svg class="i" viewBox="0 0 448 512"><path d="M34.9 289.5 12.7 267.3a23.9 23.9 0 0 1 0-33.9L207 39c9.4-9.4 24.6-9.4 33.9 0l194.3 194.3a23.9 23.9 0 0 1 0 33.9l-22.2 22.2a24 24 0 0 1-34.3-.4L264 168.6V456c0 13.3-10.7 24-24 24h-32c-13.3 0-24-10.7-24-24V168.6L69.2 289.1a23.9 23.9 0 0 1-34.3.4z"/></svg></a>
+
+<script>
+(function(){
+'use strict';
+/* ================= Data (verified facts only) ================= */
+var user='yuhan.wang', domain='eaps.ethz.ch';
+var ETH='https://cos.ethz.ch/people/person-detail.yuhan-wang.html';
+var GROUP='https://cos.ethz.ch/';
+var FICHTNER='https://cos.ethz.ch/people/person-detail.andreas-fichtner.html';
+var WORKSHOP='https://wangyuhan2002.github.io/2026-tomo-workshop/';
+var SCHOLAR='https://scholar.google.com/citations?user=DLRFdHEAAAAJ&hl=en';
+var DESC='A two-morning hybrid workshop on multi-scale tomography of the Earth — from near-surface DAS and ambient-noise imaging to full-waveform inversion and the electrical structure of the deep mantle.';
+
+var ICON={
+ github:'<svg class="i" viewBox="0 0 496 512"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8z"/></svg>',
+ linkedin:'<svg class="i" viewBox="0 0 448 512"><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3zM135.4 416H69V202.2h66.5V416zm-33.2-243c-21.3 0-38.5-17.3-38.5-38.5S80.9 96 102.2 96c21.2 0 38.5 17.3 38.5 38.5 0 21.3-17.2 38.5-38.5 38.5zm282.1 243h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9V416z"/></svg>',
+ scholar:'<svg class="i" viewBox="0 0 512 512"><path d="M256 411.1c-60.7 0-110-49.2-110-110 0-60.7 49.3-110 110-110s110 49.3 110 110c0 60.8-49.3 110-110 110zM256 32 0 224h93.7c20-58.6 75.3-100.9 140.6-100.9h43.4c65.3 0 120.6 42.3 140.6 100.9H512L256 32z"/></svg>',
+ orcid:'<svg class="i" viewBox="0 0 512 512"><path d="M294.75 188.19h-45.92V342h47.47c67.62 0 83.12-51.34 83.12-76.91 0-41.64-26.54-76.9-84.67-76.9zM256 8C119 8 8 119 8 256s111 248 248 248 248-111 248-248S393 8 256 8zm-80.79 360.76h-29.84v-207.5h29.84zm-14.92-231.14a19.57 19.57 0 1 1 19.57-19.57 19.64 19.64 0 0 1-19.57 19.57zM300 369h-81V161.26h80.6c76.73 0 110.44 54.83 110.44 103.85C410 318.39 368.38 369 300 369z"/></svg>',
+ rg:'<svg class="i" viewBox="0 0 448 512"><path d="M0 32v448h448V32H0zm262.2 334.4c-6.6 3-33.2 6-50-14.2-9.2-10.6-25.3-33.3-42.2-63.6-8.9 0-14.7 0-21.4-.6v46.4c0 23.5 6 21.2 25.8 23.9v8.1c-6.9-.3-23.1-.8-35.6-.8-13.1 0-26.1.6-33.6.8v-8.1c15.5-2.9 22-1.3 22-23.9V225c0-22.6-6.4-21-22-23.9V193c25.8 1 53.1-.6 70.9-.6 31.7 0 55.9 14.4 55.9 45.6 0 21.1-16.7 42.2-39.2 47.5 13.6 24.2 30 45.6 42.2 58.9 7.2 7.8 17.2 14.7 27.2 14.7v7.3zm22.9-135c-23.3 0-32.2-15.7-32.2-32.2V167c0-12.2 8.8-30.4 34-30.4s30.4 17.9 30.4 17.9l-10.7 7.2s-5.5-12.5-19.7-12.5c-7.9 0-19.7 7.3-19.7 19.7v26.8c0 13.4 6.6 23.3 17.9 23.3 14.1 0 21.5-10.9 21.5-26.8h-17.9v-10.7h30.4c0 20.5 4.7 49.9-34 49.9zm-116.5 44.7c-9.4 0-13.6-.3-20-.8v-69.7c6.4-.6 15-.6 22.5-.6 23.3 0 37.2 12.2 37.2 34.5 0 21.9-15 36.6-39.7 36.6z"/></svg>',
+ mail:'<svg class="i" viewBox="0 0 512 512"><path d="M464 64H48C21.49 64 0 85.49 0 112v288c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49 48-48V112c0-26.51-21.49-48-48-48zm0 48v40.805c-22.422 18.259-58.168 46.651-134.587 106.49-16.841 13.247-50.201 45.072-73.413 44.701-23.208.375-56.579-31.459-73.413-44.701C106.18 199.465 70.425 171.067 48 152.805V112h416zM48 400V214.398c22.914 18.251 55.409 43.862 104.938 82.646 21.857 17.205 60.134 55.186 103.062 54.955 42.717.231 80.509-37.199 103.053-54.947 49.528-38.783 82.032-64.401 104.947-82.653V400H48z"/></svg>',
+ building:'<svg class="i" viewBox="0 0 512 512"><path d="M496 128v16a8 8 0 0 1-8 8h-24v12c0 6.627-5.373 12-12 12H60c-6.627 0-12-5.373-12-12v-12H24a8 8 0 0 1-8-8v-16a8 8 0 0 1 4.941-7.392l232-88a7.996 7.996 0 0 1 6.118 0l232 88A8 8 0 0 1 496 128zm-24 304H40c-13.255 0-24 10.745-24 24v16a8 8 0 0 0 8 8h464a8 8 0 0 0 8-8v-16c0-13.255-10.745-24-24-24zM96 192v192H60c-6.627 0-12 5.373-12 12v20h416v-20c0-6.627-5.373-12-12-12h-36V192h-64v192h-64V192h-64v192h-64V192H96z"/></svg>',
+ user:'<svg class="i" viewBox="0 0 496 512"><path d="M248 8C111 8 0 119 0 256s111 248 248 248 248-111 248-248S385 8 248 8zm0 96c48.6 0 88 39.4 88 88s-39.4 88-88 88-88-39.4-88-88 39.4-88 88-88zm0 344c-58.7 0-111.3-26.6-146.5-68.2 18.8-35.4 55.6-59.8 98.5-59.8 2.4 0 4.8.4 7.1 1.1 13 4.2 26.6 6.9 40.9 6.9 14.3 0 28-2.7 40.9-6.9 2.3-.7 4.7-1.1 7.1-1.1 42.9 0 79.7 24.4 98.5 59.8C359.3 421.4 306.7 448 248 448z"/></svg>',
+ cal:'<svg class="i" viewBox="0 0 448 512"><path d="M0 464c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V192H0v272zm64-192c0-8.8 7.2-16 16-16h288c8.8 0 16 7.2 16 16v64c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16v-64zM400 64h-48V16c0-8.8-7.2-16-16-16h-32c-8.8 0-16 7.2-16 16v48H160V16c0-8.8-7.2-16-16-16h-32c-8.8 0-16 7.2-16 16v48H48C21.5 64 0 85.5 0 112v48h448v-48c0-26.5-21.5-48-48-48z"/></svg>',
+ pen:'<svg class="i" viewBox="0 0 512 512"><path d="m290.74 93.24 128.02 128.02-277.99 277.99-114.14 12.6C11.35 513.54-1.56 500.62.14 485.34l12.7-114.22 277.9-277.88zm207.2-19.06-60.11-60.11c-18.75-18.75-49.16-18.75-67.91 0l-56.55 56.55 128.02 128.02 56.55-56.55c18.75-18.76 18.75-49.16 0-67.91z"/></svg>',
+ clock:'<svg class="i" viewBox="0 0 512 512"><path d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111 248-248S393 8 256 8zm0 448c-110.5 0-200-89.5-200-200S145.5 56 256 56s200 89.5 200 200-89.5 200-200 200zm61.8-104.4-84.9-61.7c-3.1-2.3-4.9-5.9-4.9-9.7V116c0-6.6 5.4-12 12-12h32c6.6 0 12 5.4 12 12v141.7l66.8 48.6c5.4 3.9 6.5 11.4 2.6 16.8L334.6 349c-3.9 5.3-11.4 6.5-16.8 2.6z"/></svg>',
+ tags:'<svg class="i" viewBox="0 0 640 512"><path d="M497.941 225.941 286.059 14.059A48 48 0 0 0 252.118 0H48C21.49 0 0 21.49 0 48v204.118a48 48 0 0 0 14.059 33.941l211.882 211.882c18.744 18.745 49.136 18.746 67.882 0l204.118-204.118c18.745-18.745 18.745-49.137 0-67.882zM112 160c-26.51 0-48-21.49-48-48s21.49-48 48-48 48 21.49 48 48-21.49 48-48 48zm513.941 133.823L421.823 497.941c-18.745 18.745-49.137 18.745-67.882 0l-.36-.36L527.64 323.522c16.999-16.999 26.36-39.6 26.36-63.64s-9.362-46.641-26.36-63.64L331.397 0h48.721a48 48 0 0 1 33.941 14.059l211.882 211.882c18.745 18.745 18.745 49.137 0 67.882z"/></svg>',
+ globe:'<svg class="i" viewBox="0 0 496 512"><path d="M336.5 160C322 70.7 287.8 8 248 8s-74 62.7-88.5 152h177zM152 256c0 22.2 1.2 43.5 3.3 64h185.3c2.1-20.5 3.3-41.8 3.3-64s-1.2-43.5-3.3-64H155.3c-2.1 20.5-3.3 41.8-3.3 64zm324.7-96c-28.6-67.9-86.5-120.4-158-141.6 24.4 33.8 41.2 84.7 50 141.6h108zM177.2 18.4C105.8 39.6 47.8 92.1 19.3 160h108c8.7-56.9 25.5-107.8 49.9-141.6zM487.4 192H372.7c2.1 21 3.3 42.5 3.3 64s-1.2 43-3.3 64h114.6c5.5-20.5 8.6-41.8 8.6-64s-3.1-43.5-8.5-64zM120 256c0-21.5 1.2-43 3.3-64H8.6C3.2 212.5 0 233.8 0 256s3.2 43.5 8.6 64h114.6c-2-21-3.2-42.5-3.2-64zm39.5 96c14.5 89.3 48.7 152 88.5 152s74-62.7 88.5-152h-177zm159.3 141.6c71.4-21.2 129.4-73.7 158-141.6h-108c-8.8 56.9-25.6 107.8-50 141.6zM19.3 352c28.6 67.9 86.5 120.4 158 141.6-24.4-33.8-41.2-84.7-50-141.6h-108z"/></svg>'
+};
+
+var POSTS=[{
+  slug:'tomographic-summer-chill-2026',
+  title:'Tomographic Summer Chill 2026',
+  date:'2026-07-30', dateEnd:'2026-07-31',
+  summary:DESC,
+  tags:['tomography','workshop','DAS','ambient-noise','full-waveform-inversion','deep-mantle','ETH Zürich'],
+  toc:[['overview','Overview'],['organisers','Organisers'],['format','Format'],['links','Links']],
+  body:
+   '<h2 id="overview">Overview</h2>'+
+   '<blockquote><p>'+DESC+'</p></blockquote>'+
+   '<h2 id="organisers">Organisers</h2>'+
+   '<p>Co-organised by Yuhan Wang and <a href="'+FICHTNER+'">Andreas Fichtner</a>, hosted by the <a href="'+GROUP+'">Seismology &amp; Wave Physics group</a> at ETH Zürich.</p>'+
+   '<h2 id="format">Format</h2>'+
+   '<ul><li>Two mornings: 30–31 July 2026</li><li>Hybrid: in person at ETH Zürich and online</li></ul>'+
+   '<h2 id="links">Links</h2>'+
+   '<ul><li>Workshop website: <a href="'+WORKSHOP+'">wangyuhan2002.github.io/2026-tomo-workshop</a></li></ul>'
+}];
+
+/* ================= Helpers ================= */
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function slugTag(t){return t.toLowerCase().replace(/[^a-z0-9ä-ü]+/g,'-').replace(/^-|-$/g,'')}
+function tagLink(t){return '<a href="#/tags/'+slugTag(t)+'/">'+esc(t)+'</a>'}
+function plain(h){var d=document.createElement('div');d.innerHTML=h;return d.textContent||''}
+function wordsOf(p){return plain(p.body).trim().split(/\s+/).length}
+function dateRange(p){return p.date+(p.dateEnd?' – '+p.dateEnd.slice(5):'')}
+function tbd(text,title){return '<span class="tbd" title="'+esc(title||'Placeholder — to be filled in by Yuhan')+'">'+text+'</span>'}
+
+function featured(){ /* decorative illustration: layered Earth + seismic ray paths */
+  return '<svg viewBox="0 0 800 240" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Decorative illustration: layered Earth cross-section with curved seismic ray paths">'+
+  '<rect width="800" height="240" fill="var(--sky1)"/>'+
+  '<circle cx="400" cy="1010" r="900" fill="var(--l1)"/><circle cx="400" cy="1010" r="860" fill="var(--l2)"/>'+
+  '<circle cx="400" cy="1010" r="800" fill="var(--l3)"/><circle cx="400" cy="1010" r="720" fill="var(--l4)"/>'+
+  '<g fill="none" stroke="var(--ray)" stroke-width="1.6" opacity=".85">'+
+  '<path d="M120 140 Q400 330 680 140"/><path d="M160 133 Q400 280 640 133"/><path d="M220 124 Q400 235 580 124"/></g>'+
+  '<g fill="none" stroke="var(--ray2)" stroke-width="1.4" opacity=".7"><path d="M90 146 Q400 390 710 146"/></g>'+
+  '<g fill="var(--fg)" opacity=".75"><path d="M116 132l5-9 5 9z"/><path d="M156 125l5-9 5 9z"/><path d="M216 116l5-9 5 9z"/><path d="M575 116l5-9 5 9z"/><path d="M635 125l5-9 5 9z"/><path d="M676 132l5-9 5 9z"/></g>'+
+  '<g fill="var(--ray2)"><circle cx="86" cy="140" r="5"/></g></svg>';
+}
+
+/* ================= Views ================= */
+function viewHome(){
+  var links=
+   '<a href="'+esc(ETH)+'" id="home-mail" title="Email" aria-label="Email">'+ICON.mail+'</a>'+
+   '<a href="'+esc(ETH)+'" title="ETH profile" aria-label="ETH profile">'+ICON.building+'</a>'+
+   '<a href="https://github.com/WANGYuhan2002" title="GitHub" aria-label="GitHub">'+ICON.github+'</a>'+
+   '<a href="https://www.linkedin.com/in/yuhan-wang-aa2564214/" title="LinkedIn" aria-label="LinkedIn">'+ICON.linkedin+'</a>'+
+   '<a href="'+esc(SCHOLAR)+'" title="Google Scholar" aria-label="Google Scholar">'+ICON.scholar+'</a>'+
+   '<a href="https://orcid.org/0000-0001-6451-1166" title="ORCID" aria-label="ORCID">'+ICON.orcid+'</a>'+
+   '<span class="tbd-icon" title="ResearchGate — link not provided yet" aria-label="ResearchGate (placeholder)">'+ICON.rg+'</span>';
+  var list=POSTS.map(summaryCard).join('')+
+   '<article class="summary placeholder"><h2 class="single-title">'+tbd('More posts coming soon','Placeholder — no further posts yet')+'</h2>'+
+   '<div class="content">'+tbd('Research notes, talks and publications will appear here.')+'</div></article>';
+  return '<div class="page home">'+
+   '<div class="home-profile">'+
+     '<div class="home-avatar"><div class="avatar" title="Photo placeholder" aria-label="Photo placeholder">YW</div></div>'+
+     '<h1 class="home-title">Yuhan Wang</h1>'+
+     '<h2 class="home-subtitle"><span id="typeit"></span><span class="typeit-cursor" aria-hidden="true"></span></h2>'+
+     '<div class="links">'+links+'</div>'+
+   '</div>'+ list +
+   '<ul class="pagination" aria-label="Pagination"><li class="active"><a href="#/" aria-current="page">1</a></li></ul>'+
+  '</div>';
+}
+function summaryCard(p){
+  var u='#/posts/'+p.slug+'/';
+  return '<article class="single summary">'+
+   '<a class="featured-image-preview" href="'+u+'" tabindex="-1" aria-hidden="true">'+featured()+'</a>'+
+   '<h2 class="single-title"><a href="'+u+'">'+esc(p.title)+'</a></h2>'+
+   '<div class="post-meta"><a class="author" href="#/about/">Yuhan Wang</a><span>'+ICON.cal+'<time datetime="'+p.date+'">'+dateRange(p)+'</time></span></div>'+
+   '<div class="content">'+esc(p.summary)+'</div>'+
+   '<div class="post-footer"><a class="read-more" href="'+u+'">Read More</a>'+
+   '<div class="post-tags">'+ICON.tags+' '+p.tags.map(tagLink).join(', ')+'</div></div>'+
+  '</article>';
+}
+function archiveList(posts){
+  var byYear={};posts.forEach(function(p){(byYear[p.date.slice(0,4)]=byYear[p.date.slice(0,4)]||[]).push(p)});
+  return Object.keys(byYear).sort().reverse().map(function(y){
+    return '<h3 class="group-title">'+y+'</h3>'+byYear[y].map(function(p){
+      return '<article class="archive-item"><a class="archive-item-link" href="#/posts/'+p.slug+'/">'+esc(p.title)+'</a><span class="archive-item-date">'+p.date.slice(5)+'</span></article>';
+    }).join('');
+  }).join('');
+}
+function viewPosts(){
+  return '<div class="page archive"><h2 class="single-title">All Posts</h2>'+archiveList(POSTS)+
+   '<div class="archive-item tbd-item"><span class="archive-item-link">'+tbd('More posts to be added')+'</span><span class="archive-item-date"></span></div>'+
+   '<ul class="pagination" aria-label="Pagination"><li class="active"><a href="#/posts/" aria-current="page">1</a></li></ul></div>';
+}
+function allTags(){var m={};POSTS.forEach(function(p){p.tags.forEach(function(t){m[t]=(m[t]||0)+1})});return m}
+function viewTags(){
+  var m=allTags();
+  var cloud=Object.keys(m).sort(function(a,b){return m[b]-m[a]||a.localeCompare(b)}).map(function(t){
+    return '<a href="#/tags/'+slugTag(t)+'/">'+esc(t)+' <sup>'+m[t]+'</sup></a>'}).join('');
+  return '<div class="page archive"><h2 class="single-title">All Tags</h2><div class="tag-cloud-tags">'+cloud+'</div></div>';
+}
+function viewTag(slug){
+  var name=null;Object.keys(allTags()).forEach(function(t){if(slugTag(t)===slug)name=t});
+  if(!name)return view404();
+  var ps=POSTS.filter(function(p){return p.tags.indexOf(name)>-1});
+  return '<div class="page archive"><h2 class="single-title">Tag - '+esc(name)+'</h2>'+archiveList(ps)+'</div>';
+}
+function viewAbout(){
+  return '<div class="page single about"><h2 class="single-title">About</h2>'+
+   '<div class="about-profile"><div class="avatar" title="Photo placeholder" aria-label="Photo placeholder">YW</div><span class="name">Yuhan Wang</span></div>'+
+   '<div class="content"><ul>'+
+     '<li>'+tbd('Position / title — to be added')+'</li>'+
+     '<li><a href="'+GROUP+'">Seismology &amp; Wave Physics group</a>, Department of Earth and Planetary Sciences, ETH Zürich, Switzerland</li>'+
+     '<li>Co-organiser of <a href="#/posts/tomographic-summer-chill-2026/">Tomographic Summer Chill</a> (30–31 July 2026) with <a href="'+FICHTNER+'">Andreas Fichtner</a></li>'+
+     '<li>'+tbd('Research interests — to be added')+'</li>'+
+     '<li>'+tbd('Education — to be added')+'</li>'+
+     '<li>Publications: see <a href="'+esc(SCHOLAR)+'">Google Scholar</a></li>'+
+   '</ul>'+
+   '<h2 id="contact">Contact</h2><ul>'+
+     '<li>Email: <a id="about-mail" href="'+esc(ETH)+'">via ETH profile</a></li>'+
+     '<li><a href="'+esc(ETH)+'">ETH group profile</a> · <a href="https://github.com/WANGYuhan2002">GitHub</a> · <a href="https://www.linkedin.com/in/yuhan-wang-aa2564214/">LinkedIn</a> · <a href="'+esc(SCHOLAR)+'">Google Scholar</a> · <a href="https://orcid.org/0000-0001-6451-1166">ORCID</a> · '+tbd('ResearchGate','ResearchGate — link not provided yet')+'</li>'+
+   '</ul></div></div>';
+}
+function viewPost(slug){
+  var p=POSTS.filter(function(x){return x.slug===slug})[0]; if(!p)return view404();
+  var w=wordsOf(p), mins=Math.max(1,Math.round(w/200));
+  return '<div class="page single">'+
+   '<h1 class="single-title">'+esc(p.title)+'</h1>'+
+   '<div class="post-meta"><a class="author" href="#/about/">Yuhan Wang</a>'+
+     '<span>'+ICON.cal+'<time datetime="'+p.date+'">'+dateRange(p)+'</time></span>'+
+     '<span>'+ICON.pen+w+' words</span><span>'+ICON.clock+mins+' minute'+(mins>1?'s':'')+'</span></div>'+
+   '<nav class="toc auto" id="toc" aria-label="Contents"><div class="toc-title">Contents</div><ul>'+
+     p.toc.map(function(t){return '<li><a href="#/posts/'+p.slug+'/#'+t[0]+'" data-target="'+t[0]+'">'+esc(t[1])+'</a></li>'}).join('')+
+   '</ul></nav>'+
+   '<div class="featured-image-preview" aria-hidden="true">'+featured()+'</div>'+
+   '<div class="content">'+p.body+'</div>'+
+   '<div class="post-info"><div class="post-tags">'+ICON.tags+' '+p.tags.map(tagLink).join(', ')+'</div>'+
+   '<div class="nav"><a href="javascript:history.back()">Back</a> | <a href="#/">Home</a></div></div>'+
+  '</div>';
+}
+function view404(){return '<div class="page notfound"><h1>404</h1><p>Page not found :(</p><p><a href="#/">Back to Home</a></p></div>'}
+
+/* ================= Router ================= */
+var app=document.getElementById('app');
+function render(){
+  var h=location.hash.replace(/^#/,''); var anchor=null;
+  var m=h.match(/^(\/posts\/[^#]+\/)#(.+)$/); if(m){h=m[1];anchor=m[2]}
+  if(h===''||h==='/'||h==='top')h='/';
+  var nav='home', html;
+  var mm;
+  if(h==='/'){html=viewHome()}
+  else if(h==='/posts/'){html=viewPosts();nav='posts'}
+  else if((mm=h.match(/^\/posts\/([^/]+)\/?$/))){html=viewPost(mm[1]);nav='posts'}
+  else if(h==='/tags/'){html=viewTags();nav='tags'}
+  else if((mm=h.match(/^\/tags\/([^/]+)\/?$/))){html=viewTag(decodeURIComponent(mm[1]));nav=mm[1]==='tomography'?'tomography':'tags'}
+  else if(h==='/about/'){html=viewAbout();nav='about'}
+  else {html=view404();nav=''}
+  if(h==='top'){window.scrollTo({top:0,behavior:'smooth'});return}
+  app.innerHTML=html;
+  document.querySelectorAll('[data-nav]').forEach(function(a){
+    var on=a.getAttribute('data-nav')===nav; a.classList.toggle('active',on);
+    if(on)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+  var titles={home:'Yuhan Wang',posts:'All Posts - Yuhan Wang',tags:'All Tags - Yuhan Wang',about:'About - Yuhan Wang',tomography:'Tag - tomography - Yuhan Wang'};
+  var t1=app.querySelector('h1.single-title'); document.title=(mm&&h.indexOf('/posts/')===0&&t1)?t1.textContent+' - Yuhan Wang':(titles[nav]||'Yuhan Wang');
+  closeMobile(); wireEmail(); startTypeit(); setupToc();
+  if(anchor){var el=document.getElementById(anchor); if(el)el.scrollIntoView()} else window.scrollTo(0,0);
+}
+window.addEventListener('hashchange',render);
+
+/* ================= Email (assembled at runtime) ================= */
+function wireEmail(){
+  var addr=user+'@'+domain;
+  var hm=document.getElementById('home-mail'); if(hm){hm.href='mailto:'+addr; hm.title=addr}
+  var am=document.getElementById('about-mail'); if(am){am.href='mailto:'+addr; am.textContent=addr}
+}
+
+/* ================= TypeIt-like subtitle ================= */
+var typeTimer=null;
+function startTypeit(){
+  clearTimeout(typeTimer);
+  var el=document.getElementById('typeit'); if(!el)return;
+  var text='Seismology & Wave Physics · ETH Zürich';
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){el.textContent=text;return}
+  var i=0;(function step(){el.textContent=text.slice(0,i);if(i++<text.length)typeTimer=setTimeout(step,70)})();
+}
+
+/* ================= TOC highlight + sticky ================= */
+var tocHandler=null;
+function setupToc(){
+  if(tocHandler){window.removeEventListener('scroll',tocHandler);tocHandler=null}
+  var toc=document.getElementById('toc'); if(!toc)return;
+  var links=[].slice.call(toc.querySelectorAll('a'));
+  links.forEach(function(a){a.addEventListener('click',function(e){e.preventDefault();
+    var el=document.getElementById(a.getAttribute('data-target')); if(el)el.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})})});
+  var start=toc.getBoundingClientRect().top+window.scrollY;
+  tocHandler=function(){
+    toc.classList.toggle('fixed',window.innerWidth>=1200&&window.scrollY>start-88);
+    var cur=null;links.forEach(function(a){var el=document.getElementById(a.getAttribute('data-target'));if(el&&el.getBoundingClientRect().top<120)cur=a});
+    links.forEach(function(a){a.classList.toggle('active',a===cur)});
+  };
+  window.addEventListener('scroll',tocHandler,{passive:true}); tocHandler();
+}
+
+/* ================= Theme switch ================= */
+document.querySelectorAll('.theme-switch').forEach(function(b){b.addEventListener('click',function(){
+  var dark=document.documentElement.getAttribute('theme')!=='dark';
+  document.documentElement.setAttribute('theme',dark?'dark':'light');
+  try{localStorage.setItem('theme',dark?'dark':'light')}catch(e){}
+})});
+if(window.matchMedia){matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(e){
+  var t=null;try{t=localStorage.getItem('theme')}catch(_){}
+  if(!t)document.documentElement.setAttribute('theme',e.matches?'dark':'light')})}
+
+/* ================= Mobile menu ================= */
+var toggle=document.getElementById('menu-toggle'), mmenu=document.getElementById('menu-mobile');
+toggle.addEventListener('click',function(){var on=!mmenu.classList.contains('active');
+  mmenu.classList.toggle('active',on);toggle.classList.toggle('active',on);toggle.setAttribute('aria-expanded',on)});
+function closeMobile(){mmenu.classList.remove('active');toggle.classList.remove('active');toggle.setAttribute('aria-expanded','false')}
+
+/* ================= Search ================= */
+var INDEX=POSTS.map(function(p){return {title:p.title,url:'#/posts/'+p.slug+'/',text:p.summary+' '+plain(p.body)+' '+p.tags.join(' ')}})
+  .concat([{title:'About',url:'#/about/',text:'Yuhan Wang Seismology & Wave Physics group Department of Earth and Planetary Sciences ETH Zürich Switzerland Google Scholar ORCID GitHub LinkedIn'}]);
+function hi(s,q){var i=s.toLowerCase().indexOf(q);if(i<0)return esc(s);return esc(s.slice(0,i))+'<mark>'+esc(s.slice(i,i+q.length))+'</mark>'+esc(s.slice(i+q.length))}
+function setupSearch(box,collapsible){
+  var input=box.querySelector('input'), dd=box.querySelector('.search-dropdown'), tg=box.querySelector('.search-toggle');
+  if(tg)tg.addEventListener('click',function(){box.classList.add('open');input.focus()});
+  input.addEventListener('input',function(){
+    var q=input.value.trim().toLowerCase(); if(!q){dd.classList.remove('show');dd.innerHTML='';return}
+    var r=INDEX.filter(function(d){return (d.title+' '+d.text).toLowerCase().indexOf(q)>-1});
+    dd.innerHTML=r.length?r.map(function(d){var i=d.text.toLowerCase().indexOf(q),s=i<0?d.text.slice(0,90):d.text.slice(Math.max(0,i-30),i+60);
+      return '<a href="'+d.url+'" role="option"><span class="s-title">'+hi(d.title,q)+'</span><span class="s-sum">…'+hi(s,q)+'…</span></a>'}).join('')
+      :'<div class="s-none">No results found</div>';
+    dd.classList.add('show');
+  });
+  input.addEventListener('keydown',function(e){if(e.key==='Escape'){input.value='';dd.classList.remove('show');if(collapsible){box.classList.remove('open');tg&&tg.focus()}}
+    if(e.key==='Enter'){var f=dd.querySelector('a');if(f)location.hash=f.getAttribute('href').slice(1)}});
+  dd.addEventListener('click',function(){input.value='';dd.classList.remove('show');box.classList.remove('open')});
+  document.addEventListener('click',function(e){if(!box.contains(e.target)){dd.classList.remove('show');if(collapsible&&!input.value)box.classList.remove('open')}});
+}
+setupSearch(document.getElementById('search-desktop'),true);
+setupSearch(document.getElementById('search-mobile'),false);
+
+/* ================= Back to top ================= */
+var btt=document.getElementById('back-to-top');
+btt.addEventListener('click',function(e){e.preventDefault();window.scrollTo({top:0,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})});
+window.addEventListener('scroll',function(){btt.classList.toggle('show',window.scrollY>300)},{passive:true});
+
+render();
+})();
+</script>
+</body>
+</html>
