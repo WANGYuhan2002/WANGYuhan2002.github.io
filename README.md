@@ -12,7 +12,7 @@ The site root is a temporary picker that links to the design drafts:
 |------|-------|
 | `/drafts/v2a/` | Dark & interactive: a live 2-D wave simulation, click anywhere to make an earthquake |
 | `/drafts/v2b/` | Warm scrapbook: paper, polaroids, sticky notes, a ticket stub and a postcard |
-| `/drafts/v2c/` | Minimal (in progress) |
+| `/drafts/v2c/` | Clean blog layout modelled on kaichu.io (Hugo LoveIt): posts archive, tag cloud, about page, post page with TOC, search, light/dark |
 
 Each draft is a single self-contained `index.html` (no build step). Drafts carry
 `<meta name="robots" content="noindex">` and `/drafts/` is disallowed in `robots.txt`.
