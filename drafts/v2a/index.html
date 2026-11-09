@@ -1,13 +1,13 @@
 <!doctype html>
-<!-- v2a · dark & interactive. The hero is a live 2-D wave simulation with a small wave lab:
-     earthquakes, painted low/high-velocity bodies, point scatterers, seismic arrays and selectable boundaries. -->
+<!-- v2a · dark & interactive. The hero is a live 2-D wave simulation (click = earthquake, station YW01 records it).
+     The full wave lab (arrays & DAS, time reversal, tomography, ambient noise, elastic waves) lives in ./lab/. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Yuhan Wang — Seismology · ETH Zürich</title>
-<meta name="description" content="Yuhan Wang · Seismology &amp; Wave Physics group, ETH Zürich. A live wavefield: make earthquakes, paint velocity structure, drop scatterers and deploy seismic arrays.">
+<meta name="description" content="Yuhan Wang · Seismology &amp; Wave Physics group, ETH Zürich. A live wavefield: click to make an earthquake, then open the Wave Lab for arrays, fibre-optic sensing, time reversal, tomography, ambient noise and elastic waves.">
 <meta name="theme-color" content="#070a10">
 <!-- theme before first paint: stored choice, else the system setting -->
 <script>(function(){var t=null;try{t=localStorage.getItem('yw-theme')}catch(e){}if(t!=='light'&&t!=='dark')t=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark';document.documentElement.setAttribute('data-theme',t)})();</script>
@@ -52,7 +52,7 @@ img{display:block; max-width:100%}
 /* ================================ HERO ================================ */
 .hero{--seis-h:132px; position:relative; height:100svh; min-height:660px; overflow:hidden; cursor:crosshair; -webkit-user-select:none; user-select:none; touch-action:manipulation; isolation:isolate}
 .hero.editing{touch-action:none}
-#field{position:absolute; inset:0; width:100%; height:100%; display:block; z-index:0}
+#field, #fieldgl{position:absolute; inset:0; width:100%; height:100%; display:block; z-index:0}
 #overlay{position:absolute; inset:0; width:100%; height:100%; display:block; z-index:2; pointer-events:none}
 .hero::after{content:""; position:absolute; inset:0; z-index:1; pointer-events:none;
   background:radial-gradient(ellipse 55% 45% at 22% 68%, rgba(var(--veil),.55), transparent 70%),
@@ -97,40 +97,17 @@ img{display:block; max-width:100%}
 #events .empty{display:block; color:var(--muted)}
 @keyframes pop{from{opacity:0; transform:translateY(-4px)}to{opacity:1; transform:none}}
 
-/* ---------- wave-lab toolbar + option panel ---------- */
-.lab{position:absolute; z-index:6; right:var(--pad); top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:3px; padding:5px; border-radius:16px; cursor:default}
-.lab button{position:relative; width:38px; height:38px; display:grid; place-items:center; border-radius:11px; border:0; background:none; color:var(--ink2); cursor:pointer; transition:background .15s, color .15s}
-.lab button:hover{background:rgba(255,255,255,.08); color:var(--ink)}
-.lab button svg{width:20px; height:20px}
-.lab button[aria-pressed="true"]{background:var(--ink); color:var(--bg)}
-.lab button[data-tool="slow"][aria-pressed="true"]{background:var(--slow); color:#fff}
-.lab button[data-tool="fast"][aria-pressed="true"]{background:var(--fast); color:#fff}
-.lab .sep{height:1px; margin:3px 6px; background:var(--line2)}
-.lab-pop{position:absolute; z-index:6; right:calc(var(--pad) + 58px); top:50%; transform:translateY(-50%); width:272px; max-height:calc(100% - 9rem); overflow:auto; padding:.95rem 1rem 1rem; border-radius:16px; font-size:.8rem; color:var(--ink2); cursor:default}
-.lab-pop[hidden]{display:none}
-.lab-pop.wide{width:340px}
-.pop-top{display:flex; align-items:center; justify-content:space-between; margin:0 0 .45rem}
-.pop-h{margin:0; font:500 .66rem var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--ink)}
-.pop-x{border:0; background:none; color:var(--muted); font:400 1.1rem/1 var(--sans); cursor:pointer; padding:.1rem .3rem}
-.pop-x:hover{color:var(--ink)}
-.pop-hint{margin:0 0 .7rem; line-height:1.5}
-.pop-row{display:flex; justify-content:space-between; align-items:baseline; margin:.65rem 0 .2rem}
-.pop-row output{font:500 .74rem var(--mono); color:var(--ink)}
-.lab-pop input[type="range"]{width:100%; margin:0; accent-color:var(--cyan)}
-.seg{display:flex; gap:2px; margin:.35rem 0 .2rem; padding:2px; border:1px solid var(--line2); border-radius:999px}
-.seg button{flex:1; padding:.32rem .4rem; border:0; border-radius:999px; background:none; color:var(--ink2); font:500 .72rem var(--sans); cursor:pointer}
-.seg button[aria-pressed="true"]{background:var(--ink); color:var(--bg)}
-.radio{display:flex; align-items:flex-start; gap:.5rem; margin:.35rem 0; line-height:1.35; cursor:pointer}
-.radio input{margin:.15rem 0 0; accent-color:var(--cyan)}
-.radio small{display:block; color:var(--muted); font-size:.72rem}
-.chk{display:flex; align-items:center; gap:.45rem; margin:.5rem 0 0; cursor:pointer}
-.chk input{accent-color:var(--cyan)}
-.btns{display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.8rem}
-.pbtn{padding:.38rem .7rem; border-radius:999px; border:1px solid var(--line2); background:none; color:var(--ink); font:500 .74rem var(--sans); cursor:pointer}
-.pbtn:hover{border-color:var(--cyan)}
-.pop-info p{margin:.45rem 0; line-height:1.55}
-.pop-info b{color:var(--ink); font-weight:600}
-.pop-info code{font-family:var(--mono); font-size:.92em; color:var(--cyan)}
+/* ---------- calls to action under the name ---------- */
+.cta-row{display:flex; flex-wrap:wrap; gap:.6rem; margin-top:1.7rem}
+.cta-row .hint{margin-top:0}
+.lab-link{text-decoration:none; background:var(--ink); color:var(--bg); border-color:var(--ink)}
+.lab-link:hover{background:var(--cyan); border-color:var(--cyan); color:var(--bg)}
+.lab-link svg{width:16px; height:16px; transition:transform .2s}
+.lab-link:hover svg{transform:translateX(3px)}
+.seis-r{display:flex; align-items:center; gap:.4rem; flex:none}
+.model-sel{appearance:none; -webkit-appearance:none; font:500 .66rem var(--mono); letter-spacing:.06em; color:var(--ink2); background:rgba(var(--veil),.5) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%237c8a95' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right .55rem center/10px; border:1px solid var(--line2); border-radius:999px; padding:.42rem 1.6rem .42rem .8rem; cursor:pointer}
+.model-sel:hover{border-color:var(--cyan); color:var(--ink)}
+.short{display:none}
 
 /* ---------- seismograms ---------- */
 .seis{position:absolute; z-index:3; left:0; right:0; bottom:0; padding:0 var(--pad) .9rem; cursor:default}
@@ -143,7 +120,7 @@ img{display:block; max-width:100%}
 .reveal{flex:none; font:500 .66rem var(--mono); letter-spacing:.14em; text-transform:uppercase; color:var(--ink2); background:rgba(var(--veil),.5); border:1px solid var(--line2); border-radius:999px; padding:.42rem .8rem; cursor:pointer; transition:all .2s}
 .reveal:hover{border-color:var(--cyan); color:var(--ink)}
 .reveal[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}
-.legend{position:absolute; right:calc(var(--pad) + 62px); bottom:calc(100% + .6rem); margin:0; max-width:min(420px,80vw); padding:.75rem .9rem; border-radius:14px; border:1px solid var(--line2); background:rgba(var(--veil),.74); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); font:400 .78rem/1.5 var(--sans); color:var(--ink2)}
+.legend{position:absolute; right:var(--pad); bottom:calc(100% + .6rem); margin:0; max-width:min(420px,80vw); padding:.75rem .9rem; border-radius:14px; border:1px solid var(--line2); background:rgba(var(--veil),.74); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); font:400 .78rem/1.5 var(--sans); color:var(--ink2)}
 .legend b{color:var(--ink)}
 .legend .sw{display:inline-block; width:10px; height:10px; border-radius:2px; vertical-align:-1px; margin:0 .2rem 0 .1rem}
 
@@ -200,7 +177,16 @@ a.lk:hover .nm svg{color:var(--cyan)}
 .lk.todo .ar{color:var(--coral)}
 footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:flex; flex-wrap:wrap; justify-content:space-between; gap:.8rem 2rem; border-top:1px solid var(--line); font:400 .78rem/1.6 var(--mono); color:var(--muted)}
 
+.labgrid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:22px; overflow:hidden}
+.lc{position:relative; display:flex; flex-direction:column; gap:.45rem; padding:1.4rem 1.5rem 1.5rem; background:var(--bg); text-decoration:none; transition:background .2s}
+.lc:hover{background:var(--bg2)}
+.lc .n{font:500 .72rem var(--mono); color:var(--cyan); letter-spacing:.1em}
+.lc h3{margin:0; font:600 1.2rem/1.2 var(--display); letter-spacing:-.01em}
+.lc p{margin:0; font-size:.92rem; color:var(--ink2)}
+.lc .ar{position:absolute; right:1.3rem; top:1.25rem; font:500 .8rem var(--mono); color:var(--muted); transition:transform .2s, color .2s}
+.lc:hover .ar{color:var(--cyan); transform:translateX(3px)}
 @media (max-width:900px){
+  .labgrid{grid-template-columns:1fr}
   .about, .feature{grid-template-columns:1fr}
   .portrait{max-width:420px}
   .feature-img{min-height:0; aspect-ratio:16/9}
@@ -208,22 +194,25 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
 }
 @media (max-height:780px) and (min-width:641px){
   #events li:nth-child(n+3){display:none}
-  .lab button{width:34px; height:34px}
 }
 @media (max-width:640px){
   .top nav{display:none}
   .hero-copy{bottom:calc(var(--seis-h) + 2vh); max-width:92vw}
-  .lab{top:3.7rem; left:1rem; right:1rem; transform:none; flex-direction:row; justify-content:space-between; overflow-x:auto}
-  .lab .sep{width:1px; height:auto; margin:6px 2px}
-  .lab-pop, .lab-pop.wide{top:7.2rem; left:1rem; right:1rem; width:auto; transform:none; max-height:calc(100% - 9rem - var(--seis-h))}
-  .catalog{top:7.2rem; right:1rem; width:auto; max-width:62vw; padding:.55rem .75rem}
+  .hero{--seis-h:150px}
+  .catalog{top:3.9rem; right:1rem; width:auto; max-width:62vw; padding:.55rem .75rem}
+  .cta-row{gap:.5rem; margin-top:1.3rem}
+  .cta-row .hint{padding:.6rem .95rem; font-size:.86rem}
+  .seis-row{flex-wrap:wrap; row-gap:.45rem}
+  .seis-r{flex-basis:100%}
+  .model-sel{flex:1; min-width:0}
+  .long{display:none}
+  .short{display:inline}
   .catalog .cat-h{margin-bottom:.25rem}
   #events li:not(:first-child){display:none}
   #events li{grid-template-columns:auto auto}
   #events .who{display:none}
   .seis-row > span{letter-spacing:.08em}
   .reveal{padding:.38rem .6rem; letter-spacing:.06em}
-  .legend{right:var(--pad)}
 }
 @media (prefers-reduced-motion:reduce){
   .pulse, .live::before, .portrait .rings circle{animation:none}
@@ -236,13 +225,14 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
 
 <!-- ================================ HERO ================================ -->
 <section class="hero" id="hero" aria-label="Introduction with an interactive seismic wavefield">
+  <canvas id="fieldgl" aria-hidden="true"></canvas>
   <canvas id="field" aria-hidden="true"></canvas>
   <canvas id="overlay" aria-hidden="true"></canvas>
 
   <header class="top">
     <a class="mark" href="#hero"><i></i>Yuhan Wang</a>
     <div class="top-r">
-      <nav aria-label="Sections"><a href="#about">About</a><a href="#work">Work</a><a href="#contact">Contact</a></nav>
+      <nav aria-label="Sections"><a href="#about">About</a><a href="#work">Work</a><a href="lab/">Wave Lab</a><a href="#contact">Contact</a></nav>
       <button class="theme-btn" id="themeBtn" type="button" aria-label="Switch between dark and light theme" title="Dark / light theme">
         <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
         <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -254,7 +244,10 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
     <p class="kicker">Seismology · ETH Zürich</p>
     <h1>Yuhan Wang</h1>
     <p class="tagline"><em>Listening to the Earth,</em> one wave at a time.</p>
-    <button class="hint" id="hint" type="button"><span class="pulse" aria-hidden="true"></span><span id="hintText">Click anywhere to make an earthquake</span></button>
+    <div class="cta-row">
+      <button class="hint" id="hint" type="button"><span class="pulse" aria-hidden="true"></span><span id="hintText">Click anywhere to make an earthquake</span></button>
+      <a class="hint lab-link" href="lab/"><span class="long">Open the </span>Wave Lab <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+    </div>
   </div>
 
   <aside class="catalog glass" aria-label="Earthquakes triggered on this page">
@@ -262,23 +255,17 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
     <ol id="events" aria-live="polite"><li><span class="empty">Listening… no events yet</span></li></ol>
   </aside>
 
-  <div class="lab glass" id="lab" role="toolbar" aria-label="Wave lab" aria-orientation="vertical">
-    <button type="button" data-tool="quake" aria-pressed="true" aria-label="Earthquake (Q)" title="Earthquake · Q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="9.6" opacity=".5"/></svg></button>
-    <button type="button" data-tool="slow" aria-pressed="false" aria-label="Paint a low-velocity body (S)" title="Low-velocity body · S"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3.5c4.6 0 8.5 3.3 8 8.1-.5 4.7-4.6 8.5-9.2 8-4.4-.4-7.6-4.2-7.2-8.6C4 6.6 7.6 3.5 12 3.5z"/><path d="M8.3 12h7.4"/></svg></button>
-    <button type="button" data-tool="fast" aria-pressed="false" aria-label="Paint a high-velocity body (F)" title="High-velocity body · F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3.5c4.6 0 8.5 3.3 8 8.1-.5 4.7-4.6 8.5-9.2 8-4.4-.4-7.6-4.2-7.2-8.6C4 6.6 7.6 3.5 12 3.5z"/><path d="M8.3 12h7.4M12 8.3v7.4"/></svg></button>
-    <button type="button" data-tool="erase" aria-pressed="false" aria-label="Erase structure (E)" title="Erase structure · E"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M14.5 4.5 20 10l-8.5 8.5H6l-2.5-2.5z"/><path d="M9 10l5.5 5.5M11 18.5h9"/></svg></button>
-    <button type="button" data-tool="scatter" aria-pressed="false" aria-label="Add point scatterers (C)" title="Point scatterers · C"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="7" r="1.7"/><circle cx="15.5" cy="5" r="1.7"/><circle cx="11" cy="12" r="1.7"/><circle cx="18.5" cy="13.5" r="1.7"/><circle cx="6.5" cy="17.5" r="1.7"/><circle cx="14" cy="19.5" r="1.7"/></svg></button>
-    <button type="button" data-tool="array" aria-pressed="false" aria-label="Deploy a seismic array (A)" title="Seismic array · A"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M1.5 8h6l-3 5.2zM9 8h6l-3 5.2zM16.5 8h6l-3 5.2z"/><path d="M2 17.5h20" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 2.4"/></svg></button>
-    <span class="sep" aria-hidden="true"></span>
-    <button type="button" data-panel="model" aria-pressed="false" aria-label="Model and boundaries (M)" title="Model &amp; boundaries · M"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg></button>
-    <button type="button" data-panel="info" aria-pressed="false" aria-label="What is this wavefield? (I)" title="What is this? · I"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.6v.2"/></svg></button>
-  </div>
-  <div class="lab-pop glass" id="labPop" role="dialog" aria-label="Wave lab options" hidden></div>
-
   <div class="seis">
     <div class="seis-row">
-      <span><span class="live">Live</span> · <span id="seisLabel">Station YW01</span></span>
-      <button class="reveal" id="reveal" type="button" aria-pressed="false">Reveal hidden structure</button>
+      <span><span class="live">Live</span> · Station YW01</span>
+      <span class="seis-r">
+        <select class="model-sel" id="heroModel" aria-label="Hidden velocity structure">
+          <option value="random">Map · random blobs</option><option value="homogeneous">Map · uniform</option>
+          <option value="layered">Section · folded layers</option><option value="basin">Section · sedimentary basin</option>
+          <option value="slab">Section · subduction zone</option><option value="salt">Section · salt dome</option>
+        </select>
+        <button class="reveal" id="reveal" type="button" aria-pressed="false">Reveal<span class="long"> hidden structure</span></button>
+      </span>
     </div>
     <canvas id="trace" aria-hidden="true"></canvas>
     <p class="legend" id="legend" hidden><span class="sw" style="background:var(--slow)"></span>slow &nbsp;<span class="sw" style="background:var(--fast)"></span>fast — the velocity structure that bends your waves. Recovering it from recorded waves is what <b>seismic tomography</b> does.</p>
@@ -336,9 +323,26 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
   </div>
 </section>
 
+<!-- =============================== WAVE LAB =============================== -->
+<section class="sec" id="lab">
+  <p class="label"><b>04</b> Wave Lab</p>
+  <div class="say">
+    <h2 class="big">Six experiments, <em>live</em> in your browser.</h2>
+    <a class="mail" href="lab/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span>Open the Wave Lab</span></a>
+  </div>
+  <div class="labgrid">
+    <a class="lc" href="lab/#play"><span class="n">01</span><h3>Playground</h3><p>Paint slow and fast rock, drop scatterers, pick a cross-section and make earthquakes.</p><span class="ar" aria-hidden="true">→</span></a>
+    <a class="lc" href="lab/#arrays"><span class="n">02</span><h3>Arrays &amp; DAS</h3><p>Lay out seismometers, or draw a fibre-optic cable and watch its strain-rate waterfall.</p><span class="ar" aria-hidden="true">→</span></a>
+    <a class="lc" href="lab/#tr"><span class="n">03</span><h3>Time reversal</h3><p>Record a wave on a ring of sensors, play it backwards, and see it refocus on its source.</p><span class="ar" aria-hidden="true">→</span></a>
+    <a class="lc" href="lab/#tomo"><span class="n">04</span><h3>Tomography</h3><p>Hide a model, shoot a survey, pick first arrivals and invert them for the velocity.</p><span class="ar" aria-hidden="true">→</span></a>
+    <a class="lc" href="lab/#noise"><span class="n">05</span><h3>Ambient noise</h3><p>Cross-correlate random noise at two stations until the wave between them appears.</p><span class="ar" aria-hidden="true">→</span></a>
+    <a class="lc" href="lab/#elastic"><span class="n">06</span><h3>Elastic waves</h3><p>Switch to solid rock: P, S and Rayleigh waves, S − P times and particle motion.</p><span class="ar" aria-hidden="true">→</span></a>
+  </div>
+</section>
+
 <!-- =============================== CONTACT =============================== -->
 <section class="sec" id="contact">
-  <p class="label"><b>04</b> Contact</p>
+  <p class="label"><b>05</b> Contact</p>
   <div class="say">
     <h2 class="big">Let's talk <em>waves</em>.</h2>
     <a class="mail" data-mail href="https://cos.ethz.ch/people/person-detail.yuhan-wang.html">
@@ -358,7 +362,7 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
 
 <footer>
   <span>© 2026 Yuhan Wang · Zürich</span>
-  <span>Hero: a live finite-difference solution of the 2-D acoustic wave equation. Make earthquakes, paint structure, drop scatterers and deploy arrays with the toolbar.</span>
+  <span>Hero: a live finite-difference solution of the 2-D acoustic wave equation (on the GPU where WebGL2 allows). More in the <a href="lab/">Wave Lab</a>.</span>
 </footer>
 
 <script>
@@ -383,451 +387,9 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
   document.querySelectorAll('[data-mail]').forEach(function(a){a.href='mailto:'+addr});
   document.querySelectorAll('[data-mail-text]').forEach(function(s){s.textContent=addr});
 })();
-
-/* ---------- wave lab ----------
-   Physics: constant-density acoustic wave equation  ∂²u/∂t² = c(x,y)² ∇²u  (u ~ pressure; P waves only).
-   Numerics: leapfrog in time, 5-point Laplacian (2nd order), Courant number C·v ≤ 0.69 < 1/√2.
-   Boundaries: u = 0 on the outermost grid line (Dirichlet). Absorbing edges add a 36-cell layer in which the
-   equation becomes ∂²u/∂t² + σ(x)∂u/∂t = c²∇²u, with σ ramping up quadratically (pure velocity damping, no
-   mass term; measured reflection 0.3 % at normal and 0.7 % at 45° incidence). "Free surface" = no layer on top
-   (p = 0 reflects with R = −1); "Reflecting box" = no layer anywhere. A small uniform σ gives an amplitude decay e^(−αt).
-   Sources: Ricker wavelets. Velocity model: editable (bodies, scatterers). Stations record u(t). */
-(function(){
-  var hero=document.getElementById('hero'), cv=document.getElementById('field'), ctx=cv.getContext('2d',{alpha:false});
-  var ov=document.getElementById('overlay'), octx=ov.getContext('2d');
-  var tcv=document.getElementById('trace'), tctx=tcv.getContext('2d');
-  var list=document.getElementById('events'), countEl=document.getElementById('count');
-  var revealBtn=document.getElementById('reveal'), legend=document.getElementById('legend'), seisLabel=document.getElementById('seisLabel');
-  var lab=document.getElementById('lab'), pop=document.getElementById('labPop');
-  var reduce=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
-  var coarse=!!(window.matchMedia&&matchMedia('(pointer: coarse)').matches);
-  if(coarse) document.getElementById('hintText').textContent='Tap anywhere to make an earthquake';
-
-  /* constants */
-  var C=0.5, GAIN=1.2, THRESH=.05, ALPHA=.5, F0=.038;   /* Courant no. at c=1, display gain, coda threshold, attenuation (1/s), Ricker freq (cycles/step) */
-  var VMIN=.5, VMAX=1.38, VSCAT=.35;                    /* painted bodies: 0.5–1.38 (C·1.38 = 0.69 < 0.707); scatterers: 0.35 */
-  var SPONGE=36, SMAX=.30;   /* absorbing layer: width in cells and peak σΔt. Measured reflection: 0.3 % at normal, 0.7 % at 45° incidence */
-  /* state */
-  var nx,ny,N,u0,u1,u2,c2,P,Q,vbg,mask,bR,bG,bB,img,px,rate,TR,B=SPONGE;
-  var W=0,H=0,lastW=0,lastH=0,dpr=1;
-  var reveal=false, paused=false, sources=[], step=0, total=0, head=0, marks=[], peak=.08;
-  var lastUserT=-1e9, lastAutoT=0;
-  var tool='quake', panel=null, brushR=14, brushS=.2, quakeM=3.2, quakeRandom=true;
-  var arrMode='line', arrN=12, bc='absorb', preset='random', agc=false, cs=null;   /* agc: 0.5-s sliding-RMS gain per trace */
-  var stations=[], netKind='single', scat=[], drag=null, cursor=null;
-  var powLUT=new Float32Array(1025);
-  for(var k0=0;k0<=1024;k0++){var a0=Math.max(0,(k0/1024-THRESH)/(1-THRESH)); powLUT[k0]=Math.pow(a0,.75)}
-  function seeded(s){return function(){s=(s*16807)%2147483647;return s/2147483647}}
-  /* canvas palettes: "glow" on the dark theme, "ink on paper" on the light theme */
-  var PAL={
-    dark:{bg:[7,10,16],pos:[79,216,232],neg:[255,122,92],slow:[235,88,64],fast:[64,132,255],ink:[238,243,246],halo:'rgba(0,0,0,.85)',mix:.9,tint:.42,faint:.07,
-          trace:'rgba(238,243,246,.88)',fill:'rgba(79,216,232,.45)',tick:'rgba(255,255,255,.08)',label:'#7c8a95',origin:'255,122,92'},
-    light:{bg:[243,245,247],pos:[11,120,148],neg:[217,71,47],slow:[217,71,47],fast:[47,111,214],ink:[16,29,39],halo:'rgba(255,255,255,.95)',mix:.92,tint:.34,faint:.06,
-          trace:'rgba(16,29,39,.85)',fill:'rgba(11,120,148,.3)',tick:'rgba(16,29,39,.14)',label:'#5d6f7b',origin:'217,71,47'}
-  };
-  var pal=PAL[document.documentElement.getAttribute('data-theme')==='light'?'light':'dark'];
-  function rgba(c,a){return 'rgba('+c[0]+','+c[1]+','+c[2]+','+a+')'}
-  var layerSeed=1, view='map', autoFree=false;
-  var SCALE={layered:60,basin:40,slab:400,salt:12};   /* section width in km, for the catalogue only */
-
-  /* ---------------- geological cross-sections: X = x/nx (0…1), Z = y/ny (0…1, depth) ---------------- */
-  function fillSection(fn){for(var y=0;y<ny;y++){var Z=y/ny; for(var x=0;x<nx;x++) vbg[y*nx+x]=Math.min(VMAX,Math.max(VMIN,fn(x/nx,Z)))}}
-  function layeredFn(seed){
-    var r=seeded(seed*7919+101), nI=4+Math.floor(r()*2), k;                   /* 4–5 interfaces → 5–6 layers */
-    var v=[.6]; for(k=1;k<=nI;k++) v.push(v[k-1]+.12+.1*r());                   /* velocity grows with depth … */
-    var lvz=1+Math.floor(r()*(nI-1)); v[lvz]=Math.max(.55,v[lvz-1]-.1);        /* … except one low-velocity layer (a waveguide) */
-    var foldA=.022+.022*r(), foldK=.8+1.4*r(), foldP=6.28*r(), dip=(r()-.5)*.14;
-    var basinX=.2+.6*r(), basinW=.1+.08*r(), basinD=.03+.04*r();               /* a sedimentary trough in the top layer */
-    var z0=[]; for(k=0;k<nI;k++) z0.push(.12+(k+.45+.2*r())*(.8/nI));
-    var fX=.25+.5*r(), fDip=(r()<.5?-1:1)*(.3+.4*r()), thr=.03+.035*r(), fTop=z0[0]+.04;   /* normal fault: the hanging wall slips down by thr */
-    return function(X,Z){
-      var hang=(X-(fX+fDip*(Z-.5)))*fDip>0, Zs=Z-(hang&&Z>fTop?thr:0), L=0, top=0;
-      for(var k=0;k<nI;k++){
-        var a=foldA*(1+.15*k), d=z0[k]+a*Math.sin(6.2832*foldK*X+foldP+.4*k)+.35*a*Math.sin(6.2832*2.3*foldK*X+1.7*k)+dip*(X-.5);
-        if(k===0) d+=basinD*Math.exp(-Math.pow((X-basinX)/basinW,2));
-        if(Zs>d){L=k+1; top=d}
-      }
-      return v[L]+.12*(Zs-top);                                                 /* gentle gradient inside each layer */
-    };
-  }
-  function basinFn(){return function(X,Z){
-    var depth=.4*Math.exp(-Math.pow(Math.abs(X-.55)/.25,3.2));                 /* flat-bottomed basin, 40 % of the section deep */
-    if(Z<depth){var f=Z/depth; return f<.35?.52:(f<.7?.62:.74)}                 /* three sediment packages that follow the basin floor */
-    return 1.08+.25*Z;                                                          /* crystalline crust with a gradient */
-  }}
-  function slabFn(){return function(X,Z){
-    var moho=.13+.03*Math.sin(3*X), v=Z<moho?.84+.5*Z:1.12+.18*Z;               /* continental crust over the mantle */
-    var t=X-.05, top=.08+.3*t+.6*t*t;                                           /* curved, steepening slab surface */
-    if(t>=0&&Z>=top){var d=Z-top; if(d<.02) v=.8; else if(d<.12) v=1.36}        /* slow oceanic crust on a cold, fast slab */
-    else if(t>.2&&Z<top&&Z>moho&&Z>top-.1) v=Math.min(v,1.0);                   /* hydrated mantle wedge above the slab */
-    return v;
-  }}
-  function saltFn(){return function(X,Z){
-    var v=.66+.64*Math.floor(Z*7)/7, dx=X-.5, w=.07+.18*Math.max(0,Z-.6);      /* compacted sediments in steps; the salt stem widens downward */
-    if((Math.abs(dx)<w&&Z>.3)||Math.pow(dx/.19,2)+Math.pow((Z-.3)/.09,2)<1) v=1.36;   /* fast, homogeneous salt with a mushroom cap */
-    return v;
-  }}
-
-  /* ---------------- grid, model, boundaries ---------------- */
-  function build(){
-    var r=hero.getBoundingClientRect(); W=r.width; H=r.height; lastW=W; lastH=H;
-    var mobile=W<700;
-    nx=mobile?200:(W<1100?400:480); ny=Math.max(110,Math.round(nx*H/W)); N=nx*ny;
-    rate=.5*nx; TR=Math.round(rate*6); head=0; marks=[]; sources=[]; peak=.08;   /* steps/s ∝ grid width: ~4 s to cross the screen */
-    u0=new Float32Array(N); u1=new Float32Array(N); u2=new Float32Array(N);
-    c2=new Float32Array(N); P=new Float32Array(N); Q=new Float32Array(N); vbg=new Float32Array(N); mask=new Uint8Array(N);
-    bR=new Uint8ClampedArray(N); bG=new Uint8ClampedArray(N); bB=new Uint8ClampedArray(N);
-    cv.width=nx; cv.height=ny; img=ctx.createImageData(nx,ny); px=img.data;
-    scat=[]; setPreset(preset); applyBC();
-    setStations([{x:Math.round(nx*(mobile?.76:.78)), y:Math.round(ny*(mobile?.34:.56)), code:'YW01'}],'single');
-    dpr=Math.min(2,window.devicePixelRatio||1); ov.width=Math.round(W*dpr); ov.height=Math.round(H*dpr);
-  }
-  function setPreset(p){
-    preset=p; var x,y,i; view=(p==='random'||p==='homogeneous')?'map':'section';
-    if(p==='random'){
-      var rnd=seeded(11), blobs=[];
-      for(var k=0;k<10;k++) blobs.push([rnd()*nx, rnd()*ny, (.06+.10*rnd())*nx, (rnd()<.5?-1:1)*(.12+.15*rnd())]);
-      for(y=0;y<ny;y++) for(x=0;x<nx;x++){
-        var v=1+.08*(y/ny-.5);
-        for(var b=0;b<blobs.length;b++){var dx=x-blobs[b][0], dy=y-blobs[b][1], s=blobs[b][2]; v+=blobs[b][3]*Math.exp(-(dx*dx+dy*dy)/(2*s*s))}
-        vbg[y*nx+x]=Math.min(1.3,Math.max(.72,v));
-      }
-    } else if(p==='layered') fillSection(layeredFn(layerSeed));
-    else if(p==='basin') fillSection(basinFn());
-    else if(p==='slab') fillSection(slabFn());
-    else if(p==='salt') fillSection(saltFn());
-    else { for(i=0;i<N;i++) vbg[i]=1 }
-    recompute(0,0,nx-1,ny-1);
-  }
-  /* effective velocity → c², and the faint (or revealed) structure colours with interface lines */
-  function vAt(i){return mask[i]?VSCAT:vbg[i]}
-  function recompute(x0,y0,x1,y1){
-    x0=Math.max(0,(x0|0)-1); y0=Math.max(0,(y0|0)-1); x1=Math.min(nx-1,x1|0); y1=Math.min(ny-1,y1|0);
-    var a=reveal?pal.tint:pal.faint, bg=pal.bg, ink=pal.ink;   /* revealed structure is a tint, so the wavefield stays readable */
-    for(var y=y0;y<=y1;y++) for(var x=x0;x<=x1;x++){
-      var i=y*nx+x, v=vAt(i); c2[i]=(C*v)*(C*v);
-      var dv=v-1, t=Math.min(1,Math.abs(dv)/.4)*a, col=dv<0?pal.slow:pal.fast;
-      var r=bg[0]+(col[0]-bg[0])*t, g=bg[1]+(col[1]-bg[1])*t, b=bg[2]+(col[2]-bg[2])*t;
-      if(reveal&&((x<nx-1&&Math.abs(vAt(i+1)-v)>.06)||(y<ny-1&&Math.abs(vAt(i+nx)-v)>.06))){r+=(ink[0]-r)*.42; g+=(ink[1]-g)*.42; b+=(ink[2]-b)*.42}
-      bR[i]=r; bG[i]=g; bB[i]=b;
-    }
-  }
-  function applyBC(){
-    var e=bc==='absorb'?[1,1,1,1]:(bc==='free'?[0,1,1,1]:[0,0,0,0]);   /* top, bottom, left, right */
-    for(var y=0;y<ny;y++) for(var x=0;x<nx;x++){
-      var s=0;
-      if(e[0]&&y<B) s=Math.max(s,(B-y)/B);
-      if(e[1]&&ny-1-y<B) s=Math.max(s,(B-(ny-1-y))/B);
-      if(e[2]&&x<B) s=Math.max(s,(B-x)/B);
-      if(e[3]&&nx-1-x<B) s=Math.max(s,(B-(nx-1-x))/B);
-      /* σΔt = interior attenuation (amplitude e^(−αt)) + quadratic ramp into the absorbing layer; h = σΔt/2 */
-      var hh=(2*ALPHA/rate+SMAX*s*s)/2; P[y*nx+x]=1/(1+hh); Q[y*nx+x]=1-hh;
-    }
-  }
-
-  /* ---------------- time stepping ---------------- */
-  function stepOnce(){
-    for(var k=sources.length-1;k>=0;k--){
-      var s=sources[k], a=Math.PI*s.f*(s.n-s.n0), w=s.amp*(1-2*a*a)*Math.exp(-a*a);
-      for(var dy=-2;dy<=2;dy++) for(var dx=-2;dx<=2;dx++){
-        var x=s.x+dx, y=s.y+dy; if(x<1||y<1||x>=nx-1||y>=ny-1) continue;
-        u1[y*nx+x]+=w*Math.exp(-(dx*dx+dy*dy)/2.2);
-      }
-      if(++s.n>2*s.n0) sources.splice(k,1);
-    }
-    for(var yy=1;yy<ny-1;yy++){var i=yy*nx+1; for(var xx=1;xx<nx-1;xx++,i++)
-      u2[i]=P[i]*(2*u1[i]-Q[i]*u0[i]+c2[i]*(u1[i-1]+u1[i+1]+u1[i-nx]+u1[i+nx]-4*u1[i]));}   /* (u⁺−2u+u⁻) + h(u⁺−u⁻) = c²Δt²∇²u */
-    var t=u0; u0=u1; u1=u2; u2=t;
-    for(var q=0;q<stations.length;q++) stations[q].buf[head]=u1[stations[q].i];
-    head=(head+1)%TR; step++;
-  }
-
-  /* ---------------- drawing ---------------- */
-  function draw(){
-    var P0=pal.pos, N0=pal.neg, mx=pal.mix;
-    for(var i=0,j=0;i<N;i++,j+=4){
-      var v=u1[i]*GAIN; if(v>1)v=1; else if(v<-1)v=-1;
-      var t=powLUT[(v<0?-v:v)*1024|0], kk=1-t*mx, c=v>=0?P0:N0;
-      px[j]=bR[i]*kk+c[0]*t; px[j+1]=bG[i]*kk+c[1]*t; px[j+2]=bB[i]*kk+c[2]*t; px[j+3]=255;
-    }
-    ctx.putImageData(img,0,0);
-  }
-  function sx(x){return (x+.5)/nx*W} function sy(y){return (y+.5)/ny*H}
-  function tri(x,y,s,alpha){
-    octx.beginPath(); octx.moveTo(x-s,y-s*1.7); octx.lineTo(x+s,y-s*1.7); octx.lineTo(x,y); octx.closePath();
-    octx.fillStyle=rgba(pal.ink,alpha); octx.shadowColor=pal.halo; octx.shadowBlur=6; octx.fill(); octx.shadowBlur=0;
-  }
-  function drawOverlay(){
-    octx.setTransform(dpr,0,0,dpr,0,0); octx.clearRect(0,0,W,H);
-    var rs=Math.max(2.4,1.6/nx*W), k;
-    for(k=0;k<scat.length;k++){octx.beginPath(); octx.arc(sx(scat[k].x),sy(scat[k].y),rs,0,6.2832); octx.fillStyle=rgba(pal.ink,.92); octx.fill(); octx.lineWidth=1; octx.strokeStyle=pal.halo; octx.stroke()}
-    var many=stations.length>1;
-    octx.font='500 10px "JetBrains Mono", monospace'; octx.textAlign='center';
-    for(k=0;k<stations.length;k++){
-      var st=stations[k], X=sx(st.x), Y=sy(st.y); tri(X,Y,many?5:7,.95);
-      if((!many||k===0||k===stations.length-1)&&Y>=70){octx.fillStyle=rgba(pal.ink,.95); octx.shadowColor=pal.halo; octx.shadowBlur=4; octx.fillText(st.code,X,Y-(many?13:17)); octx.shadowBlur=0}   /* no labels under the nav bar; the record section lists every code */
-    }
-    if(drag&&drag.kind==='array'){
-      var pts=arrayPositions(drag);
-      octx.setLineDash([4,4]); octx.lineWidth=1.2; octx.strokeStyle=rgba(pal.pos,.85); octx.beginPath();
-      if(arrMode==='line'){octx.moveTo(sx(drag.x0),sy(drag.y0)); octx.lineTo(sx(drag.x1),sy(drag.y1))}
-      else {var rr=Math.hypot(drag.x1-drag.x0,drag.y1-drag.y0)/nx*W; octx.arc(sx(drag.x0),sy(drag.y0),rr,0,6.2832)}
-      octx.stroke(); octx.setLineDash([]);
-      for(k=0;k<pts.length;k++) tri(sx(pts[k][0]),sy(pts[k][1]),5,.6);
-    }
-    if(cursor&&(tool==='slow'||tool==='fast'||tool==='erase')&&!coarse){
-      octx.beginPath(); octx.arc(sx(cursor[0]),sy(cursor[1]),brushR/nx*W,0,6.2832);
-      octx.setLineDash([5,5]); octx.lineWidth=1.4; octx.strokeStyle=tool==='slow'?rgba(pal.slow,1):(tool==='fast'?rgba(pal.fast,1):rgba(pal.ink,.8)); octx.stroke(); octx.setLineDash([]);
-    }
-  }
-  function drawTrace(){
-    var w=tcv.clientWidth, h=tcv.clientHeight, d2=Math.min(2,window.devicePixelRatio||1);
-    if(!w||!h) return;
-    if(tcv.width!==Math.round(w*d2)||tcv.height!==Math.round(h*d2)){tcv.width=Math.round(w*d2); tcv.height=Math.round(h*d2)}
-    tctx.setTransform(d2,0,0,d2,0,0); tctx.clearRect(0,0,w,h);
-    var n=stations.length, many=n>1, m=0, s, k;
-    for(s=0;s<n;s++){var bf=stations[s].buf; for(k=0;k<TR;k++){var a=bf[k]<0?-bf[k]:bf[k]; if(a>m)m=a}}
-    peak=Math.max(.08,m,peak*.995);                   /* one gain for all traces: relative amplitudes are kept */
-    var left=many?40:0, top=many?4:2, bot=many?4:2, ww=w-left, sp=(h-top-bot)/n;
-    var amp=(many?.95*sp:(h/2-4))/peak, clip=many?1.4*sp:h/2-2, sec=Math.round(rate);
-    tctx.strokeStyle=pal.tick; tctx.lineWidth=1; tctx.beginPath();
-    for(var st=step-(step%sec);st>step-TR;st-=sec){var xt=left+ww-(step-st)/TR*ww; tctx.moveTo(xt,h-5); tctx.lineTo(xt,h)}
-    tctx.stroke();
-    tctx.font='500 9px "JetBrains Mono", monospace'; tctx.textBaseline='top';
-    for(var q=0;q<marks.length;q++){var age=step-marks[q]; if(age>TR) continue; var xm=left+ww-age/TR*ww;
-      tctx.strokeStyle='rgba('+pal.origin+',.75)'; tctx.setLineDash([3,3]); tctx.beginPath(); tctx.moveTo(xm,1); tctx.lineTo(xm,h-1); tctx.stroke(); tctx.setLineDash([]);
-      if(q===marks.length-1){tctx.fillStyle='rgba('+pal.origin+',.95)'; tctx.textAlign='left'; tctx.fillText('origin',xm+4,1)}}
-    var stride=Math.max(1,Math.floor(TR/Math.max(1,ww)));
-    var half=Math.round(rate*.25), floor=.02*peak, lvl=many?.45*sp:.35*h;
-    if(agc&&(!cs||cs.length!==TR+1)) cs=new Float64Array(TR+1);
-    for(s=0;s<n;s++){
-      var y0=many?top+sp*(s+.5):h/2, buf=stations[s].buf, x2, y2, v;
-      if(agc){for(k=0;k<TR;k++){var o=buf[(head+k)%TR]; cs[k+1]=cs[k]+o*o}}                       /* cumulative energy for the sliding RMS */
-      var gain=function(k){if(!agc) return amp; var lo=Math.max(0,k-half), hi=Math.min(TR,k+half), r=Math.sqrt((cs[hi]-cs[lo])/(hi-lo)); return lvl/Math.max(r,floor)};
-      if(many){
-        if(sp>=11||s%2===0){tctx.fillStyle=pal.label; tctx.textAlign='left'; tctx.textBaseline='middle'; tctx.fillText(stations[s].code,0,y0); tctx.textBaseline='top'}   /* every other code when traces are dense */
-        tctx.beginPath(); tctx.moveTo(left,y0);          /* variable area: fill the positive lobes */
-        for(k=0;k<TR;k+=stride){v=buf[(head+k)%TR]*gain(k); x2=left+k/(TR-1)*ww; tctx.lineTo(x2,y0-Math.max(0,Math.min(clip,v)))}
-        tctx.lineTo(left+ww,y0); tctx.closePath(); tctx.fillStyle=pal.fill; tctx.fill();
-      }
-      tctx.strokeStyle=pal.trace; tctx.lineWidth=many?1:1.25; tctx.lineJoin='round'; tctx.beginPath();
-      for(k=0;k<TR;k+=stride){v=buf[(head+k)%TR]*gain(k); x2=left+k/(TR-1)*ww; y2=y0-Math.max(-clip,Math.min(clip,v)); if(k)tctx.lineTo(x2,y2); else tctx.moveTo(x2,y2)}
-      tctx.stroke();
-    }
-  }
-
-  /* ---------------- sources, stations, structure ---------------- */
-  function quake(x,y,who,mag){
-    x=Math.max(3,Math.min(nx-4,x)); y=Math.max(3,Math.min(ny-4,y));
-    var M=mag||+(2.2+Math.random()*2.4).toFixed(1);
-    sources.push({x:x,y:y,n:0,n0:Math.round(1.2/F0),f:F0,amp:Math.pow(10,.35*(M-3))});   /* M only scales the amplitude */
-    marks.push(step); if(marks.length>8) marks.shift();
-    total++; countEl.textContent=total;
-    var km=SCALE[preset]||100, f=function(d){return d<100?d.toFixed(1):Math.round(d)};
-    var loc=view==='map'?(47.81-y/ny*1.98).toFixed(2)+'°N '+(5.96+x/nx*4.53).toFixed(2)+'°E'   /* map view: screen mapped onto Switzerland */
-                        :'x '+f(x/nx*km)+' · z '+f(y/nx*km)+' km';                           /* cross-section: distance and depth */
-    var li=document.createElement('li');
-    li.innerHTML='<span class="m">M '+M.toFixed(1)+'</span><span>'+loc+'</span><span class="who'+(who==='you'?' you':'')+'">'+who+'</span>';
-    var empty=list.querySelector('.empty'); if(empty) list.innerHTML='';
-    list.insertBefore(li,list.firstChild); while(list.children.length>4) list.removeChild(list.lastChild);
-  }
-  function setStations(arr,kind){
-    netKind=kind;
-    stations=arr.map(function(s){return {x:s.x,y:s.y,i:s.y*nx+s.x,code:s.code,buf:new Float32Array(TR)}});
-    peak=.08; updateSeisLabel();
-    var h=stations.length>1?Math.min(228,10+stations.length*14):72;
-    tcv.style.height=h+'px'; hero.style.setProperty('--seis-h',(h+60)+'px');
-    tcv.parentNode.classList.toggle('many',stations.length>1);
-  }
-  function updateSeisLabel(){
-    seisLabel.textContent=(netKind==='single'?'Station '+stations[0].code:((netKind==='line'?'Line array':'Ring array')+' · '+stations.length+' stations'))+(agc?' · AGC 0.5 s':'');
-  }
-  function arrayPositions(d){
-    var out=[], n=arrN, k;
-    if(arrMode==='line'){for(k=0;k<n;k++){var f=n>1?k/(n-1):0; out.push([Math.round(d.x0+(d.x1-d.x0)*f),Math.round(d.y0+(d.y1-d.y0)*f)])}}
-    else {var r=Math.hypot(d.x1-d.x0,d.y1-d.y0); for(k=0;k<n;k++){var an=-Math.PI/2+2*Math.PI*k/n; out.push([Math.round(d.x0+r*Math.cos(an)),Math.round(d.y0+r*Math.sin(an))])}}
-    return out.map(function(p){return [Math.min(nx-2,Math.max(1,p[0])),Math.min(ny-2,Math.max(1,p[1]))]});
-  }
-  /* brush: inside 0.6 R the velocity becomes the target (1 ∓ strength, or 1 for the eraser); cosine taper to R */
-  function stamp(cx0,cy0){
-    var R=brushR, T=tool==='slow'?1-brushS:(tool==='fast'?1+brushS:1), R2=Math.ceil(R);
-    T=Math.min(VMAX,Math.max(VMIN,T));
-    for(var y=cy0-R2;y<=cy0+R2;y++){ if(y<1||y>=ny-1) continue;
-      for(var x=cx0-R2;x<=cx0+R2;x++){ if(x<1||x>=nx-1) continue;
-        var d=Math.hypot(x-cx0,y-cy0)/R; if(d>=1) continue;
-        var w=d<.6?1:.5+.5*Math.cos(Math.PI*(d-.6)/.4), i=y*nx+x; vbg[i]+=(T-vbg[i])*w;
-      }}
-    recompute(cx0-R2,cy0-R2,cx0+R2,cy0+R2);
-  }
-  function addScatter(x,y){
-    if(x<3||y<3||x>nx-4||y>ny-4||scat.length>=300) return false;
-    for(var k=0;k<scat.length;k++) if(Math.abs(scat[k].x-x)+Math.abs(scat[k].y-y)<4) return false;
-    scat.push({x:x,y:y});
-    for(var dy=-1;dy<=1;dy++) for(var dx=-1;dx<=1;dx++) mask[(y+dy)*nx+x+dx]=1;   /* 3 × 3-cell inclusion */
-    recompute(x-1,y-1,x+1,y+1); return true;
-  }
-  function clearScatter(){scat=[]; mask.fill(0); recompute(0,0,nx-1,ny-1)}
-  function sprinkle(n){var tries=0; while(n>0&&tries<3000){tries++; if(addScatter(Math.round(B+Math.random()*(nx-2*B)),Math.round(B+Math.random()*(ny-2*B)))) n--}}
-  function clearWaves(){u0.fill(0); u1.fill(0); u2.fill(0); sources=[]; marks=[]; peak=.08; stations.forEach(function(s){s.buf.fill(0)})}
-  function setReveal(on){
-    reveal=on; recompute(0,0,nx-1,ny-1);
-    revealBtn.setAttribute('aria-pressed',on); revealBtn.textContent=on?'Hide structure':'Reveal hidden structure'; legend.hidden=!on;
-    var cb=document.getElementById('pReveal'); if(cb) cb.checked=on;
-  }
-
-  /* ---------------- pointer interaction ---------------- */
-  function cellOf(e){var r=cv.getBoundingClientRect(); return [Math.round((e.clientX-r.left)/r.width*nx-.5),Math.round((e.clientY-r.top)/r.height*ny-.5)]}
-  function onUI(t){return !!t.closest('a,button,input,label,.catalog,.seis,.lab,.lab-pop')}
-  function paintTo(c){
-    var d=Math.hypot(c[0]-drag.last[0],c[1]-drag.last[1]), stepL=Math.max(1,brushR/4);
-    if(d<stepL) return;
-    var n=Math.ceil(d/stepL);
-    for(var k=1;k<=n;k++) stamp(Math.round(drag.last[0]+(c[0]-drag.last[0])*k/n),Math.round(drag.last[1]+(c[1]-drag.last[1])*k/n));
-    drag.last=c;
-  }
-  hero.addEventListener('pointerdown',function(e){
-    if(onUI(e.target)) return;
-    var c=cellOf(e); lastUserT=performance.now();
-    if(tool==='quake'){quake(c[0],c[1],'you',quakeRandom?null:quakeM); return}
-    try{hero.setPointerCapture(e.pointerId)}catch(_){}
-    if(tool==='slow'||tool==='fast'||tool==='erase'){if(tool!=='erase'&&!reveal) setReveal(true); drag={kind:'paint',last:c}; stamp(c[0],c[1])}
-    else if(tool==='scatter'){addScatter(c[0],c[1]); drag={kind:'scatter',last:c}; updateCounts()}
-    else if(tool==='array'){drag={kind:'array',x0:c[0],y0:c[1],x1:c[0],y1:c[1]}}
-  });
-  var lastWake=0, lastCell=null;
-  hero.addEventListener('pointermove',function(e){
-    var c=cellOf(e); cursor=c;
-    if(drag){
-      if(drag.kind==='paint') paintTo(c);
-      else if(drag.kind==='scatter'){if(Math.hypot(c[0]-drag.last[0],c[1]-drag.last[1])>=7){addScatter(c[0],c[1]); drag.last=c; updateCounts()}}
-      else if(drag.kind==='array'){drag.x1=c[0]; drag.y1=c[1]}
-      return;
-    }
-    if(tool!=='quake'||reduce||e.pointerType!=='mouse'||onUI(e.target)||performance.now()-lastWake<45) return;
-    if(lastCell&&Math.abs(c[0]-lastCell[0])+Math.abs(c[1]-lastCell[1])<3) return;
-    lastWake=performance.now(); lastCell=c;
-    if(c[0]>2&&c[1]>2&&c[0]<nx-3&&c[1]<ny-3) for(var dy=-1;dy<=1;dy++) for(var dx=-1;dx<=1;dx++) u1[(c[1]+dy)*nx+c[0]+dx]+=.09*Math.exp(-(dx*dx+dy*dy));
-  });
-  function endDrag(){
-    if(drag&&drag.kind==='array'&&Math.hypot(drag.x1-drag.x0,drag.y1-drag.y0)>=6){
-      var pre=arrMode==='line'?'L':'R';
-      setStations(arrayPositions(drag).map(function(p,k){return {x:p[0],y:p[1],code:pre+(k<9?'0':'')+(k+1)}}),arrMode);
-    }
-    drag=null;
-  }
-  hero.addEventListener('pointerup',endDrag); hero.addEventListener('pointercancel',endDrag);
-  hero.addEventListener('pointerleave',function(){cursor=null});
-  document.getElementById('hint').addEventListener('click',function(){selectTool('quake',true); quake(Math.round(nx*(.3+.45*Math.random())),Math.round(ny*(.2+.4*Math.random())),'you',quakeRandom?null:quakeM); lastUserT=performance.now()});
-  revealBtn.addEventListener('click',function(){setReveal(!reveal)});
-
-  /* ---------------- toolbar & option panels ---------------- */
-  var TITLES={quake:'Earthquake',slow:'Low-velocity body',fast:'High-velocity body',erase:'Erase structure',scatter:'Point scatterers',array:'Seismic array',model:'Model & boundaries',info:'What is this wavefield?'};
-  function rng(id,label,min,max,st,val,out){return '<div class="pop-row"><label for="'+id+'">'+label+'</label><output id="'+id+'o">'+out+'</output></div><input id="'+id+'" type="range" min="'+min+'" max="'+max+'" step="'+st+'" value="'+val+'">'}
-  function panelHTML(name){
-    var h='<div class="pop-top"><p class="pop-h">'+TITLES[name]+'</p><button class="pop-x" type="button" aria-label="Close panel">×</button></div>';
-    if(name==='quake') h+='<p class="pop-hint">Click anywhere on the wavefield to fire a source (a Ricker wavelet).</p>'+rng('pM','Magnitude',1.5,5,.1,quakeM,quakeRandom?'random':'M '+quakeM.toFixed(1))+'<label class="chk"><input type="checkbox" id="pMr"'+(quakeRandom?' checked':'')+'> random magnitude</label>';
-    else if(name==='slow'||name==='fast') h+='<p class="pop-hint">Drag to paint. Inside the brush the velocity becomes <b>'+(name==='slow'?'1 − strength':'1 + strength')+'</b> (background = 1), with a soft edge.</p>'+rng('pR','Radius',4,40,1,brushR,brushR+' cells')+rng('pS','Strength',5,name==='fast'?38:50,1,Math.round(brushS*100),(name==='slow'?'−':'+')+Math.round(brushS*100)+' %');
-    else if(name==='erase') h+='<p class="pop-hint">Drag to restore the background velocity (c = 1).</p>'+rng('pR','Radius',4,40,1,brushR,brushR+' cells');
-    else if(name==='scatter') h+='<p class="pop-hint">Click or drag to drop point scatterers: 3 × 3-cell inclusions at 35 % of the background velocity. Each one re-radiates the passing wavefield, and many of them build up a coda.</p><div class="pop-row"><span>Scatterers</span><output id="pScn">'+scat.length+'</output></div><div class="btns"><button class="pbtn" type="button" id="pSpr">Sprinkle 30</button><button class="pbtn" type="button" id="pScl">Clear all</button></div>';
-    else if(name==='array') h+='<p class="pop-hint"><b>Line:</b> drag from the first to the last station. <b>Ring:</b> drag from the centre outwards. The seismograms below become a live record section.</p><div class="seg" role="group" aria-label="Array geometry"><button type="button" data-arr="line" aria-pressed="'+(arrMode==='line')+'">Line</button><button type="button" data-arr="ring" aria-pressed="'+(arrMode==='ring')+'">Ring</button></div>'+rng('pN','Stations',4,24,1,arrN,arrN)+'<p class="pop-hint" style="margin:.8rem 0 .1rem">Seismogram display</p><div class="seg" role="group" aria-label="Seismogram gain"><button type="button" data-agc="0" aria-pressed="'+!agc+'">True amplitude</button><button type="button" data-agc="1" aria-pressed="'+agc+'">AGC 0.5 s</button></div><div class="btns"><button class="pbtn" type="button" id="pAtop" title="Line array 6 cells below the top edge (pressure vanishes at a free surface)">Along the top edge</button><button class="pbtn" type="button" id="pAcl">Back to one station</button></div>';
-    else if(name==='model') h+='<p class="pop-hint" style="margin-bottom:.1rem">Map view · starting model (resets painted bodies)</p><div class="grid2" role="group" aria-label="Map-view models">'+pbtn('random','Random blobs')+pbtn('homogeneous','Uniform')+'</div>'+
-      '<p class="pop-hint" style="margin:.7rem 0 .1rem">Cross-sections · the top edge is the Earth\'s surface</p><div class="grid2" role="group" aria-label="Cross-section models">'+pbtn('layered','Folded &amp; faulted layers')+pbtn('basin','Sedimentary basin')+pbtn('slab','Subduction zone')+pbtn('salt','Salt dome')+'</div>'+
-      '<div class="btns" style="margin-top:.45rem"><button class="pbtn" type="button" id="pReroll" title="Another random folded, faulted layering">↻ New random layering</button></div>'+
-      '<p class="pop-hint" style="margin:.8rem 0 .2rem">Boundaries</p>'+
-      '<label class="radio"><input type="radio" name="pbc" value="absorb"'+(bc==='absorb'?' checked':'')+'><span>Absorbing on all sides<small>damping sponge: waves leave the screen</small></span></label>'+
-      '<label class="radio"><input type="radio" name="pbc" value="free"'+(bc==='free'?' checked':'')+'><span>Free surface on top<small>p = 0 at the top edge: reflects with reversed polarity</small></span></label>'+
-      '<label class="radio"><input type="radio" name="pbc" value="box"'+(bc==='box'?' checked':'')+'><span>Reflecting box<small>u = 0 on all edges, no sponge</small></span></label>'+
-      '<label class="chk"><input type="checkbox" id="pReveal"'+(reveal?' checked':'')+'> show velocity structure</label>'+
-      '<div class="btns"><button class="pbtn" type="button" id="pPause">'+(paused?'Resume':'Pause')+'</button><button class="pbtn" type="button" id="pClear">Clear waves</button></div>';
-    else if(name==='info') h+='<div class="pop-info">'+
-      '<p><b>Equation.</b> A scalar field u(x, y, t) obeying the 2-D constant-density acoustic wave equation <code>∂²u/∂t² = c(x, y)² ∇²u</code>. Read u as pressure: P waves only, with no S or surface waves.</p>'+
-      '<p><b>Numerics.</b> Second-order finite differences (leapfrog in time, 5-point Laplacian) on a '+nx+' × '+ny+' grid, solved live in your browser. Courant number c·Δt/Δx ≤ 0.69 &lt; 1/√2, about 13 grid points per dominant wavelength. Sources are Ricker wavelets.</p>'+
-      '<p><b>Boundaries.</b> The outermost grid line is held at u = 0 (Dirichlet). Absorbing edges add a '+B+'-cell layer in which the equation gains a damping term σ(x)·∂u/∂t that ramps up quadratically, so outgoing waves fade out instead of bouncing back (measured reflection: 0.3 % at normal incidence, 0.7 % at 45°). Free surface removes the sponge on top: pressure vanishes there and waves reflect with reversed polarity, which is why "Along the top edge" puts receivers 6 cells below it. Reflecting box removes the sponge everywhere. A weak uniform attenuation e<sup>−0.5 t</sup> lets the field calm down.</p>'+
-      '<p><b>Not physical:</b> magnitudes only scale the source amplitude, and coordinates are a cosmetic mapping of the screen onto Switzerland.</p></div>';
-    return h;
-  }
-  function wire(name){
-    pop.querySelector('.pop-x').onclick=closePanel;
-    var el;
-    if((el=document.getElementById('pM'))){el.oninput=function(){quakeM=+el.value; quakeRandom=false; document.getElementById('pMr').checked=false; document.getElementById('pMo').textContent='M '+quakeM.toFixed(1)}}
-    if((el=document.getElementById('pMr'))){el.onchange=function(){quakeRandom=this.checked; document.getElementById('pMo').textContent=quakeRandom?'random':'M '+quakeM.toFixed(1)}}
-    if((el=document.getElementById('pR'))){el.oninput=function(){brushR=+this.value; document.getElementById('pRo').textContent=brushR+' cells'}}
-    if((el=document.getElementById('pS'))){el.oninput=function(){brushS=this.value/100; document.getElementById('pSo').textContent=(tool==='slow'?'−':'+')+this.value+' %'}}
-    if((el=document.getElementById('pN'))){el.oninput=function(){arrN=+this.value; document.getElementById('pNo').textContent=arrN}}
-    if((el=document.getElementById('pSpr'))){el.onclick=function(){sprinkle(30); updateCounts()}}
-    if((el=document.getElementById('pScl'))){el.onclick=function(){clearScatter(); updateCounts()}}
-    if((el=document.getElementById('pAtop'))){el.onclick=function(){var y=6, m=arrMode; arrMode='line'; var pts=arrayPositions({x0:Math.round(nx*.06),y0:y,x1:Math.round(nx*.94),y1:y}); arrMode=m;
-      setStations(pts.map(function(p,k){return {x:p[0],y:p[1],code:'L'+(k<9?'0':'')+(k+1)}}),'line')}}
-    if((el=document.getElementById('pAcl'))){el.onclick=function(){var m=W<700; setStations([{x:Math.round(nx*(m?.76:.78)),y:Math.round(ny*(m?.34:.56)),code:'YW01'}],'single')}}
-    pop.querySelectorAll('[data-agc]').forEach(function(b){b.onclick=function(){agc=b.dataset.agc==='1'; pop.querySelectorAll('[data-agc]').forEach(function(o){o.setAttribute('aria-pressed',o===b)}); updateSeisLabel()}});
-    pop.querySelectorAll('[data-arr]').forEach(function(b){b.onclick=function(){arrMode=b.dataset.arr; pop.querySelectorAll('[data-arr]').forEach(function(o){o.setAttribute('aria-pressed',o===b)})}});
-    pop.querySelectorAll('[data-pre]').forEach(function(b){b.onclick=function(){choosePreset(b.dataset.pre)}});
-    if((el=document.getElementById('pReroll'))){el.onclick=function(){layerSeed=2+Math.floor(Math.random()*1e6); choosePreset('layered')}}
-    pop.querySelectorAll('input[name="pbc"]').forEach(function(r){r.onchange=function(){bc=r.value; autoFree=false; applyBC()}});
-    if((el=document.getElementById('pReveal'))){el.onchange=function(){setReveal(this.checked)}}
-    if((el=document.getElementById('pPause'))){el.onclick=function(){paused=!paused; this.textContent=paused?'Resume':'Pause'}}
-    if((el=document.getElementById('pClear'))){el.onclick=clearWaves}
-  }
-  function pbtn(p,label){return '<button type="button" data-pre="'+p+'" aria-pressed="'+(preset===p)+'">'+label+'</button>'}
-  /* cross-sections get a free surface on top and the structure revealed; map views go back to absorbing edges */
-  function choosePreset(p){
-    setPreset(p);
-    if(view==='section'){ if(bc==='absorb'){bc='free'; autoFree=true; applyBC()} if(!reveal) setReveal(true) }
-    else if(autoFree&&bc==='free'){bc='absorb'; autoFree=false; applyBC()}
-    if(panel==='model') openPanel('model');
-  }
-  function updateCounts(){var o=document.getElementById('pScn'); if(o) o.textContent=scat.length}
-  function openPanel(name){
-    panel=name; pop.innerHTML=panelHTML(name); pop.classList.toggle('wide',name==='info'); pop.hidden=false; wire(name);
-    lab.querySelectorAll('[data-panel]').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.panel===name)});
-  }
-  function closePanel(){panel=null; pop.hidden=true; lab.querySelectorAll('[data-panel]').forEach(function(b){b.setAttribute('aria-pressed','false')})}
-  function selectTool(t,silent){
-    var same=tool===t; tool=t;
-    lab.querySelectorAll('[data-tool]').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.tool===t)});
-    hero.classList.toggle('editing',t!=='quake');
-    if(silent) return;
-    if(same&&panel===t) closePanel(); else openPanel(t);
-  }
-  lab.addEventListener('click',function(e){
-    var b=e.target.closest('button'); if(!b) return;
-    if(b.dataset.tool) selectTool(b.dataset.tool);
-    else if(b.dataset.panel){ if(panel===b.dataset.panel) closePanel(); else openPanel(b.dataset.panel) }
-  });
-  var KEYS={q:'quake',s:'slow',f:'fast',e:'erase',c:'scatter',a:'array'};
-  document.addEventListener('keydown',function(e){
-    if(e.metaKey||e.ctrlKey||e.altKey||/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
-    var r=hero.getBoundingClientRect(); if(r.bottom<80) return;            /* only while the hero is on screen */
-    var k=e.key.toLowerCase();
-    if(KEYS[k]) selectTool(KEYS[k]);
-    else if(k==='m'||k==='i') {var p=k==='m'?'model':'info'; if(panel===p) closePanel(); else openPanel(p)}
-    else if(k==='p'){paused=!paused; var pb=document.getElementById('pPause'); if(pb) pb.textContent=paused?'Resume':'Pause'}
-    else if(k==='escape') closePanel();
-  });
-
-  /* ---------------- main loop ---------------- */
-  var running=false, visible=true, acc=0, lastT=0;
-  function frame(now){
-    if(!visible||document.hidden){running=false; return}
-    var dt=lastT?Math.min(100,now-lastT):16.7; lastT=now;      /* wall-clock stepping: same speed on 60 Hz and 120 Hz screens */
-    if(!paused){acc+=dt*rate/1000; var n=Math.min(10,Math.floor(acc)); acc-=n; for(var k=0;k<n;k++) stepOnce()}
-    if(!reduce&&!paused&&tool==='quake'&&!drag&&now-lastUserT>12000&&now-lastAutoT>9000){lastAutoT=now; quake(Math.round(nx*(.3+.6*Math.random())),Math.round(ny*(.15+.5*Math.random())),'auto',+(1.6+Math.random()*.8).toFixed(1))}
-    draw(); drawOverlay(); drawTrace(); requestAnimationFrame(frame);
-  }
-  function start(){if(!running){running=true; lastT=0; requestAnimationFrame(frame)}}
-  if('IntersectionObserver' in window) new IntersectionObserver(function(en){visible=en[0].isIntersecting; if(visible) start()}).observe(hero);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden) start()});
-  var rt; window.addEventListener('resize',function(){clearTimeout(rt); rt=setTimeout(function(){
-    var r=hero.getBoundingClientRect();
-    if(Math.abs(r.width-lastW)>40||Math.abs(r.height-lastH)>120){build(); if(panel) openPanel(panel); draw()}   /* a real resize rebuilds the grid */
-    else {W=r.width; H=r.height; ov.width=Math.round(W*dpr); ov.height=Math.round(H*dpr)}
-  },200)});
-
-  document.addEventListener('themechange',function(e){pal=PAL[e.detail==='light'?'light':'dark']; recompute(0,0,nx-1,ny-1); draw(); drawOverlay(); drawTrace()});
-
-  build(); draw(); drawOverlay(); drawTrace(); start();
-  if(!reduce) setTimeout(function(){quake(Math.round(nx*.64),Math.round(ny*.36),'auto',2.9); lastAutoT=performance.now()},450);
-})();
 </script>
+<script src="js/wave-models.js"></script>
+<script src="js/wave-engine.js"></script>
+<script src="js/hero.js"></script>
 </body>
 </html>
