@@ -15,14 +15,14 @@
 
   var eng, model, nx, ny, rate, TR, W = 0, H = 0, lastW = 0, lastH = 0, dpr = 1;
   var sta = null, buf = null, head = 0, marks = [], peak = 0.08, total = 0, reveal = false, preset = 'random', seed = 1, autoFree = false, bc = 'absorb';
-  var lastUserT = -1e9, lastAutoT = 0, backend = WE.gpuAvailable() ? 'gpu' : 'cpu';
+  var lastUserT = -1e9, lastAutoT = 0, backend = WE.gpuAvailable() ? 'gpu' : 'cpu', q = 1, watch = new WE.Watchdog();   /* q: grid scale, lowered for this visit if the device falls behind */
   function theme() { return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'; }
   var pal = WE.PAL[theme()];
   function rgba(c, a) { return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; }
 
   function build() {
     var r = hero.getBoundingClientRect(); W = r.width; H = r.height; lastW = W; lastH = H;
-    var g = WE.gridFor(backend, 'acoustic', W, H, false);
+    var g = WE.gridFor(backend, 'acoustic', W, H, false, q);
     if (eng) eng.destroy();
     eng = WE.create({ nx: g.nx, ny: g.ny, physics: 'acoustic', backend: backend, canvasGL: glc, canvas2d: cpuc });
     if (eng.backend !== backend) backend = eng.backend;                           /* GPU failed: stay on the CPU */
@@ -118,13 +118,17 @@
   function frame(now) {
     if (!visible || document.hidden) { running = false; return; }
     var dt = lastT ? Math.min(100, now - lastT) : 16.7; lastT = now;           /* wall-clock stepping: same speed on 60 Hz and 120 Hz screens */
-    acc += dt * rate / 1000; var n = Math.min(Math.ceil(rate * 0.1), Math.floor(acc)); acc -= n;
-    if (n > 0) { var b = eng.step(n); for (var k = 0; k < n; k++) { buf[head] = b[2 * k]; head = (head + 1) % TR; } }
+    var want = dt * rate / 1000; acc += want; var n = Math.min(Math.ceil(rate * 0.1), Math.floor(acc)); acc -= n; var solverMs = 0;
+    if (n > 0) { var t0 = performance.now(), b = eng.step(n); solverMs = performance.now() - t0; for (var k = 0; k < n; k++) { buf[head] = b[2 * k]; head = (head + 1) % TR; } }
+    if (watch.frame(now, want, n, false, solverMs) && q > 0.5 + 1e-6) {          /* falling behind real time: one notch coarser */
+      q = Math.max(0.5, +(q * 0.75).toFixed(3));
+      build(); requestAnimationFrame(frame); return;
+    }
     if (!reduce && now - lastUserT > 12000 && now - lastAutoT > 9000) { lastAutoT = now; quake(Math.round(nx * (0.3 + 0.6 * Math.random())), Math.round(ny * (0.15 + 0.5 * Math.random())), 'auto', +(1.6 + Math.random() * 0.8).toFixed(1)); }
     eng.render({ gain: 1.2 }); drawOverlay(); drawTrace();
     requestAnimationFrame(frame);
   }
-  function start() { if (!running) { running = true; lastT = 0; requestAnimationFrame(frame); } }
+  function start() { if (!running) { running = true; lastT = 0; watch.t0 = 0; requestAnimationFrame(frame); } }
   if ('IntersectionObserver' in window) new IntersectionObserver(function (en) { visible = en[0].isIntersecting; if (visible) start(); }).observe(hero);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) start(); });
   var rt; window.addEventListener('resize', function () {

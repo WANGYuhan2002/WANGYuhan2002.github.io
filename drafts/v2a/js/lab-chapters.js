@@ -318,7 +318,7 @@
       if (L.marks.length) { var age = L.eng.n - L.marks[L.marks.length - 1].n; if (age <= das.len) { var xm = X + Wd - age / das.len * Wd; ctx.strokeStyle = 'rgba(' + L.pal.origin + ',.7)'; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(xm + 0.5, 4); ctx.lineTo(xm + 0.5, 4 + H); ctx.stroke(); ctx.setLineDash([]); } }
       L.timeAxis(ctx, X, h - 20, Wd, 6, das.len, L.eng.n);
     },
-    legend: function () { return L.legendAcoustic() + (this.das ? '<span><i class="sw" style="background:var(--cyan);height:3px;border-radius:2px"></i>fibre (dots every km)</span>' : ''); },
+    legend: function () { return L.legendAcoustic() + (this.das ? '<span><i class="sw" style="background:var(--cyan);height:3px;border-radius:2px"></i>fibre · dot = 1 km</span>' : ''); },
     csv: function () {
       if (this.rec) return L.recCSV(this.rec, ['p'], 'pressure, arbitrary units');
       var das = this.das; if (!das || !das.count) return null;
@@ -452,6 +452,7 @@
       if (ph === 'record') return { label: 'Recording…', act: 'reverse', disabled: true };
       return null;
     },
+    busy: function () { return this.phase !== 'idle'; },                    /* never rebuild under a recording, a replay or its image */
     speedMul: function () { if (this.phase === 'reverse' && Math.abs(this.k - this.kf) < 0.35 * L.rate) return 0.22; return 1; },
     stepCap: function () { if (this.phase === 'record') return this.len - this.k; if (this.phase === 'reverse') return Math.max(1, this.total - this.k); return 1e9; },
     onSamples: function (b, n, nP) {
@@ -476,12 +477,12 @@
       var ph = this.phase;
       if (ph === 'idle') return ['Click ' + (this.st.mirror === 'ring' ? 'inside the ring' : (this.st.mirror === 'line' ? 'below the line' : 'anywhere in the box')) + ' to fire a source'];
       if (ph === 'record') return ['<b class="em">● Recording</b> ' + L.fmt(this.k / L.rate, 1) + ' s'];
-      if (ph === 'recorded') return ['Recorded ' + L.fmt(this.len / L.rate, 1) + ' s · press Time-reverse'];
+      if (ph === 'recorded') return ['Recorded ' + L.fmt(this.len / L.rate, 1) + ' s'];
       if (ph === 'reverse') return ['<b class="em">◀◀ Reversed</b> · ' + L.fmt((this.total - this.k) / L.rate, 1) + ' s' + (Math.abs(this.k - this.kf) < 0.35 * L.rate ? ' · slow motion' : '')];
-      return [this.view === 'image' ? 'Focusing image · max p²' : 'Wavefield after the focus'];
+      return [this.view === 'image' ? 'Focusing image' : 'After the focus'];
     },
     legend: function () {
-      if (this.mode() === 'max') return '<span><i class="sw" style="background:linear-gradient(90deg,transparent,' + 'rgb(' + L.pal.hot.join(',') + '))"></i>peak p² during the reversed run (1 at the focus)</span><span>◯ true source · ✕ focus</span>';
+      if (this.mode() === 'max') return '<span><i class="sw" style="background:linear-gradient(90deg,transparent,' + 'rgb(' + L.pal.hot.join(',') + '))"></i>peak p² (1 = focus)</span><span>○ true source</span><span>✕ focus</span>';
       return L.legendAcoustic() + '<span>▼ mirror sensors</span>';
     },
     overlay: function (ctx) {
@@ -566,14 +567,14 @@
     goal: 'Hide a velocity model, shoot a survey through it, and recover the model from nothing but first-arrival travel times.',
     tools: ['quake', '|', 'slow', 'fast', 'erase'],
     shareWhat: 'the hidden model, your edits and the survey geometry',
-    st: { m: null, truth: 'random', geom: 'ring', smooth: 0.5, did: {} },
+    st: { m: null, truth: 'random', geom: 'ring', smooth: 0.5, rays: 'bent', did: {} },
     noMarks: false,
     enter: function () {
       var st = this.st;
       if (st.m) L.model.load(st.m); else L.model.setPreset(st.truth === 'checker' ? 'checker' : (st.truth === 'custom' ? 'homogeneous' : 'random'));
       L.setModel(); L.setBC('absorb');
       this.geometry(); this.phase = 'idle'; this.rays = []; this.inv = null; this.shot = 0; this.gridSetup();
-      L.setData('Travel-time tomography · <b>' + this.S.length + '</b> shots × <b>' + this.R.length + '</b> receivers · straight rays', '');
+      this.head();
     },
     geometry: function () {
       var nx = L.nx, ny = L.ny, m = L.eng.B + 6, x0 = m, y0 = m, x1 = nx - 1 - m, y1 = ny - 1 - m, st = this.st, Sx = [], Rx = [], k;
@@ -635,26 +636,33 @@
         this.rays.push({ s: [s[0], s[1]], r: [this.R[r].x, this.R[r].y], t: i + off - n0, d: d, shot: this.shot, ri: r, pk: i + off });
       }
     },
-    invert: function () {
-      var rays = this.rays, nC = this.gx * this.gz, n = nC + 1, gx = this.gx, gz = this.gz, self = this;
-      if (rays.length < 8) return;
-      /* straight rays: length (cells) per inversion cell, sampled every 0.5 cell */
-      var G = rays.map(function (ry) {
-        var dx = ry.r[0] - ry.s[0], dy = ry.r[1] - ry.s[1], Lr = Math.hypot(dx, dy), m = Math.ceil(Lr / 0.5), acc = {};
-        for (var k = 0; k < m; k++) { var f = (k + 0.5) / m, j = self.cell(ry.s[0] + dx * f, ry.s[1] + dy * f); if (j >= 0) acc[j] = (acc[j] || 0) + Lr / m / C; }
-        var J = Object.keys(acc).map(Number); return { j: J, v: J.map(function (j) { return acc[j]; }), L: Lr };
-      });
-      var hits = new Float64Array(nC), cn = 0, k, i;
+    /* ---------- inversion: straight rays, then optionally bent rays traced through the current model ---------- */
+    rowFromPolyline: function (P) {                                         /* ray length (cells / C) per inversion cell */
+      var acc = {}, Lr = 0;
+      for (var a = 1; a < P.length; a++) {
+        var x0 = P[a - 1][0], y0 = P[a - 1][1], dx = P[a][0] - x0, dy = P[a][1] - y0, Ls = Math.hypot(dx, dy), m = Math.max(1, Math.ceil(Ls / 0.5));
+        for (var k = 0; k < m; k++) { var f = (k + 0.5) / m, j = this.cell(x0 + dx * f, y0 + dy * f); if (j >= 0) acc[j] = (acc[j] || 0) + Ls / m / C; }
+        Lr += Ls;
+      }
+      var J = Object.keys(acc).map(Number);
+      return { j: J, v: J.map(function (j) { return acc[j]; }), L: Lr };
+    },
+    /* one damped, smoothed least-squares update around the slowness model s0 (null = 1 everywhere) */
+    solve: function (G, s0in) {
+      var rays = this.rays, nC = this.gx * this.gz, n = nC + 1, gx = this.gx, gz = this.gz, k, i, q;
+      var s0 = s0in || new Float64Array(nC).fill(1), hits = new Float64Array(nC), cn = 0;
       G.forEach(function (g) { for (var q = 0; q < g.j.length; q++) { hits[g.j[q]] += g.v[q] * C; cn += g.v[q] * g.v[q]; } });
       cn = Math.sqrt(cn / nC);
       var lamD = 0.08 * cn, lamS = (0.25 + 2.6 * this.st.smooth) * cn, pairs = [];
       for (k = 0; k < gz; k++) for (i = 0; i < gx; i++) { if (i < gx - 1) pairs.push([k * gx + i, k * gx + i + 1]); if (k < gz - 1) pairs.push([k * gx + i, (k + 1) * gx + i]); }
       var nr = rays.length, rows = nr + nC + pairs.length, b = new Float64Array(rows);
-      for (k = 0; k < nr; k++) b[k] = rays[k].t - G[k].L / C;                  /* residual against the v = 1 reference */
-      var tscale = cn;                                                            /* the static shift column, scaled like the others */
+      for (k = 0; k < nr; k++) { var g = G[k], tp = 0; for (q = 0; q < g.j.length; q++) tp += g.v[q] * s0[g.j[q]]; b[k] = rays[k].t - tp; }   /* data residual */
+      for (k = 0; k < nC; k++) b[nr + k] = -lamD * (s0[k] - 1);                                                  /* damp the total model … */
+      for (q = 0; q < pairs.length; q++) b[nr + nC + q] = -lamS * (s0[pairs[q][0]] - s0[pairs[q][1]]);           /* … and smooth it */
+      var tscale = cn;                                                                                           /* the static shift column, scaled like the others */
       function A(x) {
         var y = new Float64Array(rows), q;
-        for (k = 0; k < nr; k++) { var g = G[k], s = x[nC] * tscale; for (q = 0; q < g.j.length; q++) s += g.v[q] * x[g.j[q]]; y[k] = s; }
+        for (k = 0; k < nr; k++) { var g = G[k], sum = x[nC] * tscale; for (q = 0; q < g.j.length; q++) sum += g.v[q] * x[g.j[q]]; y[k] = sum; }
         for (q = 0; q < nC; q++) y[nr + q] = lamD * x[q];
         for (q = 0; q < pairs.length; q++) y[nr + nC + q] = lamS * (x[pairs[q][0]] - x[pairs[q][1]]);
         return y;
@@ -666,77 +674,139 @@
         for (q = 0; q < pairs.length; q++) { var yy = lamS * y[nr + nC + q]; x[pairs[q][0]] += yy; x[pairs[q][1]] -= yy; }
         return x;
       }
-      var x = cgls(A, At, b, n, 90), rec = new Float64Array(nC), pre = 0, post = 0;
-      for (k = 0; k < nC; k++) rec[k] = 1 / Math.max(0.3, 1 + x[k]);
+      var x = cgls(A, At, b, n, 90), sN = new Float64Array(nC), v = new Float64Array(nC), pre = 0, post = 0;
+      for (k = 0; k < nC; k++) { sN[k] = Math.max(1 / 1.6, Math.min(2, s0[k] + x[k])); v[k] = 1 / sN[k]; }
       var Ax = A(x); for (k = 0; k < nr; k++) { pre += b[k] * b[k]; post += (b[k] - Ax[k]) * (b[k] - Ax[k]); }
       /* correlation of the recovered and true slowness perturbations, over cells crossed by rays */
       var t = this.truth, sa = 0, sb = 0, sab = 0, saa = 0, sbb = 0, nn = 0;
-      for (k = 0; k < nC; k++) if (hits[k] > 0) { var u = 1 / t[k] - 1, w = x[k]; sa += u; sb += w; sab += u * w; saa += u * u; sbb += w * w; nn++; }
+      for (k = 0; k < nC; k++) if (hits[k] > 0) { var u = 1 / t[k] - 1, w = sN[k] - 1; sa += u; sb += w; sab += u * w; saa += u * u; sbb += w * w; nn++; }
       var cov = sab / nn - sa / nn * sb / nn, r = cov / Math.sqrt(Math.max(1e-20, (saa / nn - Math.pow(sa / nn, 2)) * (sbb / nn - Math.pow(sb / nn, 2))));
       var hm = 0; for (k = 0; k < nC; k++) hm = Math.max(hm, hits[k]);
-      this.inv = { v: rec, hits: hits, hmax: hm, rmsPre: Math.sqrt(pre / nr) / L.rate, rmsPost: Math.sqrt(post / nr) / L.rate, r: r, n: nr, tau: x[nC] * tscale / L.rate };
+      return { s: sN, v: v, hits: hits, hmax: hm, rmsPre: Math.sqrt(pre / nr) / L.rate, rmsPost: Math.sqrt(post / nr) / L.rate, r: r, n: nr, tau: x[nC] * tscale / L.rate };
+    },
+    /* bent rays by pseudo-bending (Um & Thurber 1987): start from the straight ray; in every sweep each interior point
+       is set to the midpoint of its neighbours, then moved along the path normal by d = −(∂s/∂n)·l²/(2s), the offset
+       that minimises the travel time of its two segments (l = half the neighbour distance). At convergence the path
+       curvature equals |∇⊥s|/s: the ray equation. Slowness is interpolated bilinearly between cell centres; where the
+       model is uniform the ray stays straight, so the geometry adds no bias of its own. */
+    bendPaths: function (sl, init) {
+      var b = this.box, gx = this.gx, gz = this.gz, cw = this.cw, chh = this.chh, hmin = Math.min(cw, chh);
+      function sAt(x, z) {
+        var fx = (x - b[0]) / cw - 0.5, fz = (z - b[1]) / chh - 0.5, i0 = Math.max(0, Math.min(gx - 2, Math.floor(fx))), k0 = Math.max(0, Math.min(gz - 2, Math.floor(fz)));
+        var tx = Math.max(0, Math.min(1, fx - i0)), tz = Math.max(0, Math.min(1, fz - k0)), j = k0 * gx + i0;
+        return (sl[j] * (1 - tx) + sl[j + 1] * tx) * (1 - tz) + (sl[j + gx] * (1 - tx) + sl[j + gx + 1] * tx) * tz;
+      }
+      return this.rays.map(function (ry, idx) {
+        var M = Math.max(4, Math.min(24, Math.ceil(ry.d / (0.5 * hmin)))), P = [], k, it;
+        if (init && init[idx] && init[idx].length === M + 1) P = init[idx].map(function (q) { return [q[0], q[1]]; });   /* warm start from the last iteration */
+        else for (k = 0; k <= M; k++) P.push([ry.s[0] + (ry.r[0] - ry.s[0]) * k / M, ry.s[1] + (ry.r[1] - ry.s[1]) * k / M]);
+        for (it = 0; it < 80; it++) {
+          var maxMove = 0;
+          for (k = 1; k < M; k++) {
+            var mx = (P[k - 1][0] + P[k + 1][0]) / 2, mz = (P[k - 1][1] + P[k + 1][1]) / 2;
+            var tx = P[k + 1][0] - P[k - 1][0], tz = P[k + 1][1] - P[k - 1][1], tl = Math.hypot(tx, tz) || 1, nx = -tz / tl, nz = tx / tl, l = tl / 2;
+            var e = 0.5, s0 = sAt(mx, mz), gn = (sAt(mx + e * nx, mz + e * nz) - sAt(mx - e * nx, mz - e * nz)) / (2 * e);
+            var d = Math.max(-0.5 * l, Math.min(0.5 * l, -gn * l * l / (2 * s0)));
+            var X = [Math.max(b[0], Math.min(b[2], mx + d * nx)), Math.max(b[1], Math.min(b[3], mz + d * nz))];
+            maxMove = Math.max(maxMove, Math.hypot(X[0] - P[k][0], X[1] - P[k][1])); P[k] = X;
+          }
+          if (maxMove < 0.02) break;
+        }
+        return P;
+      });
+    },
+    invert: function () {
+      if (this.rays.length < 8) return;
+      var self = this, rows = this.rays.map(function (ry) { return self.rowFromPolyline([ry.s, ry.r]); }), S0 = this.solve(rows, null);
+      S0.mode = 'straight'; this.invStraight = S0; this.paths = null; this.inv = S0;
+      if (this.st.rays === 'bent' && this.phase !== 'survey') {                   /* three linearised iterations with re-traced rays */
+        var cur = S0;
+        for (var it = 0; it < 3; it++) {
+          var P = this.bendPaths(cur.s, this.paths), nxt = this.solve(P.map(function (pp) { return self.rowFromPolyline(pp); }), cur.s);
+          nxt.rmsPre = S0.rmsPre; cur = nxt; this.paths = P;
+        }
+        cur.mode = 'bent'; this.inv = cur;
+      }
     },
     save: function () { this.st.m = L.model.serialize(); },
-    serialize: function () { var st = this.st; return { m: L.model.serialize(), truth: st.truth, geom: st.geom, smooth: st.smooth }; },
-    load: function (o) { var st = this.st; st.m = o.m || null; st.truth = o.truth || 'random'; st.geom = o.geom === 'cross' ? 'cross' : 'ring'; st.smooth = o.smooth != null ? o.smooth : 0.5; st.did = { truth: true }; },
+    serialize: function () { var st = this.st; return { m: L.model.serialize(), truth: st.truth, geom: st.geom, smooth: st.smooth, rays: st.rays }; },
+    load: function (o) { var st = this.st; st.m = o.m || null; st.truth = o.truth || 'random'; st.geom = o.geom === 'cross' ? 'cross' : 'ring'; st.smooth = o.smooth != null ? o.smooth : 0.5; st.rays = o.rays === 'straight' ? 'straight' : 'bent'; st.did = { truth: true }; },
     steps: function () {
       var st = this.st, d = st.did, ph = this.phase, inv = this.inv;
       return [
         { t: 'Hide a model', d: 'Pick a hidden truth, or paint your own with the slow/fast brushes. <b>Show structure</b> (V) lets you peek.', c: '<div class="grid3">' + L.opt('truth', 'random', 'Random blobs', st.truth === 'random') + L.opt('truth', 'checker', 'Checker&shy;board', st.truth === 'checker') + L.opt('truth', 'custom', 'Paint your own', st.truth === 'custom') + '</div>', done: !!d.truth || ph !== 'idle' },
         { t: 'Run the survey', d: st.geom === 'ring' ? '12 shots fired one after another, 48 receivers all around: rays cross in every direction.' : 'Cross-well: 10 shots in a borehole on the left, 40 receivers in one on the right. Rays are nearly horizontal.',
           c: L.seg('geom', [['ring', 'Surround'], ['cross', 'Cross-well']], st.geom) + '<div class="btns">' + L.btn('survey', ph === 'survey' ? 'Surveying…' : (ph === 'done' ? 'Run again' : 'Fire ' + this.S.length + ' shots'), 'go', ph === 'survey') + '</div>' + (ph === 'survey' ? '<p class="live" id="tomoLive"></p>' : ''), done: ph === 'done' },
-        { t: 'Invert the travel times', d: 'First arrivals are picked automatically, then a damped, smoothed least-squares problem (CGLS) finds the slowness in ' + this.gx + ' × ' + this.gz + ' cells that best explains them.', c: L.range('smooth', 'Smoothing', 0, 100, 1, Math.round(st.smooth * 100), Math.round(st.smooth * 100) + ' %'), done: !!inv && ph === 'done' },
+        { t: 'Invert the travel times', d: 'First arrivals are picked automatically, then a damped, smoothed least-squares problem (CGLS) finds the slowness in ' + this.gx + ' × ' + this.gz + ' cells that best explains them. <b>Bent rays</b> re-bend every ray through the current model, three times.',
+          c: L.seg('rays', [['straight', 'Straight rays'], ['bent', 'Bent rays']], st.rays) + L.range('smooth', 'Smoothing', 0, 100, 1, Math.round(st.smooth * 100), Math.round(st.smooth * 100) + ' %'), done: !!inv && ph === 'done' },
         { t: 'Compare with the truth', d: 'The panel below shows the hidden truth, the recovered model and the ray coverage. Try the checkerboard: it shows where the survey can resolve detail, and where the rays smear it.', done: !!d.compare }
       ];
     },
     results: function () {
       var r = this.inv; if (!r) return '';
-      return '<div class="res"><h3>Inversion</h3><dl class="kv"><dt>Picked rays</dt><dd>' + r.n + '</dd><dt>RMS residual, v = 1 start</dt><dd>' + L.fmt(r.rmsPre * 1000, 0) + ' ms</dd><dt>RMS residual, recovered</dt><dd>' + L.fmt(r.rmsPost * 1000, 0) + ' ms</dd>' +
-        '<dt>Correlation with the truth</dt><dd>r = ' + L.fmt(r.r, 2) + '</dd></dl><p>' + this.verdict(r) + '</p></div>';
+      return '<div class="res"><h3>Inversion · ' + (r.mode === 'bent' ? 'bent' : 'straight') + ' rays</h3><dl class="kv"><dt>Picked rays</dt><dd>' + r.n + '</dd><dt>RMS residual, v = 1 start</dt><dd>' + L.fmt(r.rmsPre * 1000, 0) + ' ms</dd><dt>RMS residual, recovered</dt><dd>' + L.fmt(r.rmsPost * 1000, 0) + ' ms</dd>' +
+        '<dt>Correlation with the truth</dt><dd>r = ' + L.fmt(r.r, 2) + '</dd>' +
+        (r.mode === 'bent' && this.invStraight ? '<dt>Straight rays alone</dt><dd>r = ' + L.fmt(this.invStraight.r, 2) + ' · ' + L.fmt(this.invStraight.rmsPost * 1000, 0) + ' ms</dd>' : '') +
+        '</dl><p>' + this.verdict(r) + '</p></div>';
     },
     explain: function () {
       return '<p><b>Forward problem.</b> A travel time is the integral of slowness s = 1/v along the ray: <code>t = ∫ s dl</code>. With straight rays and the model split into cells, t = Σ L<sub>j</sub>·s<sub>j</sub>, a linear system <code>G·s = t</code> with one row per source–receiver pair.</p>' +
         '<p><b>Inverse problem.</b> There are more unknowns than independent data, so the solution is regularised: minimise <code>‖G·δs + τ − δt‖² + λ<sub>d</sub>²‖δs‖² + λ<sub>s</sub>²‖∇δs‖²</code> by conjugate gradients (CGLS). τ is one constant time shift: it absorbs the bias of the automatic picker, which times the peak of the first pulse.</p>' +
+        '<p><b>Bent rays.</b> First arrivals take the fastest path, which bends around slow regions. In bent-ray mode the straight-ray model is the starting point; every ray is then bent towards the path of least travel time through the current model (pseudo-bending, Um &amp; Thurber 1987), and the model is updated again: three linearised iterations.</p>' +
         '<p><b>Picking.</b> For each trace the first-arrival window is predicted from the distance and the range of velocities. The pick is the first peak of the envelope (|p| averaged over one period) that reaches 15 % of the window maximum, refined to sub-sample precision by a parabola. Strong later arrivals focused by slow regions are skipped that way.</p>' + physicsExplain();
     },
     act: function (a, v) {
       var st = this.st;
       if (a === 'truth') { st.truth = v; st.did.truth = true; st.m = null; L.model.setPreset(v === 'checker' ? 'checker' : (v === 'custom' ? 'homogeneous' : 'random')); L.setModel(); this.reset(); if (v === 'custom') { L.selectTool('slow'); if (!S.reveal) L.setReveal(true); } L.refresh(); }
-      else if (a === 'geom') { if (st.geom !== v) { st.geom = v; L.eng.clear(); this.geometry(); this.reset(); L.setData('Travel-time tomography · <b>' + this.S.length + '</b> shots × <b>' + this.R.length + '</b> receivers · straight rays', ''); L.refresh(); } }
+      else if (a === 'geom') { if (st.geom !== v) { st.geom = v; L.eng.clear(); this.geometry(); this.reset(); this.head(); L.refresh(); } }
       else if (a === 'survey') this.startSurvey();
+      else if (a === 'rays') { if (st.rays !== v) { st.rays = v; this.head(); if (this.rays.length && this.phase !== 'survey') this.invert(); L.refresh(); } }
     },
     verdict: function (r) {
       var st = this.st;
       if (st.geom === 'cross' && st.truth === 'checker' && r.r < 0.4) return 'Almost nothing: the rays are nearly horizontal, and along every row the fast and slow squares average out to the same travel time. The checkerboard lies in the null space of this survey; only crossing rays can see it.';
-      if (r.r > 0.75) return 'The large structures are back. Straight rays ignore ray bending, so strong anomalies come out weaker and smoother than they are.';
+      if (r.r > 0.75) return r.mode === 'bent' ? 'The large structures are back. Bent rays follow the fast paths that first arrivals really take, so strong anomalies are less underestimated than with straight rays.' : 'The large structures are back. Straight rays ignore ray bending, so strong anomalies come out weaker and smoother than they are.';
       return 'Blurry: with straight rays and few crossing directions part of the model stays unresolved, and it is smeared along the dominant ray direction.';
     },
+    head: function () { L.setData('Travel-time tomography · <b>' + this.S.length + '</b> shots × <b>' + this.R.length + '</b> receivers · ' + (this.st.rays === 'bent' ? 'bent' : 'straight') + ' rays', ''); },
     reset: function () { this.phase = 'idle'; this.rays = []; this.inv = null; this.gridSetup(); },
     cta: function () { var ph = this.phase; return { label: ph === 'survey' ? 'Surveying…' : (ph === 'done' ? 'Run the survey again' : 'Fire ' + this.S.length + ' shots'), act: 'survey', disabled: ph === 'survey' }; },
-    input: function (id, v) { if (id === 'smooth') { this.st.smooth = v / 100; var o = document.getElementById('smootho'); if (o) o.textContent = v + ' %'; if (this.rays.length) { this.invert(); var r = document.querySelector('.res'); if (r) r.outerHTML = this.results(); } } },
+    input: function (id, v) {
+      if (id !== 'smooth') return;
+      var self = this; this.st.smooth = v / 100; var o = document.getElementById('smootho'); if (o) o.textContent = v + ' %';
+      clearTimeout(this.tmr);                                                   /* re-invert once the slider settles */
+      if (this.rays.length && this.phase !== 'survey') this.tmr = setTimeout(function () { self.invert(); var r = document.querySelector('.res'); if (r) r.outerHTML = self.results(); }, 220);
+    },
     onEdit: function () { if (this.st.truth !== 'custom') this.st.truth = 'custom'; this.reset(); L.refresh(); },
     onReveal: function () { if (this.phase === 'done' && !this.st.did.compare) { this.st.did.compare = true; L.refresh(); } },
     ffwd: function () { return this.phase === 'survey'; },
+    busy: function () { return this.phase !== 'idle'; },                    /* never rebuild under a survey or its results */
     ffwdCap: function () { return Math.max(1, this.len - this.k); },
     onSamples: function (b, n, nP) {
       if (this.phase !== 'survey') return;
       var nR = this.R.length, len = this.len;
       for (var s = 0; s < n && this.k < len; s++, this.k++) for (var r = 0; r < nR; r++) this.buf[r * len + this.k] = b[(s * nP + r) * 2];
       if (this.k >= len) {
-        this.pick(); this.invert(); this.shot++;
+        this.pick(); this.invert(); this.shot++;                              /* during the survey: straight rays, fast, after every shot */
         if (this.shot < this.S.length) this.nextShot();
-        else { this.phase = 'done'; L.eng.clear(); this.st.did.compare = this.st.did.compare || S.reveal; L.refresh(); }
+        else {
+          var self = this; this.phase = 'done'; L.eng.clear(); this.st.did.compare = this.st.did.compare || S.reveal;
+          if (this.st.rays === 'bent') { this.bending = true; setTimeout(function () { self.invert(); self.bending = false; L.refresh(); }, 40); }   /* let the screen update first */
+          L.refresh();
+        }
       }
     },
     after: function () { if (this.phase === 'survey') L.text('tomoLive', 'Shot ' + (this.shot + 1) + ' of ' + this.S.length + ' · ' + this.rays.length + ' travel times picked'); },
     progress: function () { return this.phase === 'survey' ? (this.shot + this.k / this.len) / this.S.length : null; },
-    hud: function () { if (this.phase === 'survey') return ['<b class="em">Survey</b> · shot ' + (this.shot + 1) + ' / ' + this.S.length + ' · fast-forward']; if (this.phase === 'done') return ['Survey done · ' + this.rays.length + ' rays']; return ['Hidden model · press “Fire ' + this.S.length + ' shots”']; },
-    legend: function () { return L.legendAcoustic() + '<span>★ shots · ▼ receivers · lines: picked rays</span>'; },
+    hud: function () { if (this.phase === 'survey') return ['<b class="em">Shot ' + (this.shot + 1) + ' / ' + this.S.length + '</b>', 'fast-forward'];   /* the bar under the field shows the progress */ if (this.phase === 'done') return [this.bending ? 'Bending rays…' : this.rays.length + ' rays']; return ['Hidden model']; },
+    legend: function () { return L.legendAcoustic() + '<span>★ shot</span><span>▼ receiver</span><span>— ray</span>'; },
     overlay: function (ctx) {
       var pal = L.pal, self = this;
       if (this.rays.length) {
         ctx.lineWidth = 1; ctx.strokeStyle = L.rgba(pal.ink, Math.min(0.16, 7 / this.rays.length + 0.04)); ctx.beginPath();
-        this.rays.forEach(function (r) { ctx.moveTo(L.sx(r.s[0]), L.sy(r.s[1])); ctx.lineTo(L.sx(r.r[0]), L.sy(r.r[1])); }); ctx.stroke();
+        if (this.paths && this.inv && this.inv.mode === 'bent') this.paths.forEach(function (P) { ctx.moveTo(L.sx(P[0][0]), L.sy(P[0][1])); for (var q = 1; q < P.length; q++) ctx.lineTo(L.sx(P[q][0]), L.sy(P[q][1])); });
+        else this.rays.forEach(function (r) { ctx.moveTo(L.sx(r.s[0]), L.sy(r.s[1])); ctx.lineTo(L.sx(r.r[0]), L.sy(r.r[1])); });
+        ctx.stroke();
       }
       if (this.phase === 'survey') {
         var s = this.S[this.shot]; ctx.strokeStyle = L.rgba(pal.neg, 0.35); ctx.beginPath();
@@ -757,7 +827,7 @@
       }
       var hide = !(S.reveal || this.phase === 'done'), span = this.span();
       map(x0, hide ? 'TRUE MODEL · HIDDEN' : 'TRUE MODEL', function (j) { return L.velCol(self.truth[j] - 1, span); }, hide);
-      map(x0 + mw + 8, inv ? 'RECOVERED · ' + inv.n + ' RAYS' : 'RECOVERED', function (j) { return inv ? L.velCol(inv.v[j] - 1, span) : pal.bg; }, false);
+      map(x0 + mw + 8, inv ? 'RECOVERED · ' + (inv.mode === 'bent' ? 'BENT' : 'STRAIGHT') + ' RAYS' : 'RECOVERED', function (j) { return inv ? L.velCol(inv.v[j] - 1, span) : pal.bg; }, false);
       map(x0 + 2 * (mw + 8), 'RAY COVERAGE', function (j) { var a = inv ? Math.min(1, inv.hits[j] / (0.5 * inv.hmax)) : 0, b = pal.bg, c = pal.ink; return [b[0] + (c[0] - b[0]) * a * 0.8, b[1] + (c[1] - b[1]) * a * 0.8, b[2] + (c[2] - b[2]) * a * 0.8]; }, false);
       if (!inv) { L.font(ctx, 10, 400); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('run the survey', x0 + mw + 8 + mw / 2, y0 + mh / 2); }
       L.colorbar(ctx, x0, y0 + mh + 8, Math.min(2 * mw + 8, 220), 7, function (t) { return L.velCol(t * span, span); }, '−' + Math.round(span * 100) + ' %', '+' + Math.round(span * 100) + ' %', 'velocity vs. v = 1');
@@ -890,8 +960,8 @@
       L.text('nLive', this.liveText());
       if (this.nWin === 1 || this.nWin === 12 || this.nWin === 6) L.refresh();
     },
-    hud: function () { return [this.st.mode === 'off' ? 'Noise off' : 'Noise · ' + (this.st.mode === 'side' ? 'one side' : 'all around'), 'time-lapse 4×', 't = ' + L.fmt(L.eng.n / L.rate, 0) + ' s']; },
-    legend: function () { return L.legendAcoustic() + '<span>○ noise sources (flashes)</span>'; },
+    hud: function () { return [this.st.mode === 'off' ? 'Noise off' : (this.st.mode === 'side' ? 'Noise from one side' : 'Noise all around'), '4× time-lapse', 't = ' + L.fmt(L.eng.n / L.rate, 0) + ' s']; },
+    legend: function () { return L.legendAcoustic() + '<span>○ noise source</span>'; },
     overlay: function (ctx) {
       var pal = L.pal, now = performance.now();
       this.flash.forEach(function (f) { var age = (now - f.t) / 900; if (age < 1) { ctx.beginPath(); ctx.arc(L.sx(f.x), L.sy(f.y), 2 + 8 * age, 0, 6.2832); ctx.strokeStyle = L.rgba(pal.ink, 0.45 * (1 - age)); ctx.lineWidth = 1; ctx.stroke(); } });
@@ -989,12 +1059,13 @@
       var f = false;
       if (s.y <= 0.07 * L.ny && !st.did.shallow) { st.did.shallow = true; f = true; }
       if (s.y > 0.3 * L.ny && !st.did.deep) { st.did.deep = true; f = true; }
-      if (f) L.refresh(); else this.liveSP();
+      if (f) L.refresh(); this.liveSP();
     },
     liveSP: function () {
       var r = this.last; if (!r) return;
       var dt = r.ts - r.tp, vp = 2.5 * this.vAt(r);
-      L.text('spLive', 'Last event: ' + L.fmt(L.km(r.d), 1) + ' km from YW01 · predicted S − P = ' + L.fmt(dt, 2) + ' s · mean V_P ' + L.fmt(vp, 2) + ' km/s → d = Δt·V_P/(√3 − 1) = ' + L.fmt(dt * vp / (Math.sqrt(3) - 1), 1) + ' km');
+      L.html('spLive', '<dl class="kv"><dt>Distance to YW01</dt><dd>' + L.fmt(L.km(r.d), 1) + ' km</dd><dt>Predicted S − P</dt><dd>' + L.fmt(dt, 2) + ' s</dd>' +
+        '<dt>Mean V<sub>P</sub> on the path</dt><dd>' + L.fmt(vp, 2) + ' km/s</dd><dt>Δt · V<sub>P</sub> / (√3 − 1)</dt><dd>' + L.fmt(dt * vp / (Math.sqrt(3) - 1), 1) + ' km</dd></dl>');
     },
     vAt: function (r) { var p = this.sta[0], L1 = Math.hypot(r.x - p.x, r.y - 1); return L1 / Math.max(1e-6, (r.tp - Math.round(1.2 / L.eng.f0) / L.rate) * L.rate * C); },
     save: function () { this.st.m = L.model.serialize(); this.st.sx = +(this.sta[0].x / L.nx).toFixed(4); },
@@ -1004,7 +1075,7 @@
       var st = this.st, d = st.did;
       return [
         { t: 'Click just below the surface', d: 'Look for the slow, strong wave hugging the top edge: a <b>Rayleigh wave</b>. The ground under the station moves in ellipses (particle-motion plot, bottom right).', done: !!d.shallow },
-        { t: 'Click deep below the station', d: '<b>P</b> arrives first, <b>S</b> later. The S − P time grows with distance: <code>d ≈ Δt<sub>S−P</sub> · V<sub>P</sub>V<sub>S</sub> / (V<sub>P</sub> − V<sub>S</sub>)</code>, the oldest trick for locating earthquakes.', c: '<p class="live" id="spLive"></p>', done: !!d.deep },
+        { t: 'Click deep below the station', d: '<b>P</b> arrives first, <b>S</b> later. The S − P time grows with distance: <code>d ≈ Δt<sub>S−P</sub> · V<sub>P</sub>V<sub>S</sub> / (V<sub>P</sub> − V<sub>S</sub>)</code>, the oldest trick for locating earthquakes.', c: '<div id="spLive"></div>', done: !!d.deep },
         { t: 'Change the source', d: 'An explosion radiates P only. A shear dislocation (a small fault) radiates mostly S, in four lobes. A vertical force is a hammer blow, the classic Lamb problem.', c: L.seg('kind', KINDS, String(st.kind)), done: !!d.kind },
         { t: 'Try a layered crust', d: 'At every interface part of the P energy converts into S, and back: the extra arrivals in the seismogram.', c: modelChips(L.model.preset, 'preset', { noMap: true }), done: !!d.model }
       ];

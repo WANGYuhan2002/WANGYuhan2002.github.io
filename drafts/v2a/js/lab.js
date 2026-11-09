@@ -19,8 +19,9 @@
   var L = window.Lab = { CH: {}, ORDER: [], WE: WE, WM: WM, coarse: coarse, reduceMotion: reduceMotion, marks: [] };
   var S = L.S = { ch: 'play', backend: WE.gpuAvailable() ? 'gpu' : 'cpu', fine: false, speed: 1, sound: false, haptics: false,
     reveal: false, paused: false, tool: 'quake', mag: 3.2, magRandom: true, brushR: 14, brushS: 0.2, explain: false };
-  try { var saved = JSON.parse(localStorage.getItem('yw-lab') || '{}'); if (saved.backend === 'cpu' || (saved.backend === 'gpu' && WE.gpuAvailable())) S.backend = saved.backend; if (saved.fine) S.fine = true; if (saved.speed) S.speed = saved.speed; } catch (e) {}
-  function persist() { try { localStorage.setItem('yw-lab', JSON.stringify({ backend: S.backend, fine: S.fine, speed: S.speed })); } catch (e) {} }
+  S.q = 1;                                                               /* grid scale; lowered automatically on a busy device */
+  try { var saved = JSON.parse(localStorage.getItem('yw-lab') || '{}'); if (saved.backend === 'cpu' || (saved.backend === 'gpu' && WE.gpuAvailable())) S.backend = saved.backend; if (saved.fine) S.fine = true; if (saved.speed) S.speed = saved.speed; if (saved.q >= 0.5 && saved.q < 1) S.q = saved.q; } catch (e) {}
+  function persist() { try { localStorage.setItem('yw-lab', JSON.stringify({ backend: S.backend, fine: S.fine, speed: S.speed, q: S.q })); } catch (e) {} }
 
   /* ---------------- theme (shared with the homepage: localStorage 'yw-theme') ---------------- */
   function theme() { return root.getAttribute('data-theme') === 'light' ? 'light' : 'dark'; }
@@ -38,7 +39,7 @@
     window.addEventListener('storage', function (e) { if (e.key === 'yw-theme' && (e.newValue === 'light' || e.newValue === 'dark')) apply(e.newValue, false); });
   })();
   /* the lab shows waves on top of revealed structure most of the time, so the structure tint is lighter than on the homepage */
-  function labPal() { var b = WE.PAL[theme()], o = {}; for (var k in b) o[k] = b[k]; o.tint = b.tint * 0.72; return o; }
+  function labPal() { var b = WE.PAL[theme()], o = {}; for (var k in b) o[k] = b[k]; o.tint = b.tint * 0.55; return o; }
   L.pal = labPal();
   document.addEventListener('themechange', function () { L.pal = labPal(); if (L.eng) L.eng.setDisplay(L.pal, S.reveal); });
 
@@ -47,7 +48,7 @@
   L.build = function () {
     var ch = L.CH[S.ch], r = view.getBoundingClientRect();
     L.W = r.width; L.H = r.height;
-    var phys = ch.physics || 'acoustic', g = WE.gridFor(S.backend, phys, L.W, L.H, S.fine);
+    var phys = ch.physics || 'acoustic', g = WE.gridFor(S.backend, phys, L.W, L.H, S.fine, S.q);
     if (L.eng) L.eng.destroy();
     L.eng = WE.create({ nx: g.nx, ny: g.ny, physics: phys, backend: S.backend, canvasGL: glc, canvas2d: cpuc });
     glc.style.display = L.eng.backend === 'gpu' ? '' : 'none'; cpuc.style.display = L.eng.backend === 'cpu' ? '' : 'none';
@@ -152,6 +153,7 @@
   L.check = function (id, label, on) { return '<label class="chk"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '> ' + label + '</label>'; };
   L.btn = function (act, label, cls, dis, val) { return '<button class="pbtn' + (cls ? ' ' + cls : '') + '" type="button" data-act="' + act + '"' + (val != null ? ' data-val="' + val + '"' : '') + (dis ? ' disabled' : '') + '>' + label + '</button>'; };
   L.text = function (id, s) { var el = $(id); if (el && el.textContent !== s) el.textContent = s; };
+  L.html = function (id, s) { var el = $(id); if (el && el.innerHTML !== s) el.innerHTML = s; };
   L.refresh = function () {
     var ch = L.CH[S.ch], i = L.ORDER.indexOf(ch.id), st = ch.steps ? ch.steps() : [], now = -1, k, top = insp.scrollTop;
     for (k = 0; k < st.length; k++) if (!st[k].done) { now = k; break; }
@@ -375,7 +377,12 @@
     if (!items) items = ['t = ' + L.fmt(L.eng.n / L.rate, 1) + ' s'];
     if (S.paused) items.unshift('<b class="em">Paused</b> · Space to resume');
     var h = items.map(function (s) { return '<span>' + s + '</span>'; }).join('');
-    if (h !== lastHud) { hudEl.innerHTML = h; lastHud = h; }
+    if (h !== lastHud) {
+      hudEl.innerHTML = h; lastHud = h;
+      /* drop trailing details while anything is cut off: the first item is the one that matters */
+      var sp = hudEl.children, cut = function () { for (var q = 0; q < sp.length; q++) if (sp[q].style.display !== 'none' && sp[q].scrollWidth > sp[q].clientWidth + 1) return true; return false; };
+      for (var k = sp.length - 1; k > 0 && cut(); k--) sp[k].style.display = 'none';
+    }
     var c = ch.cta ? ch.cta() : null, cb = $('ctaBtn');                     /* the chapter's main action, right above the field */
     if (!c) { if (!cb.hidden) cb.hidden = true; }
     else { if (cb.hidden) cb.hidden = false; if (cb.textContent !== c.label) cb.textContent = c.label; cb.disabled = !!c.disabled; cb.dataset.act = c.act; cb.dataset.val = c.val == null ? '' : c.val; }
@@ -391,10 +398,19 @@
   L.toast = function (s, ms) { toastEl.textContent = s; toastEl.classList.add('on'); clearTimeout(tt); tt = setTimeout(function () { toastEl.classList.remove('on'); }, ms || 2600); };
   L.setReveal = function (on) {
     S.reveal = on; L.eng.setDisplay(L.pal, on);
-    revealBtn.setAttribute('aria-pressed', on); revealBtn.textContent = on ? 'Hide structure' : 'Show structure';
+    revealLabel(on);
     L.updateLegend(); var ch = L.CH[S.ch]; if (ch.onReveal) ch.onReveal(on);
   };
   revealBtn.addEventListener('click', function () { L.setReveal(!S.reveal); });
+  /* the structure toggle: an eye icon, with a text label where the bar has room */
+  function revealLabel(on) {
+    revealBtn.setAttribute('aria-pressed', on); revealBtn.setAttribute('aria-label', on ? 'Hide the velocity structure (V)' : 'Show the velocity structure (V)');
+    revealBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      (on ? '<path d="M3 3l18 18M10.6 5.1A10.4 10.4 0 0 1 12 5c6 0 10 7 10 7a17.6 17.6 0 0 1-3.2 3.9M6.6 6.6C3.9 8.4 2 12 2 12s4 7 10 7a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/>'
+          : '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>') +
+      '</svg><span class="lbl">' + (on ? 'Hide structure' : 'Show structure') + '</span>';
+  }
+  revealLabel(S.reveal);
   function mega() {
     if (!reduceMotion) { view.classList.remove('shake'); void view.offsetWidth; view.classList.add('shake'); }
     if (S.haptics && navigator.vibrate) navigator.vibrate([60, 40, 120]);
@@ -443,7 +459,8 @@
     return '<h3>Settings</h3>' +
       '<div class="grp"><p>Solver</p>' + L.seg('set-backend', [['gpu', 'GPU · WebGL2', gpu ? '' : 'WebGL2 with float render targets is not available in this browser'], ['cpu', 'CPU']], S.backend) +
       '<small>Same finite-difference scheme on both; the GPU version runs a finer grid. Current grid: ' + L.eng.nx + ' × ' + L.eng.ny + ' cells, ' + Math.round(L.rate) + ' steps/s.</small></div>' +
-      '<div class="grp"><p>Grid</p>' + L.seg('set-fine', [['0', 'Standard'], ['1', 'Fine', S.backend === 'gpu' ? '' : 'Fine grids need the GPU solver']], S.fine ? '1' : '0') + '</div>' +
+      '<div class="grp"><p>Grid</p>' + L.seg('set-fine', [['0', 'Standard'], ['1', 'Fine', S.backend === 'gpu' ? '' : 'Fine grids need the GPU solver']], S.fine ? '1' : '0') +
+      (S.q < 1 ? '<small>Reduced to ' + Math.round(S.q * 100) + ' % because this device could not keep up in real time. ' + L.btn('set-q', 'Back to 100 %') + '</small>' : '') + '</div>' +
       '<div class="grp"><p>Speed</p>' + L.seg('set-speed', [['0.5', '0.5×'], ['1', '1×'], ['2', '2×']], String(S.speed)) + '</div>' +
       '<div class="grp"><p>Senses</p>' + L.check('set-sound', 'Sound: a geophone rumble that follows the main receiver', S.sound) +
       L.check('set-haptics', 'Vibrate on arrivals' + (navigator.vibrate ? '' : ' (not supported here)'), S.haptics) + '</div>';
@@ -452,6 +469,7 @@
     if (a === 'set-backend') { if (S.backend !== v) { saveCh(); S.backend = v; if (v === 'cpu') S.fine = false; persist(); L.build(); L.refresh(); setPop.innerHTML = settingsHTML(); L.toast(L.eng.backend === 'gpu' ? 'GPU solver · ' + L.nx + ' × ' + L.ny : 'CPU solver · ' + L.nx + ' × ' + L.ny); } return true; }
     if (a === 'set-fine') { var f = v === '1'; if (S.fine !== f) { saveCh(); S.fine = f; persist(); L.build(); L.refresh(); setPop.innerHTML = settingsHTML(); } return true; }
     if (a === 'set-speed') { S.speed = +v; persist(); setPop.innerHTML = settingsHTML(); return true; }
+    if (a === 'set-q') { saveCh(); S.q = 1; persist(); L.build(); L.refresh(); setPop.innerHTML = settingsHTML(); return true; }
     if (a === 'share-copy') { copyLink(); return true; }
     if (a === 'share-close') { sharePop.hidden = true; return true; }
     return false;
@@ -552,7 +570,7 @@
     if (loaded) ch.load(loaded);
     S.tool = (ch.tools && ch.tools[0]) || 'none'; closeTopt();
     if (S.reveal !== !!ch.revealDefault && !loaded) S.reveal = !!ch.revealDefault;
-    revealBtn.setAttribute('aria-pressed', S.reveal); revealBtn.textContent = S.reveal ? 'Hide structure' : 'Show structure';
+    revealLabel(S.reveal);
     L.build(); renderTools(); L.refresh(); L.updateLegend();
     document.title = ch.title + ' · Wave Lab · Yuhan Wang';
   };
@@ -590,30 +608,41 @@
     if (document.hidden) { running = false; return; }
     if (!L.eng) { requestAnimationFrame(frame); return; }                     /* a shared link is still being decoded */
     var dt = lastT ? Math.min(100, now - lastT) : 16.7; lastT = now;
-    var ch = L.CH[S.ch], n = 0;
+    var ch = L.CH[S.ch], n = 0, want = 0, ff = !!(ch.ffwd && ch.ffwd());
     if (!S.paused) {
-      if (ch.ffwd && ch.ffwd()) {                                          /* fast-forward: as many steps as fit in ~22 ms */
+      if (ff) {                                                              /* fast-forward: as many steps as fit in ~22 ms */
         n = Math.max(4, Math.min(6000, Math.round(22 / Math.max(0.004, L.stepMs))));
         if (ch.ffwdCap) n = Math.min(n, ch.ffwdCap());
       } else {
         var mul = S.speed * (ch.speedMul ? ch.speedMul() : 1);
-        acc += dt * L.rate * mul / 1000; n = Math.min(Math.ceil(L.rate * mul * 0.1), Math.floor(acc)); acc -= n; if (acc > 4) acc = 0;
-        if (ch.stepCap) n = Math.min(n, ch.stepCap());
+        want = dt * L.rate * mul / 1000;
+        acc += want; n = Math.min(Math.ceil(L.rate * mul * 0.1), Math.floor(acc)); acc -= n; if (acc > 4) acc = 0;
+        if (ch.stepCap) { var cap = ch.stepCap(); if (cap < n) { want = n = cap; } }
       }
     }
+    var quiet = S.paused || ff || (ch.busy && ch.busy());
     if (ch.tick) ch.tick(dt, n);
+    var solverMs = 0;
     if (n > 0) {
       var t0 = performance.now(), block = L.eng.step(n);
-      L.stepMs = 0.8 * L.stepMs + 0.2 * (performance.now() - t0) / n;
+      solverMs = performance.now() - t0; L.stepMs = 0.8 * L.stepMs + 0.2 * solverMs / n;
       if (ch.onSamples) ch.onSamples(block, n, L.eng.nP);
       sense(block, n, L.eng.nP, dt);
     }
     if (ch.after) ch.after(n);
     renderField(); drawOverlay(); drawData(); hud();
+    if (watch.frame(now, want, n, quiet, solverMs) && S.q > 0.5 + 1e-6) degrade();
     requestAnimationFrame(frame);
   }
-  function start() { if (!running) { running = true; lastT = 0; requestAnimationFrame(frame); } }
+  function start() { if (!running) { running = true; lastT = 0; watch.t0 = 0; requestAnimationFrame(frame); } }
   document.addEventListener('visibilitychange', function () { if (!document.hidden) start(); });
+  var watch = new WE.Watchdog();
+  L.watch = watch;
+  function degrade() {                                                       /* one step coarser; the chapter's scenario is kept */
+    if (S.fine) S.fine = false; else S.q = Math.max(0.5, +(S.q * 0.75).toFixed(3));
+    persist(); saveCh(); L.build(); L.refresh(); watch.t0 = 0;
+    L.toast('This device could not keep up: grid reduced to ' + L.nx + ' × ' + L.ny + ' (Settings to undo)', 4200);
+  }
   var rt = 0, lastW = 0, lastH = 0;
   window.addEventListener('resize', function () {
     clearTimeout(rt); rt = setTimeout(function () {

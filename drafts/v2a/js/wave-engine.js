@@ -121,7 +121,11 @@
     for (var y = R[1]; y <= R[3]; y++) for (var x = R[0]; x <= R[2]; x++) {
       var i = y * nx + x, vi = v[i], dv = vi - 1, t = Math.min(1, Math.abs(dv) / 0.4) * a, col = dv < 0 ? pal.slow : pal.fast;
       var r = bg[0] + (col[0] - bg[0]) * t, g = bg[1] + (col[1] - bg[1]) * t, b = bg[2] + (col[2] - bg[2]) * t;
-      if (e.reveal && ((x < nx - 1 && Math.abs(v[i + 1] - vi) > 0.06) || (y < ny - 1 && Math.abs(v[i + nx] - vi) > 0.06))) { r += (ink[0] - r) * 0.42; g += (ink[1] - g) * 0.42; b += (ink[2] - b) * 0.42; }
+      if (e.reveal) {                                                   /* interface lines with a soft edge: smooth after bilinear upscaling */
+        var d = 0; if (x < nx - 1) d = Math.abs(v[i + 1] - vi); if (y < ny - 1) d = Math.max(d, Math.abs(v[i + nx] - vi));
+        var w = d > 0.04 ? Math.min(1, (d - 0.04) / 0.05) * 0.45 : 0;
+        if (w) { r += (ink[0] - r) * w; g += (ink[1] - g) * w; b += (ink[2] - b) * w; }
+      }
       B[3 * i] = r; B[3 * i + 1] = g; B[3 * i + 2] = b;
     }
   }
@@ -314,14 +318,13 @@
       'void main(){vec2 q=texelFetch(uP,ivec2(int(gl_FragCoord.x),0),0).xy;\n' +
       'if(uEl==0)o=vec4(bl(q).r,0.0,0.0,1.0);else o=vec4(-bl(q-vec2(0.0,0.5)).g,bl(q-vec2(0.5,0.0)).r,0.0,1.0);}',
     /* display: velocity tint + interface lines + wavefield (acoustic ±p, elastic P/S, or the TR image) */
-    show: HDR + 'uniform sampler2D uF,uM;uniform ivec2 uN;uniform vec2 uView;uniform int uMode;\n' +
-      'uniform vec3 uBg,uPos,uNeg,uSlow,uFast,uInk,uSw;uniform float uGain,uGain2,uMix,uTint,uTh,uReveal;out vec4 o;\n' +
+    show: HDR + 'uniform sampler2D uF,uBG;uniform ivec2 uN;uniform vec2 uView;uniform int uMode;\n' +
+      'uniform vec3 uPos,uNeg,uSw;uniform float uGain,uGain2,uMix,uTh;out vec4 o;\n' +
       'vec2 bl(vec2 g){vec2 q=g-0.5;vec2 fl=floor(q);vec2 f=q-fl;ivec2 i=ivec2(fl),lo=ivec2(0),hi=uN-1;\n' +
       ' return mix(mix(texelFetch(uF,clamp(i,lo,hi),0).rg,texelFetch(uF,clamp(i+ivec2(1,0),lo,hi),0).rg,f.x),mix(texelFetch(uF,clamp(i+ivec2(0,1),lo,hi),0).rg,texelFetch(uF,clamp(i+ivec2(1,1),lo,hi),0).rg,f.x),f.y);}\n' +
       'float ramp(float a){return pow(max(0.0,(min(a,1.0)-uTh)/(1.0-uTh)),0.75);}\n' +
-      'void main(){vec2 uv=gl_FragCoord.xy/uView;uv.y=1.0-uv.y;vec2 g=uv*vec2(uN);ivec2 c=clamp(ivec2(g),ivec2(0),uN-1);\n' +
-      'float v=texelFetch(uM,c,0).a,dv=v-1.0;vec3 col=mix(uBg,dv<0.0?uSlow:uFast,min(1.0,abs(dv)/0.4)*uTint);\n' +
-      'if(uReveal>0.5){float vr=texelFetch(uM,min(c+ivec2(1,0),uN-1),0).a,vd=texelFetch(uM,min(c+ivec2(0,1),uN-1),0).a;if(abs(vr-v)>0.06||abs(vd-v)>0.06)col=mix(col,uInk,0.42);}\n' +
+      'void main(){vec2 uv=gl_FragCoord.xy/uView;uv.y=1.0-uv.y;vec2 g=uv*vec2(uN);\n' +
+      'vec3 col=texture(uBG,uv).rgb;\n' +
       'vec2 f=bl(g);\n' +
       'if(uMode==0){float u=clamp(f.r*uGain,-1.0,1.0);float a=ramp(abs(u));col=col*(1.0-a*uMix)+(u>=0.0?uPos:uNeg)*a;}\n' +
       'else if(uMode==1){float a=ramp(abs(f.r)*uGain);col=col*(1.0-a*uMix)+uPos*a;float b=ramp(abs(f.g)*uGain2);col=col*(1.0-b*uMix)+uSw*b;}\n' +
@@ -354,7 +357,14 @@
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     return { t: t, f: f, w: w, h: h };
   }
-  function delTex(gl, T) { if (T) { gl.deleteTexture(T.t); gl.deleteFramebuffer(T.f); } }
+  function delTex(gl, T) { if (T) { gl.deleteTexture(T.t); if (T.f) gl.deleteFramebuffer(T.f); } }
+  function mkTex8(gl, w, h) {                                            /* 8-bit RGBA, linearly filtered: the precomputed background */
+    var t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return { t: t, f: null, w: w, h: h };
+  }
 
   function Gpu(o) {
     common(this, o); this.backend = 'gpu';
@@ -378,11 +388,21 @@
       this.c2 = new Float32Array(N).fill(C * C); this.P = new Float32Array(N); this.Q = new Float32Array(N);
     }
     this.R1 = mkTex(gl, Math.ceil(nx / 8), Math.ceil(ny / 8)); this.R2 = mkTex(gl, Math.ceil(nx / 64), Math.ceil(ny / 64));
+    this.BG = mkTex8(gl, nx, ny); this.bgc = new Uint8ClampedArray(N * 3);
     this.srcBuf = new Float32Array(MAXS * 4); this.X = null; this.PP = null; this.PO = null; this.pCap = 0;
     this.dprCap = o.dprCap || 1.5;
-    this.setBoundary(this.edges); this._uploadMat(rectOf(this));
+    this.setBoundary(this.edges); this._uploadMat(rectOf(this)); this._bg(rectOf(this));
   }
   var G = Gpu.prototype;
+  G._bg = function (R) {                                                  /* recompute the background colours in R and upload them */
+    cpuBackground(this, R);
+    var gl = this.gl, nx = this.nx, w = R[2] - R[0] + 1, h = R[3] - R[1] + 1, a = new Uint8Array(w * h * 4), B = this.bgc;
+    for (var y = R[1]; y <= R[3]; y++) for (var x = R[0]; x <= R[2]; x++) {
+      var i = 3 * (y * nx + x), j = 4 * ((y - R[1]) * w + (x - R[0])); a[j] = B[i]; a[j + 1] = B[i + 1]; a[j + 2] = B[i + 2]; a[j + 3] = 255;
+    }
+    gl.bindTexture(gl.TEXTURE_2D, this.BG.t); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, R[0], R[1], w, h, gl.RGBA, gl.UNSIGNED_BYTE, a);
+  };
   G._draw = function (prog, target, w, h) {
     var gl = this.gl; gl.useProgram(prog.p); gl.bindVertexArray(this.vao);
     gl.bindFramebuffer(gl.FRAMEBUFFER, target ? target.f : null); gl.viewport(0, 0, w, h); gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -403,14 +423,14 @@
     var R = rectOf(this, r);
     if (this.physics === 'elastic') { elMaterial(this, model, R); R = [Math.max(0, R[0] - 1), Math.max(0, R[1] - 1), R[2], R[3]]; }
     else acMaterial(this, model, R);
-    this._uploadMat(R);
+    this._uploadMat(R); this._bg(R);
   };
   G.setBoundary = function (edges, alpha) {
     if (edges) this.edges = edges; if (alpha != null) this.alpha = alpha;
     if (this.physics === 'elastic') elDamping(this); else acDamping(this);
     this._uploadMat(rectOf(this));
   };
-  G.setDisplay = function (pal, reveal) { this.pal = pal; this.reveal = !!reveal; };
+  G.setDisplay = function (pal, reveal) { this.pal = pal; this.reveal = !!reveal; this._bg(rectOf(this)); };
   G.addSource = function (o) { return addSource(this, o); };
   G.setProbes = function (pts) {
     var gl = this.gl, n = pts.length; this.nP = n; this.px = new Float32Array(pts.map(function (p) { return p[0]; })); this.py = new Float32Array(pts.map(function (p) { return p[1]; }));
@@ -492,13 +512,10 @@
     var g = o.gain, g2 = o.gain2 || o.gain;
     if (mode === 2) { var pk = this._reduce(F); g = (o.gain2 || 1) / Math.sqrt(pk || 1); }
     pr = P.show; gl.useProgram(pr.p);
-    this._bind(pr, 'uF', 0, F); this._bind(pr, 'uM', 1, this.M);
+    this._bind(pr, 'uF', 0, F); this._bind(pr, 'uBG', 1, this.BG);
     gl.uniform2i(pr.u('uN'), this.nx, this.ny); gl.uniform2f(pr.u('uView'), this.canvas.width, this.canvas.height); gl.uniform1i(pr.u('uMode'), mode);
-    gl.uniform3fv(pr.u('uBg'), rgb(pal.bg)); gl.uniform3fv(pr.u('uPos'), rgb(pal.pos)); gl.uniform3fv(pr.u('uNeg'), rgb(pal.neg));
-    gl.uniform3fv(pr.u('uSlow'), rgb(pal.slow)); gl.uniform3fv(pr.u('uFast'), rgb(pal.fast)); gl.uniform3fv(pr.u('uInk'), rgb(pal.ink));
-    gl.uniform3fv(pr.u('uSw'), rgb(mode === 2 ? pal.hot : pal.sw));
-    gl.uniform1f(pr.u('uGain'), g); gl.uniform1f(pr.u('uGain2'), g2); gl.uniform1f(pr.u('uMix'), pal.mix);
-    gl.uniform1f(pr.u('uTint'), this.reveal ? pal.tint : pal.faint); gl.uniform1f(pr.u('uTh'), THRESH); gl.uniform1f(pr.u('uReveal'), this.reveal ? 1 : 0);
+    gl.uniform3fv(pr.u('uPos'), rgb(pal.pos)); gl.uniform3fv(pr.u('uNeg'), rgb(pal.neg)); gl.uniform3fv(pr.u('uSw'), rgb(mode === 2 ? pal.hot : pal.sw));
+    gl.uniform1f(pr.u('uGain'), g); gl.uniform1f(pr.u('uGain2'), g2); gl.uniform1f(pr.u('uMix'), pal.mix); gl.uniform1f(pr.u('uTh'), THRESH);
     this._draw(pr, null, this.canvas.width, this.canvas.height);
   };
   G._reduce = function (F) {
@@ -529,7 +546,7 @@
   G.destroy = function () {
     var gl = this.gl, self = this;
     ['S', 'V', 'T', 'X'].forEach(function (k) { if (self[k]) { delTex(gl, self[k][0]); delTex(gl, self[k][1]); } });
-    ['M', 'Dt', 'DC', 'R1', 'R2', 'PP', 'PO'].forEach(function (k) { delTex(gl, self[k]); });
+    ['M', 'Dt', 'DC', 'R1', 'R2', 'PP', 'PO', 'BG'].forEach(function (k) { delTex(gl, self[k]); });
   };
 
   var gpuOK = null;
@@ -546,13 +563,29 @@
     if (o.backend === 'gpu') { try { return new Gpu(o); } catch (e) { if (window.console) console.warn('[wave-engine] GPU backend unavailable, using the CPU:', e.message); } }
     return o.physics === 'elastic' ? new CpuElastic(o) : new CpuAcoustic(o);
   }
-  /* grid size for a backend, physics and canvas width (CSS px) */
-  function gridFor(backend, physics, W, H, fine) {
+  /* grid size for a backend, physics and canvas width (CSS px); q < 1 scales it down on a device that cannot keep up */
+  function gridFor(backend, physics, W, H, fine, q) {
     var nx;
     if (physics === 'elastic') nx = backend === 'gpu' ? (W < 700 ? 400 : (fine ? 960 : 720)) : (W < 700 ? 180 : 300);
     else nx = backend === 'gpu' ? (W < 700 ? (fine ? 560 : 400) : (fine ? 1280 : (W < 1100 ? 720 : 960))) : (W < 700 ? 200 : (W < 1100 ? 400 : 480));
+    nx = Math.max(120, Math.round(nx * (q || 1) / 8) * 8);
     return { nx: nx, ny: Math.max(Math.round(nx * 0.23), Math.round(nx * H / W)) };
   }
-
-  window.WaveEngine = { create: create, gpuAvailable: gpuAvailable, gridFor: gridFor, PAL: PAL, LUT: LUT, C: C, VSCAT: VSCAT, MAXS: MAXS };
+  /* real-time watchdog. Once a second it compares the solver steps done with what real time asks for, and how much of
+     the frame time the solver itself takes. It reports `slow` after three bad seconds in a row: the solver falls behind
+     (under 75 % of the steps), or the frame rate is under 20 per second while the solver takes over half the time.
+     Slow drawing alone (a large screen, a busy machine) is not counted: a smaller grid would not fix it. */
+  function Watchdog() { this.t0 = 0; this.frames = 0; this.want = 0; this.did = 0; this.solver = 0; this.bad = 0; this.last = 0; }
+  Watchdog.prototype.frame = function (now, want, did, quiet, solverMs) {
+    if (!this.t0) { this.t0 = now; return false; }
+    this.frames++; this.want += want; this.did += did; this.solver += solverMs || 0;
+    var span = now - this.t0;
+    if (span < 1000) return false;
+    var fps = this.frames * 1000 / span, keep = this.want > 0 ? this.did / this.want : 1, share = this.solver / span;
+    this.bad = !quiet && (keep < 0.75 || (fps < 20 && share > 0.5)) ? this.bad + 1 : 0;
+    this.fps = fps; this.keep = keep; this.share = share; this.t0 = now; this.frames = 0; this.want = 0; this.did = 0; this.solver = 0;
+    if (this.bad >= 3 && now - this.last > 6000) { this.bad = 0; this.last = now; return true; }
+    return false;
+  };
+  window.WaveEngine = { create: create, gpuAvailable: gpuAvailable, gridFor: gridFor, Watchdog: Watchdog, PAL: PAL, LUT: LUT, C: C, VSCAT: VSCAT, MAXS: MAXS };
 })();

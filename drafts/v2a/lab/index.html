@@ -87,17 +87,18 @@ kbd{font:500 .68rem var(--mono); padding:.05rem .35rem; border:1px solid var(--l
 .tools button[data-tool="slow"][aria-pressed="true"]{background:var(--slow); color:#fff}
 .tools button[data-tool="fast"][aria-pressed="true"]{background:var(--fast); color:#fff}
 .tools .sep{width:1px; height:18px; margin:0 3px; background:var(--line2)}
-.hud{flex:1; min-width:0; display:flex; align-items:center; gap:.5rem; overflow:hidden; font:500 .68rem var(--mono); color:var(--ink2); white-space:nowrap}
+.hud{flex:1 1 9em; min-width:7.5em; display:flex; align-items:center; gap:.5rem; overflow:hidden; font:500 .68rem var(--mono); color:var(--ink2); white-space:nowrap}
 .hud span{overflow:hidden; text-overflow:ellipsis}
 .hud span + span::before{content:"· "; color:var(--muted)}
 .hud .em{color:var(--ink); font-weight:500}
-.legend{display:flex; flex-wrap:wrap; justify-content:flex-end; gap:.15rem .75rem; max-width:46%; font:400 .7rem/1.35 var(--sans); color:var(--ink2)}
+.legend{display:flex; flex-wrap:wrap; justify-content:flex-end; gap:.15rem .7rem; max-width:40%; min-width:0; font:400 .7rem/1.35 var(--sans); color:var(--ink2)}
 .legend span{display:inline-flex; align-items:center; gap:.35rem; white-space:nowrap}
 .sw{display:inline-block; width:10px; height:10px; border-radius:3px; flex:none}
 .cta{flex:none; white-space:nowrap}
 .cta[hidden]{display:none}
 .chip{flex:none; display:inline-flex; align-items:center; gap:.45rem; padding:.42rem .75rem; border-radius:999px; border:1px solid var(--line2); background:none; font:500 .64rem var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--ink2); cursor:pointer; transition:all .15s; white-space:nowrap}
 .chip:hover{color:var(--ink); border-color:var(--cyan)}
+.chip svg{width:15px; height:15px; flex:none}
 .chip[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}
 
 .view{position:relative; overflow:hidden; cursor:crosshair; touch-action:none; -webkit-user-select:none; user-select:none; background:var(--bg)}
@@ -193,6 +194,12 @@ kbd{font:500 .68rem var(--mono); padding:.05rem .35rem; border:1px solid var(--l
 .share-box{display:flex; gap:.4rem; margin-top:.5rem}
 .share-box input{flex:1; min-width:0; padding:.45rem .6rem; border-radius:10px; border:1px solid var(--line2); background:var(--bg); color:var(--ink); font:400 .72rem var(--mono)}
 
+@media (min-width:900px) and (max-width:1439px){
+  #revealBtn .lbl{display:none}
+  #revealBtn{padding:.45rem}
+  .hud span + span{display:none}
+  .legend{max-width:34%}
+}
 @media (min-width:900px) and (max-width:1199px){
   .app{grid-template-columns:64px minmax(0,1fr) 300px}
   .rail{padding:1rem .5rem}
