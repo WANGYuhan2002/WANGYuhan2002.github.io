@@ -815,7 +815,7 @@
       var d = Math.hypot(b.x - a.x, b.y - a.y) / 2, r2 = Math.max(hx, hy) * 1.15, r1 = Math.min(Math.max(d + 0.12 * L.nx, 0.55 * hy), r2 * 0.8);
       return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, r1: r1, r2: r2, m: m };
     },
-    speedMul: function () { return 3; },
+    speedMul: function () { return 4; },
     resetCC: function () {
       this.rec = new L.Rec(this.sta, L.TR); this.a = new Float32Array(this.Lb); this.b = new Float32Array(this.Lb); this.cnt = 0;
       this.stack = new Float64Array(2 * this.Lg + 1); this.nWin = 0; this.rows = [];
@@ -836,7 +836,7 @@
       return [
         { t: 'Place two stations', d: 'Drag A and B. Their distance sets the travel time t<sub>AB</sub> that should appear in the correlation.', done: !!d.place || this.nWin > 0 },
         { t: 'Switch on the noise', d: 'Weak sources pop off at random places and times in a ring around the stations, like distant ocean waves or traffic.', c: L.seg('nmode', [['off', 'Off'], ['ring', 'All around'], ['side', 'One side only']], st.mode), done: st.mode !== 'off' && this.nWin > 0 },
-        { t: 'Let the stack converge', d: 'Every 3 s the two records are cross-correlated, and the result is added to the stack. The striped panel shows the stack after each window: watch two lines appear.', c: '<p class="live" id="nLive">' + this.liveText() + '</p>', done: this.nWin >= 12 },
+        { t: 'Let the stack converge', d: 'Every 3 s the two records are cross-correlated, and the result is added to the stack. The lower panel shows, row by row, how far the stack stands above its own noise: watch two bright lines appear.', c: '<p class="live" id="nLive">' + this.liveText() + '</p>', done: this.nWin >= 12 },
         { t: 'Read the correlation', d: 'Peaks at <b>±t<sub>AB</sub></b>: positive lag is the wave from A to B, negative lag the wave from B to A. Put the noise on <b>one side only</b> and one of the two disappears: the noise must come from the direction of the station line.', done: !!d.side && this.nWin >= 6 }
       ];
     },
@@ -844,7 +844,7 @@
     explain: function () {
       return '<p><b>Noise interferometry.</b> If noise sources surround two receivers evenly, the long-time cross-correlation of their records, <code>C<sub>AB</sub>(τ) = ⟨p<sub>A</sub>(t)·p<sub>B</sub>(t + τ)⟩</code>, converges to the Green’s function between them (filtered by the noise spectrum): a wave as if A were a source and B a receiver, plus its time-reversed twin.</p>' +
         '<p><b>Stationary phase.</b> Only noise sources roughly in line with A and B contribute coherently; the rest averages out. That is why one-sided noise gives a one-sided correlation. Seismologists use this to image the crust from ocean-generated noise, without any earthquakes.</p>' +
-        '<p><b>Here:</b> about 40 noise sources per second at random places in a ring around the two stations (or only on its left side), Ricker wavelets with random signs and amplitudes. The clock runs three times faster than in the other experiments. Each 3-s window is correlated for lags of ±3 s and normalised by the energy of both records before stacking.</p>' + physicsExplain();
+        '<p><b>Here:</b> about 40 noise sources per second at random places in a ring around the two stations (or only on its left side), Ricker wavelets with random signs and amplitudes. Their peak frequencies vary by ±30 % to widen the noise band, and the clock runs four times faster than in the other experiments. Each 3-s window is correlated for lags of ±3 s and normalised by the energy of both records before stacking.</p>' + physicsExplain();
     },
     act: function (a, v) {
       var st = this.st;
@@ -866,7 +866,7 @@
              x = ring.x + r * Math.cos(phi); y = ring.y + r * Math.sin(phi); tries++; }
         while ((x < ring.m || y < ring.m || x > L.nx - 1 - ring.m || y > L.ny - 1 - ring.m) && tries < 30);
         if (tries >= 30) continue;
-        L.eng.addSource({ x: x, y: y, amp: (Math.random() < 0.5 ? -1 : 1) * (0.06 + 0.14 * Math.random()), delay: Math.floor(Math.random() * n) });
+        L.eng.addSource({ x: x, y: y, amp: (Math.random() < 0.5 ? -1 : 1) * (0.06 + 0.14 * Math.random()), fmul: 0.75 + 0.6 * Math.random(), delay: Math.floor(Math.random() * n) });   /* random peak frequencies widen the band */
         this.flash.push({ x: x, y: y, t: performance.now() });
       }
       while (this.flash.length > 80) this.flash.shift();
@@ -890,7 +890,7 @@
       L.text('nLive', this.liveText());
       if (this.nWin === 1 || this.nWin === 12 || this.nWin === 6) L.refresh();
     },
-    hud: function () { return [this.st.mode === 'off' ? 'Noise off' : 'Noise · ' + (this.st.mode === 'side' ? 'one side' : 'all around'), 'time-lapse 3×', 't = ' + L.fmt(L.eng.n / L.rate, 0) + ' s']; },
+    hud: function () { return [this.st.mode === 'off' ? 'Noise off' : 'Noise · ' + (this.st.mode === 'side' ? 'one side' : 'all around'), 'time-lapse 4×', 't = ' + L.fmt(L.eng.n / L.rate, 0) + ' s']; },
     legend: function () { return L.legendAcoustic() + '<span>○ noise sources (flashes)</span>'; },
     overlay: function (ctx) {
       var pal = L.pal, now = performance.now();
@@ -926,13 +926,20 @@
       L.font(ctx, 9); ctx.fillStyle = pal.label; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
       ctx.strokeStyle = pal.tick; ctx.strokeRect(X2 + 0.5, y2 + 0.5, W2 - 1, H2 - 1);
       var cols = Math.min(2 * Lg + 1, Math.round(W2)), bin = (2 * Lg + 1) / cols, cw = W2 / cols;
+      var half = Math.max(1, Math.round(0.5 / L.eng.f0)), b0 = pal.bg, hc = pal.hot;
       for (k = 0; k < rows.length; k++) {
-        var row = rows[k], rm = 1e-12; for (i = 0; i < row.length; i++) rm = Math.max(rm, Math.abs(row[i]));
-        var yr = y2 + H2 - (rows.length - k) * rh;
-        for (var c = 0; c < cols; c++) { var v = row[Math.min(row.length - 1, Math.floor(c * bin))] / rm, col = L.div(v); ctx.fillStyle = 'rgb(' + (col[0] | 0) + ',' + (col[1] | 0) + ',' + (col[2] | 0) + ')'; ctx.fillRect(X2 + c * cw, yr, cw + 0.5, rh + 0.5); }
+        var row = rows[k], n2 = row.length, csum = new Float64Array(n2 + 1), e2 = 0;
+        for (i = 0; i < n2; i++) { csum[i + 1] = csum[i] + Math.abs(row[i]); e2 += row[i] * row[i]; }
+        var rms = Math.sqrt(e2 / n2) + 1e-12, yr = y2 + H2 - (rows.length - k) * rh;
+        for (var c = 0; c < cols; c++) {
+          var j0 = Math.floor(c * bin), lo2 = Math.max(0, j0 - half), hi2 = Math.min(n2, j0 + half + 1);
+          var env = (csum[hi2] - csum[lo2]) / (hi2 - lo2) / rms, a = Math.max(0, Math.min(1, (env - 0.9) / 2.2));   /* envelope in units of the row's RMS */
+          ctx.fillStyle = 'rgb(' + ((b0[0] + (hc[0] - b0[0]) * a) | 0) + ',' + ((b0[1] + (hc[1] - b0[1]) * a) | 0) + ',' + ((b0[2] + (hc[2] - b0[2]) * a) | 0) + ')';
+          ctx.fillRect(X2 + c * cw, yr, cw + 0.5, rh + 0.5);
+        }
       }
       L.font(ctx, 9); ctx.fillStyle = pal.label; ctx.textBaseline = 'top';
-      ctx.textAlign = 'left'; ctx.fillText('−' + L.fmt(Lg / L.rate, 0) + ' s', X2, h - 14); ctx.textAlign = 'center'; ctx.fillText('lag τ · rows: the stack after each new window, newest at the bottom', X2 + W2 / 2, h - 14); ctx.textAlign = 'right'; ctx.fillText('+' + L.fmt(Lg / L.rate, 0) + ' s', X2 + W2, h - 14);
+      ctx.textAlign = 'left'; ctx.fillText('−' + L.fmt(Lg / L.rate, 0) + ' s', X2, h - 14); ctx.textAlign = 'center'; ctx.fillText(W2 > 520 ? 'lag τ · rows: stack envelope / RMS after each window, newest last' : 'lag τ', X2 + W2 / 2, h - 14); ctx.textAlign = 'right'; ctx.fillText('+' + L.fmt(Lg / L.rate, 0) + ' s', X2 + W2, h - 14);
     },
     csv: function () {
       if (!this.nWin) return null;
