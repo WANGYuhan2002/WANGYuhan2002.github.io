@@ -866,7 +866,7 @@
       L.colorbar(ctx, x0, y0 + mh + 10, Math.min(2 * mw + 12, 220), 8, function (t) { return L.velCol(t * span, span); }, '−' + Math.round(span * 100) + ' %', '+' + Math.round(span * 100) + ' %', 'velocity vs. v = 1');
       if (narrow) return;
       /* left: the current (or last) shot gather with its picks */
-      var gw = x0 - 14 - 22, GH = h - 30, g0 = 18;                                 /* the gather keeps the full panel height: 48 traces stay readable */
+      var gw = x0 - 14 - 22, g0 = y0, GH = h - 12 - g0;                            /* full panel height (48 traces stay readable); starts where the maps start */
       L.panelLabel(ctx, this.phase === 'idle' ? 'SHOT GATHER' : 'SHOT ' + Math.min(this.shot + 1, this.S.length) + ' · GATHER AND PICKS', 14, yT);
       if (!this.buf) { L.font(ctx, 10, 400); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('waiting for the first shot', 14 + gw / 2, g0 + GH / 2); return; }
       var nR = this.R.length, len = this.len, kk = this.phase === 'survey' ? this.k : len, sp = GH / nR, peak = 1e-9, r, i;
