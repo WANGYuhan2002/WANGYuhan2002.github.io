@@ -851,7 +851,7 @@
     data: function (ctx, w, h) {
       var pal = L.pal, gx = this.gx, gz = this.gz, inv = this.inv, self = this, narrow = w < 640;
       var mw = narrow ? (w - 28 - 24) / 3 : Math.min((w * 0.78 - 52) / 3, (h - 62) * gx / gz), mh = mw * gz / gx;
-      var yT = Math.max(2, Math.round((h - mh - 52) / 2)), y0 = yT + 18, yB = y0 + mh + 34;   /* titles · maps · colour bar, centred as one group */
+      var yT = 2, y0 = 20;                                        /* top-aligned: the four panel titles share one row with the gather's */
       var x0 = narrow ? 14 : w - 14 - 3 * mw - 24;
       function map(X, title, val) {
         L.panelLabel(ctx, title, X, yT);
@@ -866,23 +866,23 @@
       L.colorbar(ctx, x0, y0 + mh + 10, Math.min(2 * mw + 12, 220), 8, function (t) { return L.velCol(t * span, span); }, '−' + Math.round(span * 100) + ' %', '+' + Math.round(span * 100) + ' %', 'velocity vs. v = 1');
       if (narrow) return;
       /* left: the current (or last) shot gather with its picks */
-      var gw = x0 - 14 - 22, GH = yB - 16 - y0;                                    /* same top and bottom as the map group */
+      var gw = x0 - 14 - 22, GH = h - 30, g0 = 18;                                 /* the gather keeps the full panel height: 48 traces stay readable */
       L.panelLabel(ctx, this.phase === 'idle' ? 'SHOT GATHER' : 'SHOT ' + Math.min(this.shot + 1, this.S.length) + ' · GATHER AND PICKS', 14, yT);
-      if (!this.buf) { L.font(ctx, 10, 400); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('waiting for the first shot', 14 + gw / 2, y0 + GH / 2); return; }
+      if (!this.buf) { L.font(ctx, 10, 400); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('waiting for the first shot', 14 + gw / 2, g0 + GH / 2); return; }
       var nR = this.R.length, len = this.len, kk = this.phase === 'survey' ? this.k : len, sp = GH / nR, peak = 1e-9, r, i;
       for (r = 0; r < nR; r++) for (i = 0; i < kk; i++) { var aa = Math.abs(this.buf[r * len + i]); if (aa > peak) peak = aa; }
       var stride = Math.max(1, Math.floor(len / (gw * 1.5)));
       ctx.lineWidth = 0.9; ctx.strokeStyle = L.rgba(pal.ink, 0.38);
       for (r = 0; r < nR; r++) {
         if (!this.use[r]) continue;
-        var yb = y0 + sp * (r + 0.5); ctx.beginPath();
+        var yb = g0 + sp * (r + 0.5); ctx.beginPath();
         for (i = 0; i < kk; i += stride) { var yy = yb - Math.max(-1.5 * sp, Math.min(1.5 * sp, this.buf[r * len + i] / peak * 2.2 * sp * 4)); if (i) ctx.lineTo(14 + i / (len - 1) * gw, yy); else ctx.moveTo(14, yy); }
         ctx.stroke();
       }
       var sh = this.phase === 'survey' ? this.shot : this.S.length - 1;
       ctx.fillStyle = L.rgba(pal.neg, 0.95);
-      this.rays.forEach(function (ry) { if (ry.shot === sh) { ctx.beginPath(); ctx.arc(14 + ry.pk / (len - 1) * gw, y0 + sp * (ry.ri + 0.5), 1.8, 0, 6.2832); ctx.fill(); } });
-      L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textBaseline = 'top'; ctx.textAlign = 'left'; ctx.fillText('0 s', 14, yB - 12); ctx.textAlign = 'right'; ctx.fillText(L.fmt(len / L.rate, 1) + ' s · dots = picks', 14 + gw, yB - 12);
+      this.rays.forEach(function (ry) { if (ry.shot === sh) { ctx.beginPath(); ctx.arc(14 + ry.pk / (len - 1) * gw, g0 + sp * (ry.ri + 0.5), 1.8, 0, 6.2832); ctx.fill(); } });
+      L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textBaseline = 'top'; ctx.textAlign = 'left'; ctx.fillText('0 s', 14, h - 11); ctx.textAlign = 'right'; ctx.fillText(L.fmt(len / L.rate, 1) + ' s · dots = picks', 14 + gw, h - 11);
     },
     csv: function () {
       if (!this.rays.length) return null;
