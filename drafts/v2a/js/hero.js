@@ -9,7 +9,7 @@
   function $(id) { return document.getElementById(id); }
   var hero = $('hero'), glc = $('fieldgl'), cpuc = $('field'), ov = $('overlay'), octx = ov.getContext('2d');
   var tcv = $('trace'), tctx = tcv.getContext('2d'), list = $('events'), countEl = $('count');
-  var revealBtn = $('reveal'), legend = $('legend'), seisLabel = $('seisLabel'), lab = $('lab'), pop = $('labPop');
+  var seisLabel = $('seisLabel'), lab = $('lab'), pop = $('labPop');
   function mm(q) { return !!(window.matchMedia && matchMedia(q).matches); }
   var reduce = mm('(prefers-reduced-motion: reduce)'), coarse = mm('(pointer: coarse)');
   if (coarse) $('hintText').textContent = 'Tap to make an earthquake';
@@ -17,7 +17,7 @@
   /* ---------------- state ---------------- */
   var eng, model, nx, ny, rate, TR, W = 0, H = 0, lastW = 0, lastH = 0, dpr = 1, res = 1;
   var tool = 'quake', panel = null, brushR = 14, brushS = 0.2, quakeM = 3.2, quakeRandom = true;
-  var arrMode = 'stations', arrN = 12, bc = 'absorb', preset = 'random', seed = 1, autoFree = false, agc = false, reveal = false, paused = false;
+  var arrMode = 'stations', arrN = 12, bc = 'absorb', preset = 'random', seed = 1, autoFree = false, agc = false, paused = false;   /* the velocity model is always drawn under the waves */
   var stations = [], netKind = 'single', marks = [], peak = 0.08, head = 0, total = 0, drag = null, cursor = null, cs = null, saved = null;
   var lastUserT = -1e9, lastAutoT = 0, backend = WE.gpuAvailable() ? 'gpu' : 'cpu', q = 1, watch = new WE.Watchdog();   /* q: grid scale, lowered for this visit if the device falls behind */
   var MAXSTA = 12;
@@ -39,7 +39,7 @@
     nx = eng.nx; ny = eng.ny; rate = eng.rate; TR = Math.round(rate * 6); res = Math.max(1, nx / 480);
     model = new WM.Model(nx, ny);
     if (saved) model.load(saved.m); else model.setPreset(preset, seed);
-    eng.setModel(model); setBC(bc); eng.setDisplay(pal, reveal);
+    eng.setModel(model); setBC(bc); eng.setDisplay(pal, true);
     marks = []; peak = 0.08; head = 0;
     if (saved && saved.st.length) setStations(saved.st.map(function (p) { return { x: p[0] * nx, y: p[1] * nx, code: p[2] }; }), saved.kind);
     else oneStation();
@@ -51,18 +51,12 @@
     eng.setBoundary(b === 'box' ? { top: false, bottom: false, left: false, right: false } : (b === 'free' ? { top: false, bottom: true, left: true, right: true } : { top: true, bottom: true, left: true, right: true }), 0.5);
   }
   function setPreset(p) { preset = p; model.setPreset(p, seed); eng.setModel(model); }
-  /* cross-sections get a free surface on top and the structure revealed; map views go back to absorbing edges */
+  /* cross-sections get a free surface on top; map views go back to absorbing edges */
   function choosePreset(p) {
     setPreset(p);
-    if (model.view() === 'section') { if (bc === 'absorb') { setBC('free'); autoFree = true; } if (!reveal) setReveal(true); }
+    if (model.view() === 'section') { if (bc === 'absorb') { setBC('free'); autoFree = true; } }
     else if (autoFree && bc === 'free') { setBC('absorb'); autoFree = false; }
     if (panel === 'model') openPanel('model');
-  }
-  function setReveal(on) {
-    reveal = on; eng.setDisplay(pal, on);
-    revealBtn.setAttribute('aria-pressed', on); legend.hidden = !on;
-    revealBtn.innerHTML = on ? 'Hide<span class="long"> structure</span>' : 'Reveal<span class="long"> hidden structure</span>';
-    var cb = $('pReveal'); if (cb) cb.checked = on;
   }
 
   /* ---------------- receivers ---------------- */
@@ -228,7 +222,7 @@
     if (k >= 0 && tool !== 'slow' && tool !== 'fast' && tool !== 'erase' && tool !== 'scatter') { capture(e); drag = { kind: 'station', k: k }; return; }   /* stations can always be moved */
     if (tool === 'quake') { quake(c[0], c[1], 'you', quakeRandom ? null : quakeM); return; }
     capture(e);
-    if (tool === 'slow' || tool === 'fast' || tool === 'erase') { if (tool !== 'erase' && !reveal) setReveal(true); drag = { kind: 'paint', last: c }; stamp(c); }
+    if (tool === 'slow' || tool === 'fast' || tool === 'erase') { drag = { kind: 'paint', last: c }; stamp(c); }
     else if (tool === 'scatter') { scatterAt(c); drag = { kind: 'scatter', last: c }; updateCounts(); }
     else if (tool === 'array') { if (arrMode === 'stations') addStation(c); else drag = { kind: 'array', x0: c[0], y0: c[1], x1: c[0], y1: c[1] }; }
   });
@@ -260,7 +254,6 @@
   hero.addEventListener('pointerup', endDrag); hero.addEventListener('pointercancel', endDrag);
   hero.addEventListener('pointerleave', function () { cursor = null; });
   $('hint').addEventListener('click', function () { selectTool('quake', true); quake(Math.round(nx * (0.3 + 0.45 * Math.random())), Math.round(ny * (0.2 + 0.4 * Math.random())), 'you', quakeRandom ? null : quakeM); lastUserT = performance.now(); });
-  revealBtn.addEventListener('click', function () { setReveal(!reveal); });
 
   /* ---------------- toolbar & option panels ---------------- */
   var TITLES = { quake: 'Acoustic source', slow: 'Low-velocity body', fast: 'High-velocity body', erase: 'Erase structure', scatter: 'Point scatterers', array: 'Receivers', model: 'Model & boundaries', info: 'What is this wavefield?' };
@@ -288,11 +281,11 @@
       '<label class="radio"><input type="radio" name="pbc" value="absorb"' + (bc === 'absorb' ? ' checked' : '') + '><span>Absorbing on all sides<small>a damping layer: waves leave the screen</small></span></label>' +
       '<label class="radio"><input type="radio" name="pbc" value="free"' + (bc === 'free' ? ' checked' : '') + '><span>Free surface on top<small>p = 0 at the top edge: reflects with reversed polarity</small></span></label>' +
       '<label class="radio"><input type="radio" name="pbc" value="box"' + (bc === 'box' ? ' checked' : '') + '><span>Reflecting box<small>p = 0 on all edges, no damping layer</small></span></label>' +
-      '<label class="chk"><input type="checkbox" id="pReveal"' + (reveal ? ' checked' : '') + '> show velocity structure</label>' +
       '<div class="btns"><button class="pbtn" type="button" id="pPause">' + (paused ? 'Resume' : 'Pause') + '</button><button class="pbtn" type="button" id="pClear">Clear waves</button></div>' +
       '<p class="pop-more">More models, arrays, fibre-optic cables, time reversal, tomography and elastic waves: <a href="lab/">the Wave Lab →</a></p>';
     else if (name === 'info') h += '<div class="pop-info">' +
       '<p><b>Equation.</b> The 2-D constant-density acoustic wave equation <code>∂²p/∂t² = c(x, z)² ∇²p</code>. p is pressure, so only P waves exist here: no S or surface waves (those are in the Wave Lab\'s elastic experiment). Cyan is compression (p &gt; 0), coral is rarefaction (p &lt; 0).</p>' +
+      '<p><b>Velocity model.</b> Always drawn under the waves: red is slower than the background velocity (v &lt; 1), blue is faster, and thin lines mark sharp interfaces. Recovering this structure from recorded waves is what <b>seismic tomography</b> does.</p>' +
       '<p><b>Source.</b> Each click adds an acoustic point source to the pressure field: a Ricker wavelet (the second derivative of a Gaussian) with a peak frequency of ' + eng.fHz.toFixed(1) + ' Hz, spread over a 5 × 5-cell Gaussian footprint. The magnitude only scales its amplitude.</p>' +
       '<p><b>Receivers.</b> Each station samples p(t) at its position every time step (bilinear interpolation); the strip below shows the last 6 s. Place stations one by one, or as a line or ring array.</p>' +
       '<p><b>Numerics.</b> Second-order finite differences (leapfrog in time, 5-point Laplacian) on a ' + nx + ' × ' + ny + ' grid, computed live ' + (eng.backend === 'gpu' ? 'on your GPU (WebGL2, 32-bit float textures)' : 'on your CPU') + '. Courant number c·Δt/Δx ≤ 0.69 &lt; 1/√2, about ' + Math.round(eng.ppw) + ' grid points per dominant wavelength.</p>' +
@@ -322,7 +315,6 @@
     pop.querySelectorAll('[data-pre]').forEach(function (b) { b.onclick = function () { choosePreset(b.dataset.pre); }; });
     if ((el = $('pReroll'))) el.onclick = function () { seed = 2 + Math.floor(Math.random() * 1e6); choosePreset('layered'); };
     pop.querySelectorAll('input[name="pbc"]').forEach(function (r) { r.onchange = function () { setBC(r.value); autoFree = false; }; });
-    if ((el = $('pReveal'))) el.onchange = function () { setReveal(this.checked); };
     if ((el = $('pPause'))) el.onclick = function () { paused = !paused; this.textContent = paused ? 'Resume' : 'Pause'; };
     if ((el = $('pClear'))) el.onclick = clearWaves;
   }
@@ -384,7 +376,7 @@
       else { W = r.width; H = r.height; ov.width = Math.round(W * dpr); ov.height = Math.round(H * dpr); }
     }, 200);
   });
-  document.addEventListener('themechange', function (e) { pal = WE.PAL[e.detail === 'light' ? 'light' : 'dark']; eng.setDisplay(pal, reveal); });
+  document.addEventListener('themechange', function (e) { pal = WE.PAL[e.detail === 'light' ? 'light' : 'dark']; eng.setDisplay(pal, true); });
 
   build(); start();
   if (!reduce) setTimeout(function () { quake(Math.round(nx * 0.64), Math.round(ny * 0.36), 'auto', 2.9); lastAutoT = performance.now(); }, 450);

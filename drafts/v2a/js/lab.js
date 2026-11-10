@@ -11,14 +11,14 @@
   function $(id) { return document.getElementById(id); }
   var root = document.documentElement, view = $('view'), glc = $('glc'), cpuc = $('cpuc'), ovc = $('ovc'), octx = ovc.getContext('2d');
   var dcv = $('datac'), dctx = dcv.getContext('2d'), insp = $('insp'), toolsEl = $('tools'), topt = $('topt');
-  var hudEl = $('hud'), progEl = $('prog'), toastEl = $('toast'), revealBtn = $('revealBtn'), legendEl = $('legend');
+  var hudEl = $('hud'), progEl = $('prog'), toastEl = $('toast'), legendEl = $('legend');
   var setPop = $('setPop'), sharePop = $('sharePop'), exportMenu = $('exportMenu'), exportBtn = $('exportBtn'), setBtn = $('setBtn');
   function mm(q) { return !!(window.matchMedia && matchMedia(q).matches); }
   var reduceMotion = mm('(prefers-reduced-motion: reduce)'), coarse = mm('(pointer: coarse)');
 
   var L = window.Lab = { CH: {}, ORDER: [], WE: WE, WM: WM, coarse: coarse, reduceMotion: reduceMotion, marks: [] };
   var S = L.S = { ch: 'play', backend: WE.gpuAvailable() ? 'gpu' : 'cpu', fine: false, speed: 1, sound: false, haptics: false,
-    reveal: false, paused: false, tool: 'quake', mag: 3.2, magRandom: true, fmul: 1, brushR: 14, brushS: 0.2, explain: false };
+    reveal: true, paused: false, tool: 'quake', mag: 3.2, magRandom: true, fmul: 1, brushR: 14, brushS: 0.2, explain: false };
   S.q = 1;                                                               /* grid scale; lowered automatically on a busy device */
   try { var saved = JSON.parse(localStorage.getItem('yw-lab') || '{}'); if (saved.backend === 'cpu' || (saved.backend === 'gpu' && WE.gpuAvailable())) S.backend = saved.backend; if (saved.fine) S.fine = true; if (saved.speed) S.speed = saved.speed; if (saved.q >= 0.5 && saved.q < 1) S.q = saved.q; } catch (e) {}
   function persist() { try { localStorage.setItem('yw-lab', JSON.stringify({ backend: S.backend, fine: S.fine, speed: S.speed, q: S.q })); } catch (e) {} }
@@ -38,7 +38,7 @@
     if (window.matchMedia) matchMedia('(prefers-color-scheme: light)').addEventListener('change', function (e) { if (!stored()) apply(e.matches ? 'light' : 'dark', false); });
     window.addEventListener('storage', function (e) { if (e.key === 'yw-theme' && (e.newValue === 'light' || e.newValue === 'dark')) apply(e.newValue, false); });
   })();
-  /* the lab shows waves on top of revealed structure most of the time, so the structure tint is lighter than on the homepage */
+  /* the velocity model is always shown under the waves, so the lab uses a lighter structure tint than the homepage */
   function labPal() { var b = WE.PAL[theme()], o = {}; for (var k in b) o[k] = b[k]; o.tint = b.tint * 0.55; return o; }
   L.pal = labPal();
   document.addEventListener('themechange', function () { L.pal = labPal(); if (L.eng) L.eng.setDisplay(L.pal, S.reveal); });
@@ -249,7 +249,7 @@
       var big = e.shiftKey, src = L.quake(c[0], c[1], big ? { mag: 7 } : (ch.quakeOpts ? ch.quakeOpts() : null));
       if (big) mega();
       if (ch.onQuake) ch.onQuake(src);
-    } else if (t === 'slow' || t === 'fast' || t === 'erase') { if (t !== 'erase' && !S.reveal && !ch.keepHidden) L.setReveal(true); capture(e); drag = { kind: 'paint', last: c }; stamp(c); }
+    } else if (t === 'slow' || t === 'fast' || t === 'erase') { capture(e); drag = { kind: 'paint', last: c }; stamp(c); }
     else if (t === 'scatter') { capture(e); drag = { kind: 'scatter', last: c }; scatterAt(c); }
   });
   view.addEventListener('pointermove', function (e) {
@@ -359,7 +359,7 @@
     var pal = L.pal, b = pal.bg, c = v >= 0 ? pal.pos : pal.neg, a = Math.min(1, Math.abs(v)); a = Math.pow(a, 0.8);
     return [b[0] + (c[0] - b[0]) * a, b[1] + (c[1] - b[1]) * a, b[2] + (c[2] - b[2]) * a];
   };
-  /* velocity colour (slow → red, fast → blue), as in the revealed structure */
+  /* velocity colour (slow → red, fast → blue), as in the structure shown under the waves */
   L.velCol = function (dv, span) {
     var pal = L.pal, b = pal.bg, c = dv < 0 ? pal.slow : pal.fast, a = Math.min(1, Math.abs(dv) / (span || 0.25)); a = Math.pow(a, 0.85) * 0.92;
     return [b[0] + (c[0] - b[0]) * a, b[1] + (c[1] - b[1]) * a, b[2] + (c[2] - b[2]) * a];
@@ -405,27 +405,12 @@
     progEl.style.width = p == null ? '0' : (Math.max(0, Math.min(1, p)) * 100).toFixed(1) + '%';
   }
   L.legendAcoustic = function () {
-    return '<span><i class="sw" style="background:var(--cyan)"></i>p &gt; 0</span><span><i class="sw" style="background:var(--coral)"></i>p &lt; 0</span>' +
-      (S.reveal ? '<span><i class="sw" style="background:var(--slow)"></i>slow</span><span><i class="sw" style="background:var(--fast)"></i>fast</span>' : '');
+    return '<span><i class="sw" style="background:var(--cyan)"></i>p &gt; 0</span><span><i class="sw" style="background:var(--coral)"></i>p &lt; 0</span>' + L.legendVel();
   };
+  L.legendVel = function () { return '<span><i class="sw" style="background:var(--slow)"></i>slow</span><span><i class="sw" style="background:var(--fast)"></i>fast</span>'; };
   L.updateLegend = function () { var ch = L.CH[S.ch]; legendEl.innerHTML = ch.legend ? ch.legend() : L.legendAcoustic(); };
   var tt = 0;
   L.toast = function (s, ms) { toastEl.textContent = s; toastEl.classList.add('on'); clearTimeout(tt); tt = setTimeout(function () { toastEl.classList.remove('on'); }, ms || 2600); };
-  L.setReveal = function (on) {
-    S.reveal = on; L.eng.setDisplay(L.pal, on);
-    revealLabel(on);
-    L.updateLegend(); var ch = L.CH[S.ch]; if (ch.onReveal) ch.onReveal(on);
-  };
-  revealBtn.addEventListener('click', function () { L.setReveal(!S.reveal); });
-  /* the structure toggle: an eye icon, with a text label where the bar has room */
-  function revealLabel(on) {
-    revealBtn.setAttribute('aria-pressed', on); revealBtn.setAttribute('aria-label', on ? 'Hide the velocity structure (V)' : 'Show the velocity structure (V)');
-    revealBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      (on ? '<path d="M3 3l18 18M10.6 5.1A10.4 10.4 0 0 1 12 5c6 0 10 7 10 7a17.6 17.6 0 0 1-3.2 3.9M6.6 6.6C3.9 8.4 2 12 2 12s4 7 10 7a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/>'
-          : '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>') +
-      '</svg><span class="lbl">' + (on ? 'Hide structure' : 'Show structure') + '</span>';
-  }
-  revealLabel(S.reveal);
   function mega() {
     if (!reduceMotion) { view.classList.remove('shake'); void view.offsetWidth; view.classList.add('shake'); }
     if (S.haptics && navigator.vibrate) navigator.vibrate([60, 40, 120]);
@@ -520,7 +505,7 @@
   }
   function shareURL() {
     saveCh(); var ch = L.CH[S.ch];
-    return encode({ v: 1, c: S.ch, r: S.reveal ? 1 : 0, s: ch.serialize ? ch.serialize() : null }).then(function (code) { return location.origin + location.pathname + '#s=' + code; });
+    return encode({ v: 1, c: S.ch, s: ch.serialize ? ch.serialize() : null }).then(function (code) { return location.origin + location.pathname + '#s=' + code; });
   }
   var lastURL = '';
   function copyLink() {
@@ -584,15 +569,13 @@
     document.querySelectorAll('.rail a').forEach(function (a) { if (a.dataset.ch === id) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
     if (loaded) ch.load(loaded);
     S.tool = (ch.tools && ch.tools[0]) || 'none'; closeTopt();
-    if (S.reveal !== !!ch.revealDefault && !loaded) S.reveal = !!ch.revealDefault;
-    revealLabel(S.reveal);
     L.build(); renderTools(); L.refresh(); L.updateLegend();
     document.title = ch.title + ' · Wave Lab · Yuhan Wang';
   };
   function route() {
     var h = location.hash.slice(1);
     if (h.indexOf('s=') === 0) {
-      decode(h.slice(2)).then(function (o) { if (o && L.CH[o.c]) { S.reveal = !!o.r; L.go(o.c, o.s || {}); L.toast('Shared scenario loaded'); } else L.go('play'); }, function () { L.toast('This link could not be read'); L.go('play'); });
+      decode(h.slice(2)).then(function (o) { if (o && L.CH[o.c]) { L.go(o.c, o.s || {}); L.toast('Shared scenario loaded'); } else L.go('play'); }, function () { L.toast('This link could not be read'); L.go('play'); });
       return;
     }
     L.go(L.CH[h] ? h : (L.eng ? S.ch : 'play'));
@@ -605,9 +588,8 @@
     var k = e.key, ch = L.CH[S.ch];
     if (/^[1-6]$/.test(k)) { location.hash = L.ORDER[+k - 1]; return; }
     if (k === ' ' || k === 'p' || k === 'P') { e.preventDefault(); S.paused = !S.paused; return; }
-    if (k === 'v' || k === 'V') { L.setReveal(!S.reveal); return; }
     if (k === 'Escape') { closePops(); closeTopt(); return; }
-    if (k === '?') { L.toast('1–6 experiments · Q S F E C tools · V structure · Space pause · Shift-click: M 7', 5000); return; }
+    if (k === '?') { L.toast('1–6 experiments · Q S F E C T tools · Space pause · Shift-click: M 7', 5000); return; }
     var t = (ch.tools || []).filter(function (t) { return t !== '|' && TOOL[t][1].toLowerCase() === k.toLowerCase(); })[0];
     if (t) L.selectTool(t, true);
   });

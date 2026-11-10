@@ -93,7 +93,7 @@
     },
     choose: function (p, seed) {
       var st = this.st; L.model.setPreset(p, seed || L.model.seed); L.setModel(); st.did.model = true;
-      if (L.model.view() === 'section') { if (st.bc === 'absorb') { st.bc = 'free'; st.autoFree = true; L.setBC('free'); } if (!S.reveal) L.setReveal(true); }
+      if (L.model.view() === 'section') { if (st.bc === 'absorb') { st.bc = 'free'; st.autoFree = true; L.setBC('free'); } }
       else if (st.autoFree && st.bc === 'free') { st.bc = 'absorb'; st.autoFree = false; L.setBC('absorb'); }
       L.refresh();
     },
@@ -203,7 +203,7 @@
     ctx.strokeStyle = L.pal.tick; ctx.strokeRect(X + 0.5, Y + 0.5, w - 1, h - 1);
   }
   L.register({
-    id: 'arrays', title: 'Arrays & DAS', physics: 'acoustic', revealDefault: true,
+    id: 'arrays', title: 'Arrays & DAS', physics: 'acoustic',
     goal: 'Record the same wavefield in two ways: with a line of seismometers, or with a fibre-optic cable that turns every few metres of glass into a strain sensor.',
     tools: ['quake', '|', 'line', 'ring', 'fiber'],
     shareWhat: 'the model, the array or the cable you laid out',
@@ -599,9 +599,9 @@
   function dot(a, b) { var s = 0; for (var i = 0; i < a.length; i++) s += a[i] * b[i]; return s; }
   L.register({
     id: 'tomo', title: 'Tomography', physics: 'acoustic',
-    goal: 'Hide a velocity model, shoot a survey through it, and recover the model from nothing but first-arrival travel times.',
+    goal: 'Shoot a survey through a velocity model, recover the model from nothing but first-arrival travel times, and compare it with the truth.',
     tools: ['quake', '|', 'slow', 'fast', 'erase'],
-    shareWhat: 'the hidden model, your edits and the survey geometry',
+    shareWhat: 'the true model, your edits and the survey geometry',
     st: { m: null, truth: 'random', geom: 'ring', smooth: 0.5, rays: 'bent', did: {} },
     noMarks: false,
     enter: function () {
@@ -629,7 +629,7 @@
     gridSetup: function () {
       var b = this.box, W = b[2] - b[0], H = b[3] - b[1];
       this.gx = 18; this.gz = Math.max(6, Math.round(18 * H / W)); this.cw = W / this.gx; this.chh = H / this.gz;
-      /* the hidden truth on the inversion grid: mean slowness per cell */
+      /* the true model on the inversion grid: mean slowness per cell */
       var nC = this.gx * this.gz, s = new Float64Array(nC), c = new Float64Array(nC), nx = L.nx;
       for (var y = Math.ceil(b[1]); y <= b[3]; y++) for (var x = Math.ceil(b[0]); x <= b[2]; x++) {
         var j = this.cell(x, y); if (j < 0) continue; var v = L.model.mask[y * nx + x] ? L.WE.VSCAT : L.model.v[y * nx + x]; s[j] += 1 / v; c[j]++;
@@ -769,12 +769,12 @@
     steps: function () {
       var st = this.st, d = st.did, ph = this.phase, inv = this.inv;
       return [
-        { t: 'Hide a model', d: 'Pick a hidden truth, or paint your own with the slow/fast brushes. <b>Show structure</b> (V) lets you peek.', c: '<div class="grid3">' + L.opt('truth', 'random', 'Random blobs', st.truth === 'random') + L.opt('truth', 'checker', 'Checker&shy;board', st.truth === 'checker') + L.opt('truth', 'custom', 'Paint your own', st.truth === 'custom') + '</div>', done: !!d.truth || ph !== 'idle' },
+        { t: 'Pick the true model', d: 'The survey will try to recover it; it stays visible under the waves. Or paint your own with the slow and fast brushes.', c: '<div class="grid3">' + L.opt('truth', 'random', 'Random blobs', st.truth === 'random') + L.opt('truth', 'checker', 'Checker&shy;board', st.truth === 'checker') + L.opt('truth', 'custom', 'Paint your own', st.truth === 'custom') + '</div>', done: !!d.truth || ph !== 'idle' },
         { t: 'Run the survey', d: st.geom === 'ring' ? '12 shots fired one after another, 48 receivers all around: rays cross in every direction.' : 'Cross-well: 10 shots in a borehole on the left, 40 receivers in one on the right. Rays are nearly horizontal.',
           c: L.seg('geom', [['ring', 'Surround'], ['cross', 'Cross-well']], st.geom) + '<div class="btns">' + L.btn('survey', ph === 'survey' ? 'Surveying…' : (ph === 'done' ? 'Run again' : 'Fire ' + this.S.length + ' shots'), 'go', ph === 'survey') + '</div>' + (ph === 'survey' ? '<p class="live" id="tomoLive"></p>' : ''), done: ph === 'done' },
         { t: 'Invert the travel times', d: 'First arrivals are picked automatically, then a damped, smoothed least-squares problem (CGLS) finds the slowness in ' + this.gx + ' × ' + this.gz + ' cells that best explains them. <b>Bent rays</b> re-bend every ray through the current model, three times.',
           c: L.seg('rays', [['straight', 'Straight rays'], ['bent', 'Bent rays']], st.rays) + L.range('smooth', 'Smoothing', 0, 100, 1, Math.round(st.smooth * 100), Math.round(st.smooth * 100) + ' %'), done: !!inv && ph === 'done' },
-        { t: 'Compare with the truth', d: 'The panel below shows the hidden truth, the recovered model and the ray coverage. Try the checkerboard: it shows where the survey can resolve detail, and where the rays smear it.', done: !!d.compare }
+        { t: 'Compare with the truth', d: 'The panel below shows the true model, the recovered model and the ray coverage. Try the checkerboard: it shows where the survey can resolve detail, and where the rays smear it.', done: !!d.compare }
       ];
     },
     results: function () {
@@ -792,7 +792,7 @@
     },
     act: function (a, v) {
       var st = this.st;
-      if (a === 'truth') { st.truth = v; st.did.truth = true; st.m = null; L.model.setPreset(v === 'checker' ? 'checker' : (v === 'custom' ? 'homogeneous' : 'random')); L.setModel(); this.reset(); if (v === 'custom') { L.selectTool('slow'); if (!S.reveal) L.setReveal(true); } L.refresh(); }
+      if (a === 'truth') { st.truth = v; st.did.truth = true; st.m = null; L.model.setPreset(v === 'checker' ? 'checker' : (v === 'custom' ? 'homogeneous' : 'random')); L.setModel(); this.reset(); if (v === 'custom') L.selectTool('slow'); L.refresh(); }
       else if (a === 'geom') { if (st.geom !== v) { st.geom = v; L.eng.clear(); this.geometry(); this.reset(); this.head(); L.refresh(); } }
       else if (a === 'survey') this.startSurvey();
       else if (a === 'rays') { if (st.rays !== v) { st.rays = v; this.head(); if (this.rays.length && this.phase !== 'survey') this.invert(); L.refresh(); } }
@@ -813,7 +813,6 @@
       if (this.rays.length && this.phase !== 'survey') this.tmr = setTimeout(function () { self.invert(); var r = document.querySelector('.res'); if (r) r.outerHTML = self.results(); }, 220);
     },
     onEdit: function () { if (this.st.truth !== 'custom') this.st.truth = 'custom'; this.reset(); L.refresh(); },
-    onReveal: function () { if (this.phase === 'done' && !this.st.did.compare) { this.st.did.compare = true; L.refresh(); } },
     ffwd: function () { return this.phase === 'survey'; },
     busy: function () { return this.phase !== 'idle'; },                    /* never rebuild under a survey or its results */
     ffwdCap: function () { return Math.max(1, this.len - this.k); },
@@ -825,7 +824,7 @@
         this.pick(); this.invert(); this.shot++;                              /* during the survey: straight rays, fast, after every shot */
         if (this.shot < this.S.length) this.nextShot();
         else {
-          var self = this; this.phase = 'done'; L.eng.clear(); this.st.did.compare = this.st.did.compare || S.reveal;
+          var self = this; this.phase = 'done'; L.eng.clear(); this.st.did.compare = true;            /* truth and result are side by side now */
           if (this.st.rays === 'bent') { this.bending = true; setTimeout(function () { self.invert(); self.bending = false; L.refresh(); }, 40); }   /* let the screen update first */
           L.refresh();
         }
@@ -833,7 +832,7 @@
     },
     after: function () { if (this.phase === 'survey') L.text('tomoLive', 'Shot ' + (this.shot + 1) + ' of ' + this.S.length + ' · ' + this.rays.length + ' travel times picked'); },
     progress: function () { return this.phase === 'survey' ? (this.shot + this.k / this.len) / this.S.length : null; },
-    hud: function () { if (this.phase === 'survey') return ['<b class="em">Shot ' + (this.shot + 1) + ' / ' + this.S.length + '</b>', 'fast-forward'];   /* the bar under the field shows the progress */ if (this.phase === 'done') return [this.bending ? 'Bending rays…' : this.rays.length + ' rays']; return ['Hidden model']; },
+    hud: function () { if (this.phase === 'survey') return ['<b class="em">Shot ' + (this.shot + 1) + ' / ' + this.S.length + '</b>', 'fast-forward'];   /* the bar under the field shows the progress */ if (this.phase === 'done') return [this.bending ? 'Bending rays…' : this.rays.length + ' rays']; return ['Ready to shoot']; },
     legend: function () { return L.legendAcoustic() + '<span>★ shot</span><span>▼ receiver</span><span>— ray</span>'; },
     overlay: function (ctx) {
       var pal = L.pal, self = this;
@@ -854,14 +853,13 @@
       var pal = L.pal, gx = this.gx, gz = this.gz, inv = this.inv, self = this, narrow = w < 640;
       var mw = narrow ? (w - 28 - 16) / 3 : Math.min((w * 0.66 - 28) / 3, (h - 58) * gx / gz), mh = mw * gz / gx, y0 = 18;
       var x0 = narrow ? 14 : w - 14 - 3 * mw - 16;
-      function map(X, title, val, hidden) {
+      function map(X, title, val) {
         L.panelLabel(ctx, title, X, 2);
         for (var k = 0; k < gz; k++) for (var i = 0; i < gx; i++) { var c = val(k * gx + i); ctx.fillStyle = 'rgb(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ')'; ctx.fillRect(X + i * mw / gx, y0 + k * mh / gz, mw / gx + 0.6, mh / gz + 0.6); }
         ctx.strokeStyle = pal.tick; ctx.strokeRect(X + 0.5, y0 + 0.5, mw - 1, mh - 1);
-        if (hidden) { ctx.fillStyle = L.rgba(pal.bg, 0.86); ctx.fillRect(X, y0, mw, mh); L.font(ctx, 10, 400); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('hidden · Show structure to peek', X + mw / 2, y0 + mh / 2); }
       }
-      var hide = !(S.reveal || this.phase === 'done'), span = this.span();
-      map(x0, hide ? 'TRUE MODEL · HIDDEN' : 'TRUE MODEL', function (j) { return L.velCol(self.truth[j] - 1, span); }, hide);
+      var span = this.span();
+      map(x0, 'TRUE MODEL', function (j) { return L.velCol(self.truth[j] - 1, span); });
       map(x0 + mw + 8, inv ? 'RECOVERED · ' + (inv.mode === 'bent' ? 'BENT' : 'STRAIGHT') + ' RAYS' : 'RECOVERED', function (j) { return inv ? L.velCol(inv.v[j] - 1, span) : pal.bg; }, false);
       map(x0 + 2 * (mw + 8), 'RAY COVERAGE', function (j) { var a = inv ? Math.min(1, inv.hits[j] / (0.5 * inv.hmax)) : 0, b = pal.bg, c = pal.ink; return [b[0] + (c[0] - b[0]) * a * 0.8, b[1] + (c[1] - b[1]) * a * 0.8, b[2] + (c[2] - b[2]) * a * 0.8]; }, false);
       if (!inv) { L.font(ctx, 10, 400); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('run the survey', x0 + mw + 8 + mw / 2, y0 + mh / 2); }
@@ -1059,7 +1057,7 @@
      ====================================================================================== */
   var KINDS = [['0', 'Explosion'], ['1', 'Shear'], ['2', 'Vertical force']], KMUL = [1, 0.35, 2.2];   /* shear sources radiate ~5× more S than P: scaled down so both stay readable */
   L.register({
-    id: 'elastic', title: 'Elastic waves', physics: 'elastic', revealDefault: true,
+    id: 'elastic', title: 'Elastic waves', physics: 'elastic',
     goal: 'Rock is solid, so it carries two kinds of body waves, P and S, and, along the free surface, the slow and strong Rayleigh wave.',
     tools: ['quake', '|', 'slow', 'fast', 'erase', 'scatter'],
     shareWhat: 'the model, your edits, the source type and the station',
@@ -1132,7 +1130,7 @@
     moveHandle: function (id, c) { this.sta[0].x = c[0]; L.setProbes([[c[0], 0.5]]); },
     onSamples: function (b, n, nP) { this.rec.push(b, n, nP, 0); },
     gain: function () { return this.g; }, gain2: function () { return this.g; },
-    legend: function () { return '<span><i class="sw" style="background:var(--cyan)"></i>P · |∇·v|</span><span><i class="sw" style="background:var(--amber)"></i>S · |∇×v|</span>' + (S.reveal ? '<span><i class="sw" style="background:var(--slow)"></i>slow</span><span><i class="sw" style="background:var(--fast)"></i>fast</span>' : ''); },
+    legend: function () { return '<span><i class="sw" style="background:var(--cyan)"></i>P · |∇·v|</span><span><i class="sw" style="background:var(--amber)"></i>S · |∇×v|</span>' + L.legendVel(); },
     overlay: function (ctx) { stations(ctx, this.sta); },
     data: function (ctx, w, h) {
       var pal = L.pal, narrow = w < 640, hw = narrow ? 0 : Math.min(200, Math.round(h * 0.95)), Wt = w - 28 - (hw ? hw + 18 : 0), H = h - 26, half = H / 2, rec = this.rec;

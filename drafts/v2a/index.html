@@ -157,12 +157,10 @@ img{display:block; max-width:100%}
 .live::before{content:"● "; animation:blink 1.6s infinite}
 @keyframes blink{50%{opacity:.25}}
 #trace{display:block; width:100%; height:72px; transition:height .3s ease}
-.reveal{flex:none; font:500 .66rem var(--mono); letter-spacing:.14em; text-transform:uppercase; color:var(--ink2); background:rgba(var(--veil),.5); border:1px solid var(--line2); border-radius:999px; padding:.42rem .8rem; cursor:pointer; transition:all .2s}
-.reveal:hover{border-color:var(--cyan); color:var(--ink)}
-.reveal[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}
-.legend{position:absolute; right:calc(var(--pad) + 62px); bottom:calc(100% + .6rem); margin:0; max-width:min(420px,80vw); padding:.75rem .9rem; border-radius:14px; border:1px solid var(--line2); background:rgba(var(--veil),.74); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); font:400 .78rem/1.5 var(--sans); color:var(--ink2)}
-.legend b{color:var(--ink)}
-.legend .sw{display:inline-block; width:10px; height:10px; border-radius:2px; vertical-align:-1px; margin:0 .2rem 0 .1rem}
+/* velocity legend: the model is always drawn under the waves */
+.vlegend{flex:none; display:inline-flex; align-items:center; gap:.65rem; font:500 .64rem var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--ink2); background:rgba(var(--veil),.5); border:1px solid var(--line2); border-radius:999px; padding:.42rem .8rem; cursor:help}
+.vlegend > span{display:inline-flex; align-items:center; gap:.35rem}
+.vlegend i{display:inline-block; width:10px; height:10px; border-radius:3px}
 
 /* ============================== SECTIONS ============================== */
 .sec{max-width:1240px; margin:0 auto; padding:clamp(4.5rem,13vh,8.5rem) var(--pad)}
@@ -247,13 +245,13 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
   .cta-row .hint{padding:.6rem .95rem; font-size:.86rem}
   .long{display:none}
   .short{display:inline}
-  .legend{right:var(--pad)}
   .catalog .cat-h{margin-bottom:.25rem}
   #events li:not(:first-child){display:none}
   #events li{grid-template-columns:auto auto}
   #events .who{display:none}
   .seis-row > span{letter-spacing:.08em}
-  .reveal{padding:.38rem .6rem; letter-spacing:.06em}
+  .vlegend{padding:.38rem .6rem; letter-spacing:.06em; gap:.45rem}
+  .vlegend .long{display:none}
 }
 @media (prefers-reduced-motion:reduce){
   .pulse, .live::before, .portrait .rings circle{animation:none}
@@ -313,11 +311,10 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
     <div class="seis-row">
       <span><span class="live">Live</span> · <span id="seisLabel">Station YW01 · pressure</span></span>
       <span class="seis-r">
-        <button class="reveal" id="reveal" type="button" aria-pressed="false">Reveal<span class="long"> hidden structure</span></button>
+        <span class="vlegend" title="The background is the velocity model. Recovering it from recorded waves is what seismic tomography does."><span class="long">Velocity model</span><span><i style="background:var(--slow)"></i>slow</span><span><i style="background:var(--fast)"></i>fast</span></span>
       </span>
     </div>
     <canvas id="trace" aria-hidden="true"></canvas>
-    <p class="legend" id="legend" hidden><span class="sw" style="background:var(--slow)"></span>slow &nbsp;<span class="sw" style="background:var(--fast)"></span>fast — the velocity structure that bends your waves. Recovering it from recorded waves is what <b>seismic tomography</b> does.</p>
   </div>
 </section>
 
@@ -383,7 +380,7 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
     <a class="lc" href="lab/#play"><span class="n">01</span><h3>Playground</h3><p>Paint slow and fast rock, drop scatterers, pick a cross-section and make earthquakes.</p><span class="ar" aria-hidden="true">→</span></a>
     <a class="lc" href="lab/#arrays"><span class="n">02</span><h3>Arrays &amp; DAS</h3><p>Lay out seismometers, or draw a fibre-optic cable and watch its strain-rate waterfall.</p><span class="ar" aria-hidden="true">→</span></a>
     <a class="lc" href="lab/#tr"><span class="n">03</span><h3>Time reversal</h3><p>Record a wave on a ring of sensors, play it backwards, and see it refocus on its source.</p><span class="ar" aria-hidden="true">→</span></a>
-    <a class="lc" href="lab/#tomo"><span class="n">04</span><h3>Tomography</h3><p>Hide a model, shoot a survey, pick first arrivals and invert them for the velocity.</p><span class="ar" aria-hidden="true">→</span></a>
+    <a class="lc" href="lab/#tomo"><span class="n">04</span><h3>Tomography</h3><p>Shoot a survey through a velocity model, pick first arrivals, invert them, and compare with the truth.</p><span class="ar" aria-hidden="true">→</span></a>
     <a class="lc" href="lab/#noise"><span class="n">05</span><h3>Ambient noise</h3><p>Cross-correlate random noise at two stations until the wave between them appears.</p><span class="ar" aria-hidden="true">→</span></a>
     <a class="lc" href="lab/#elastic"><span class="n">06</span><h3>Elastic waves</h3><p>Switch to solid rock: P, S and Rayleigh waves, S − P times and particle motion.</p><span class="ar" aria-hidden="true">→</span></a>
   </div>
