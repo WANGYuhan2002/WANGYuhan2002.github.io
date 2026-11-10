@@ -23,16 +23,21 @@
   'use strict';
   var C = 0.5, VSCAT = 0.35, MAXS = 64, PBATCH = 32, THRESH = 0.05;
 
-  /* canvas palettes: "glow" on the dark theme, "ink on paper" on the light theme */
+  /* canvas palettes: "glow" on the dark theme, "ink on paper" on the light theme.
+     Matter is cool and quiet (vs/vf: the structure tint, berry = slow, cobalt = fast); energy is bright
+     (pos/neg/sw: the waves). slow/fast are the saturated swatches for legends, colour bars and the brush.
+     edge/edgeA: interface lines; core: white core on strong amplitudes; pn: data-panel background. */
   var PAL = {
-    dark: { bg: [7, 10, 16], pos: [79, 216, 232], neg: [255, 122, 92], slow: [235, 88, 64], fast: [64, 132, 255], ink: [238, 243, 246],
-      sw: [255, 186, 72], hot: [255, 214, 110], halo: 'rgba(0,0,0,.85)', mix: 0.9, tint: 0.42, faint: 0.07,
-      trace: 'rgba(238,243,246,.88)', fill: 'rgba(79,216,232,.45)', tick: 'rgba(255,255,255,.08)', grid: 'rgba(255,255,255,.07)',
-      label: '#7c8a95', origin: '255,122,92', panel: '#0b0f17' },
-    light: { bg: [243, 245, 247], pos: [11, 120, 148], neg: [217, 71, 47], slow: [217, 71, 47], fast: [47, 111, 214], ink: [16, 29, 39],
-      sw: [180, 110, 0], hot: [214, 92, 20], halo: 'rgba(255,255,255,.95)', mix: 0.92, tint: 0.34, faint: 0.06,
-      trace: 'rgba(16,29,39,.85)', fill: 'rgba(11,120,148,.3)', tick: 'rgba(16,29,39,.14)', grid: 'rgba(16,29,39,.08)',
-      label: '#5d6f7b', origin: '217,71,47', panel: '#eef1f4' }
+    dark: { bg: [8, 11, 19], pos: [86, 225, 240], neg: [255, 128, 88], slow: [217, 86, 155], fast: [77, 134, 255],
+      vs: [124, 50, 108], vf: [38, 86, 196], edge: [170, 190, 230], edgeA: 0.32, ink: [238, 242, 248],
+      sw: [255, 190, 84], hot: [255, 226, 150], halo: 'rgba(4,6,12,.9)', mix: 0.92, core: 0.30, tint: 0.50, faint: 0.07,
+      trace: 'rgba(238,242,248,.86)', fill: 'rgba(86,225,240,.38)', tick: 'rgba(148,170,214,.18)', grid: 'rgba(148,170,214,.08)',
+      label: '#8b97ab', origin: '255,128,88', panel: '#0b1019', pn: [11, 16, 25] },
+    light: { bg: [246, 245, 240], pos: [0, 124, 143], neg: [212, 71, 43], slow: [181, 60, 125], fast: [43, 97, 212],
+      vs: [132, 84, 112], vf: [62, 96, 168], edge: [40, 52, 80], edgeA: 0.30, ink: [19, 26, 38],
+      sw: [165, 104, 0], hot: [196, 84, 20], halo: 'rgba(255,255,255,.95)', mix: 0.94, core: 0, tint: 0.26, faint: 0.06,
+      trace: 'rgba(19,26,38,.84)', fill: 'rgba(0,124,143,.26)', tick: 'rgba(28,36,52,.18)', grid: 'rgba(28,36,52,.07)',
+      label: '#667185', origin: '212,71,43', panel: '#fbfaf7', pn: [251, 250, 247] }
   };
   /* soft threshold + gamma: weak coda stays invisible, the main pulses keep their shape */
   var LUT = new Float32Array(1025);
@@ -116,15 +121,33 @@
   function elDamping(e) { for (var y = 0; y < e.ny; y++) for (var x = 0; x < e.nx; x++) e.D[y * e.nx + x] = Math.exp(-hAt(e, x, y)); }
 
   /* ---------- CPU background colours (velocity tint + interface lines) ---------- */
+  function padR(e, R, k) { return [Math.max(0, R[0] - k), Math.max(0, R[1] - k), Math.min(e.nx - 1, R[2] + k), Math.min(e.ny - 1, R[3] + k)]; }
   function cpuBackground(e, R) {
-    var nx = e.nx, ny = e.ny, pal = e.pal, a = e.reveal ? pal.tint : pal.faint, bg = pal.bg, ink = pal.ink, v = e.v, B = e.bgc;
-    for (var y = R[1]; y <= R[3]; y++) for (var x = R[0]; x <= R[2]; x++) {
-      var i = y * nx + x, vi = v[i], dv = vi - 1, t = Math.min(1, Math.abs(dv) / 0.4) * a, col = dv < 0 ? pal.slow : pal.fast;
+    var nx = e.nx, ny = e.ny, pal = e.pal, a = e.reveal ? pal.tint : pal.faint, bg = pal.bg, v = e.v, B = e.bgc;
+    var vs = pal.vs || pal.slow, vf = pal.vf || pal.fast, ed = pal.edge || pal.ink, eA = pal.edgeA != null ? pal.edgeA : 0.45, x, y, i;
+    /* interface lines: a smooth edge weight on R grown by one cell, then one [1 2 1]⊗[1 2 1]/16 blur,
+       so the line is a soft 2–3-cell stroke without staircase steps after upscaling */
+    var W0 = null, x0 = Math.max(0, R[0] - 1), y0 = Math.max(0, R[1] - 1), x1 = Math.min(nx - 1, R[2] + 1), y1 = Math.min(ny - 1, R[3] + 1), W = x1 - x0 + 1;
+    if (e.reveal) {
+      W0 = e._w0 && e._w0.length >= W * (y1 - y0 + 1) ? e._w0 : (e._w0 = new Float32Array(W * (y1 - y0 + 1)));
+      for (y = y0; y <= y1; y++) for (x = x0; x <= x1; x++) {
+        i = y * nx + x; var vi = v[i], d = 0;
+        if (x < nx - 1) d = Math.abs(v[i + 1] - vi); if (y < ny - 1) d = Math.max(d, Math.abs(v[i + nx] - vi));
+        var s = (d - 0.02) / 0.08; s = s <= 0 ? 0 : (s >= 1 ? 1 : s);
+        W0[(y - y0) * W + (x - x0)] = s * s * (3 - 2 * s);
+      }
+    }
+    for (y = R[1]; y <= R[3]; y++) for (x = R[0]; x <= R[2]; x++) {
+      i = y * nx + x; var dv = v[i] - 1, t = Math.min(1, Math.abs(dv) / 0.4) * a, col = dv < 0 ? vs : vf;
       var r = bg[0] + (col[0] - bg[0]) * t, g = bg[1] + (col[1] - bg[1]) * t, b = bg[2] + (col[2] - bg[2]) * t;
-      if (e.reveal) {                                                   /* interface lines with a soft edge: smooth after bilinear upscaling */
-        var d = 0; if (x < nx - 1) d = Math.abs(v[i + 1] - vi); if (y < ny - 1) d = Math.max(d, Math.abs(v[i + nx] - vi));
-        var w = d > 0.04 ? Math.min(1, (d - 0.04) / 0.05) * 0.45 : 0;
-        if (w) { r += (ink[0] - r) * w; g += (ink[1] - g) * w; b += (ink[2] - b) * w; }
+      if (W0) {
+        var acc = 0;
+        for (var dy = -1; dy <= 1; dy++) {
+          var yy = y + dy; yy = yy < y0 ? y0 : (yy > y1 ? y1 : yy); var row = (yy - y0) * W, ky = dy ? 1 : 2;
+          for (var dx = -1; dx <= 1; dx++) { var xx = x + dx; xx = xx < x0 ? x0 : (xx > x1 ? x1 : xx); acc += (dx ? ky : 2 * ky) * W0[row + xx - x0]; }
+        }
+        var w = acc / 16 * eA;
+        if (w > 0.001) { r += (ed[0] - r) * w; g += (ed[1] - g) * w; b += (ed[2] - b) * w; }
       }
       B[3 * i] = r; B[3 * i + 1] = g; B[3 * i + 2] = b;
     }
@@ -143,7 +166,7 @@
     cpuInit(this, o); acDamping(this); cpuBackground(this, rectOf(this));
   }
   var CA = CpuAcoustic.prototype;
-  CA.setModel = function (model, r) { var R = rectOf(this, r); acMaterial(this, model, R); cpuBackground(this, R); };
+  CA.setModel = function (model, r) { var R = rectOf(this, r); acMaterial(this, model, R); cpuBackground(this, padR(this, R, 2)); };
   CA.setBoundary = function (edges, alpha) { if (edges) this.edges = edges; if (alpha != null) this.alpha = alpha; acDamping(this); };
   CA.setDisplay = function (pal, reveal) { this.pal = pal; this.reveal = !!reveal; cpuBackground(this, rectOf(this)); };
   CA.addSource = function (o) { return addSource(this, o); };
@@ -166,18 +189,22 @@
     return out;
   };
   CA.render = function (o) {
-    var d = this.img.data, u = this.u1, N = this.N, bg = this.bgc, pal = this.pal, P0 = pal.pos, N0 = pal.neg, mx = pal.mix, g = o.gain, m = 0, i, j;
+    var d = this.img.data, u = this.u1, N = this.N, bg = this.bgc, pal = this.pal, P0 = pal.pos, N0 = pal.neg, mx = pal.mix, cr = pal.core || 0, g = o.gain, m = 0, i, j;
     if (o.mode === 'max' && this.mx) {
       var X = this.mx, pk = 0; for (i = 0; i < N; i++) if (X[i] > pk) pk = X[i];
       var gm = (o.gain2 || 1) / Math.sqrt(pk || 1), H = pal.hot;
-      for (i = 0, j = 0; i < N; i++, j += 4) { var a = Math.sqrt(X[i]) * gm; if (a > 1) a = 1; var t = LUT[a * 1024 | 0], kk = 1 - t * mx;
-        d[j] = bg[3 * i] * kk + H[0] * t; d[j + 1] = bg[3 * i + 1] * kk + H[1] * t; d[j + 2] = bg[3 * i + 2] * kk + H[2] * t; d[j + 3] = 255; }
+      for (i = 0, j = 0; i < N; i++, j += 4) { var a = Math.sqrt(X[i]) * gm; if (a > 1) a = 1; var t = LUT[a * 1024 | 0], kk = 1 - t * mx, hc = cr * t * t * t;
+        var r0 = bg[3 * i] * kk + H[0] * t, g0 = bg[3 * i + 1] * kk + H[1] * t, b0 = bg[3 * i + 2] * kk + H[2] * t;
+        if (hc) { r0 += (255 - r0) * hc; g0 += (255 - g0) * hc; b0 += (255 - b0) * hc; }
+        d[j] = r0; d[j + 1] = g0; d[j + 2] = b0; d[j + 3] = 255; }
     } else {
       for (i = 0, j = 0; i < N; i++, j += 4) {
         var w = u[i], aw = w < 0 ? -w : w; if (aw > m) m = aw;
         var v = w * g; if (v > 1) v = 1; else if (v < -1) v = -1;
-        var tt = LUT[(v < 0 ? -v : v) * 1024 | 0], k2 = 1 - tt * mx, c = v >= 0 ? P0 : N0;
-        d[j] = bg[3 * i] * k2 + c[0] * tt; d[j + 1] = bg[3 * i + 1] * k2 + c[1] * tt; d[j + 2] = bg[3 * i + 2] * k2 + c[2] * tt; d[j + 3] = 255;
+        var tt = LUT[(v < 0 ? -v : v) * 1024 | 0], k2 = 1 - tt * mx, c = v >= 0 ? P0 : N0, h2 = cr * tt * tt * tt;
+        var r1 = bg[3 * i] * k2 + c[0] * tt, g1 = bg[3 * i + 1] * k2 + c[1] * tt, b1 = bg[3 * i + 2] * k2 + c[2] * tt;
+        if (h2) { r1 += (255 - r1) * h2; g1 += (255 - g1) * h2; b1 += (255 - b1) * h2; }
+        d[j] = r1; d[j + 1] = g1; d[j + 2] = b1; d[j + 3] = 255;
       }
       this.lastMax = m;
     }
@@ -197,7 +224,7 @@
     cpuInit(this, o); elDamping(this); cpuBackground(this, rectOf(this));
   }
   var CE = CpuElastic.prototype;
-  CE.setModel = function (model, r) { var R = rectOf(this, r); elMaterial(this, model, R); cpuBackground(this, R); };
+  CE.setModel = function (model, r) { var R = rectOf(this, r); elMaterial(this, model, R); cpuBackground(this, padR(this, R, 2)); };
   CE.setBoundary = function (edges, alpha) { if (edges) this.edges = edges; if (alpha != null) this.alpha = alpha; elDamping(this); };
   CE.setDisplay = CA.setDisplay; CE.addSource = CA.addSource; CE.setProbes = CA.setProbes;
   CE.clear = function () { this.vx.fill(0); this.vz.fill(0); this.sxx.fill(0); this.szz.fill(0); this.sxz.fill(0); this.src = []; };
@@ -237,7 +264,7 @@
     return out;
   };
   CE.render = function (o) {
-    var d = this.img.data, nx = this.nx, ny = this.ny, bg = this.bgc, pal = this.pal, P0 = pal.pos, S0 = pal.sw, mx = pal.mix, g = o.gain, g2 = o.gain2 || g;
+    var d = this.img.data, nx = this.nx, ny = this.ny, bg = this.bgc, pal = this.pal, P0 = pal.pos, S0 = pal.sw, mx = pal.mix, cr = pal.core || 0, g = o.gain, g2 = o.gain2 || g, hc;
     var vx = this.vx, vz = this.vz, m = 0;
     for (var y = 0; y < ny; y++) for (var x = 0; x < nx; x++) {
       var i = y * nx + x, j = 4 * i, r = bg[3 * i], gg = bg[3 * i + 1], b = bg[3 * i + 2];
@@ -246,8 +273,10 @@
         var ad = dv < 0 ? -dv : dv, ac = cu < 0 ? -cu : cu; if (ad > m) m = ad;
         var a = ad * g; if (a > 1) a = 1; var t = LUT[a * 1024 | 0], kk = 1 - t * mx;
         r = r * kk + P0[0] * t; gg = gg * kk + P0[1] * t; b = b * kk + P0[2] * t;
+        hc = cr * t * t * t; if (hc) { r += (255 - r) * hc; gg += (255 - gg) * hc; b += (255 - b) * hc; }
         a = ac * g2; if (a > 1) a = 1; t = LUT[a * 1024 | 0]; kk = 1 - t * mx;
         r = r * kk + S0[0] * t; gg = gg * kk + S0[1] * t; b = b * kk + S0[2] * t;
+        hc = cr * t * t * t; if (hc) { r += (255 - r) * hc; gg += (255 - gg) * hc; b += (255 - b) * hc; }
       }
       d[j] = r; d[j + 1] = gg; d[j + 2] = b; d[j + 3] = 255;
     }
@@ -319,16 +348,17 @@
       'if(uEl==0)o=vec4(bl(q).r,0.0,0.0,1.0);else o=vec4(-bl(q-vec2(0.0,0.5)).g,bl(q-vec2(0.5,0.0)).r,0.0,1.0);}',
     /* display: velocity tint + interface lines + wavefield (acoustic ±p, elastic P/S, or the TR image) */
     show: HDR + 'uniform sampler2D uF,uBG;uniform ivec2 uN;uniform vec2 uView;uniform int uMode;\n' +
-      'uniform vec3 uPos,uNeg,uSw;uniform float uGain,uGain2,uMix,uTh;out vec4 o;\n' +
+      'uniform vec3 uPos,uNeg,uSw;uniform float uGain,uGain2,uMix,uTh,uCore;out vec4 o;\n' +
+      'vec3 core(vec3 c,float a){return mix(c,vec3(1.0),uCore*a*a*a);}\n' +
       'vec2 bl(vec2 g){vec2 q=g-0.5;vec2 fl=floor(q);vec2 f=q-fl;ivec2 i=ivec2(fl),lo=ivec2(0),hi=uN-1;\n' +
       ' return mix(mix(texelFetch(uF,clamp(i,lo,hi),0).rg,texelFetch(uF,clamp(i+ivec2(1,0),lo,hi),0).rg,f.x),mix(texelFetch(uF,clamp(i+ivec2(0,1),lo,hi),0).rg,texelFetch(uF,clamp(i+ivec2(1,1),lo,hi),0).rg,f.x),f.y);}\n' +
       'float ramp(float a){return pow(max(0.0,(min(a,1.0)-uTh)/(1.0-uTh)),0.75);}\n' +
       'void main(){vec2 uv=gl_FragCoord.xy/uView;uv.y=1.0-uv.y;vec2 g=uv*vec2(uN);\n' +
       'vec3 col=texture(uBG,uv).rgb;\n' +
       'vec2 f=bl(g);\n' +
-      'if(uMode==0){float u=clamp(f.r*uGain,-1.0,1.0);float a=ramp(abs(u));col=col*(1.0-a*uMix)+(u>=0.0?uPos:uNeg)*a;}\n' +
-      'else if(uMode==1){float a=ramp(abs(f.r)*uGain);col=col*(1.0-a*uMix)+uPos*a;float b=ramp(abs(f.g)*uGain2);col=col*(1.0-b*uMix)+uSw*b;}\n' +
-      'else{float a=ramp(sqrt(max(f.r,0.0))*uGain);col=col*(1.0-a*uMix)+uSw*a;}\n' +
+      'if(uMode==0){float u=clamp(f.r*uGain,-1.0,1.0);float a=ramp(abs(u));col=core(col*(1.0-a*uMix)+(u>=0.0?uPos:uNeg)*a,a);}\n' +
+      'else if(uMode==1){float a=ramp(abs(f.r)*uGain);col=core(col*(1.0-a*uMix)+uPos*a,a);float b=ramp(abs(f.g)*uGain2);col=core(col*(1.0-b*uMix)+uSw*b,b);}\n' +
+      'else{float a=ramp(sqrt(max(f.r,0.0))*uGain);col=core(col*(1.0-a*uMix)+uSw*a,a);}\n' +
       'o=vec4(col,1.0);}'
   };
   function compile(gl, type, src) {
@@ -423,7 +453,7 @@
     var R = rectOf(this, r);
     if (this.physics === 'elastic') { elMaterial(this, model, R); R = [Math.max(0, R[0] - 1), Math.max(0, R[1] - 1), R[2], R[3]]; }
     else acMaterial(this, model, R);
-    this._uploadMat(R); this._bg(R);
+    this._uploadMat(R); this._bg(padR(this, R, 2));
   };
   G.setBoundary = function (edges, alpha) {
     if (edges) this.edges = edges; if (alpha != null) this.alpha = alpha;
@@ -515,7 +545,7 @@
     this._bind(pr, 'uF', 0, F); this._bind(pr, 'uBG', 1, this.BG);
     gl.uniform2i(pr.u('uN'), this.nx, this.ny); gl.uniform2f(pr.u('uView'), this.canvas.width, this.canvas.height); gl.uniform1i(pr.u('uMode'), mode);
     gl.uniform3fv(pr.u('uPos'), rgb(pal.pos)); gl.uniform3fv(pr.u('uNeg'), rgb(pal.neg)); gl.uniform3fv(pr.u('uSw'), rgb(mode === 2 ? pal.hot : pal.sw));
-    gl.uniform1f(pr.u('uGain'), g); gl.uniform1f(pr.u('uGain2'), g2); gl.uniform1f(pr.u('uMix'), pal.mix); gl.uniform1f(pr.u('uTh'), THRESH);
+    gl.uniform1f(pr.u('uGain'), g); gl.uniform1f(pr.u('uGain2'), g2); gl.uniform1f(pr.u('uMix'), pal.mix); gl.uniform1f(pr.u('uTh'), THRESH); gl.uniform1f(pr.u('uCore'), pal.core || 0);
     this._draw(pr, null, this.canvas.width, this.canvas.height);
   };
   G._reduce = function (F) {

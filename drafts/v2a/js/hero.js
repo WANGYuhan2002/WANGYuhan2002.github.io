@@ -137,24 +137,29 @@
 
   /* ---------------- drawing ---------------- */
   function sx(x) { return (x + 0.5) / nx * W; } function sy(y) { return (y + 0.5) / ny * H; }
-  function tri(x, y, s, alpha) {
+  /* stations: a crisp halo outline under the fill (no blurred shadow) */
+  function tri(x, y, s, alpha, col) {
     octx.beginPath(); octx.moveTo(x - s, y - s * 1.7); octx.lineTo(x + s, y - s * 1.7); octx.lineTo(x, y); octx.closePath();
-    octx.fillStyle = rgba(pal.ink, alpha); octx.shadowColor = pal.halo; octx.shadowBlur = 6; octx.fill(); octx.shadowBlur = 0;
+    octx.lineJoin = 'round'; octx.lineWidth = 1.5; octx.strokeStyle = pal.halo; octx.globalAlpha = alpha; octx.stroke(); octx.globalAlpha = 1;
+    octx.fillStyle = rgba(col || pal.ink, alpha); octx.fill();
   }
   function drawOverlay() {
     octx.setTransform(dpr, 0, 0, dpr, 0, 0); octx.clearRect(0, 0, W, H);
     var sc = model.scat, rs = Math.max(2.4, 1.6 * res / nx * W), k;
-    for (k = 0; k < sc.length; k++) { octx.beginPath(); octx.arc(sx(sc[k][0]), sy(sc[k][1]), rs, 0, 6.2832); octx.fillStyle = rgba(pal.ink, 0.92); octx.fill(); octx.lineWidth = 1; octx.strokeStyle = pal.halo; octx.stroke(); }
-    var many = stations.length > 1, arrays = netKind === 'line' || netKind === 'ring';
-    octx.font = '500 10px "JetBrains Mono", monospace'; octx.textAlign = 'center';
+    for (k = 0; k < sc.length; k++) { octx.beginPath(); octx.arc(sx(sc[k][0]), sy(sc[k][1]), rs, 0, 6.2832); octx.fillStyle = rgba(pal.ink, 0.9); octx.fill(); octx.lineWidth = 1; octx.strokeStyle = rgba(pal.edge || pal.ink, 0.6); octx.stroke(); }
+    var many = stations.length > 1, arrays = netKind === 'line' || netKind === 'ring', s0 = many ? 5 : 6.5;
+    octx.font = '600 10.5px "JetBrains Mono", monospace'; octx.textAlign = 'center'; octx.lineJoin = 'round'; octx.miterLimit = 2;
     for (k = 0; k < stations.length; k++) {
       var st = stations[k], X = sx(st.x), Y = Math.max(13, sy(st.y)), active = drag && drag.kind === 'station' && drag.k === k;
-      tri(X, Y, active ? 8 : (many ? 5.5 : 7), 0.95);
-      if ((!arrays || k === 0 || k === stations.length - 1) && Y >= 70) { octx.fillStyle = rgba(pal.ink, 0.95); octx.shadowColor = pal.halo; octx.shadowBlur = 4; octx.fillText(st.code, X, Y - (many ? 13 : 17)); octx.shadowBlur = 0; }
+      tri(X, Y, active ? s0 * 1.3 : s0, active ? 1 : 0.96, active ? pal.pos : null);
+      if ((!arrays || k === 0 || k === stations.length - 1) && Y >= 70) {
+        var ly = Y - (many ? 13 : 17); octx.lineWidth = 3; octx.strokeStyle = pal.halo; octx.strokeText(st.code, X, ly);
+        octx.fillStyle = rgba(pal.ink, 0.96); octx.fillText(st.code, X, ly);
+      }
     }
     if (drag && drag.kind === 'array') {
       var pts = arrayPositions(drag);
-      octx.setLineDash([4, 4]); octx.lineWidth = 1.2; octx.strokeStyle = rgba(pal.pos, 0.85); octx.beginPath();
+      octx.setLineDash([3, 4]); octx.lineWidth = 1.25; octx.strokeStyle = rgba(pal.pos, 0.85); octx.beginPath();
       if (arrMode === 'line') { octx.moveTo(sx(drag.x0), sy(drag.y0)); octx.lineTo(sx(drag.x1), sy(drag.y1)); }
       else { octx.arc(sx(drag.x0), sy(drag.y0), Math.hypot(drag.x1 - drag.x0, drag.y1 - drag.y0) / nx * W, 0, 6.2832); }
       octx.stroke(); octx.setLineDash([]);
@@ -162,7 +167,7 @@
     }
     if (cursor && !coarse && (tool === 'slow' || tool === 'fast' || tool === 'erase')) {
       octx.beginPath(); octx.arc(sx(cursor[0]), sy(cursor[1]), brushR * res / nx * W, 0, 6.2832);
-      octx.setLineDash([5, 5]); octx.lineWidth = 1.4; octx.strokeStyle = tool === 'slow' ? rgba(pal.slow, 1) : (tool === 'fast' ? rgba(pal.fast, 1) : rgba(pal.ink, 0.8)); octx.stroke(); octx.setLineDash([]);
+      octx.setLineDash([3, 4]); octx.lineWidth = 1.25; octx.strokeStyle = tool === 'slow' ? rgba(pal.slow, 1) : (tool === 'fast' ? rgba(pal.fast, 1) : rgba(pal.ink, 0.8)); octx.stroke(); octx.setLineDash([]);
     }
   }
   /* seismograms: one trace, or a record section with variable-area wiggles; one common gain (relative amplitudes
@@ -175,15 +180,18 @@
     var n = stations.length, many = n > 1, m = 0, s, k, step = eng.n;
     for (s = 0; s < n; s++) { var bf = stations[s].buf; for (k = 0; k < TR; k++) { var a = bf[k] < 0 ? -bf[k] : bf[k]; if (a > m) m = a; } }
     peak = Math.max(0.08, m, peak * 0.995);
-    var left = many ? 40 : 0, top = many ? 4 : 2, bot = many ? 4 : 2, ww = w - left, sp = (h - top - bot) / n;
-    var amp = (many ? 0.95 * sp : (h / 2 - 4)) / peak, clip = many ? 1.4 * sp : h / 2 - 2, sec = Math.round(rate);
-    tctx.strokeStyle = pal.tick; tctx.lineWidth = 1; tctx.beginPath();
-    for (var st = step - (step % sec); st > step - TR; st -= sec) { var xt = left + ww - (step - st) / TR * ww; tctx.moveTo(xt, h - 5); tctx.lineTo(xt, h); }
+    var left = many ? 42 : 0, top = many ? 4 : 2, bot = many ? 4 : 2, ww = w - left, sp = (h - top - bot) / n;
+    var amp = (many ? 0.95 * sp : (h / 2 - 4)) / peak, clip = many ? 1.4 * sp : h / 2 - 2, sec = Math.round(rate), st, xt;
+    tctx.lineWidth = 1; tctx.strokeStyle = pal.grid; tctx.beginPath();            /* a grid line every second, and short ticks at the bottom */
+    for (st = step - (step % sec); st > step - TR; st -= sec) { xt = Math.round(left + ww - (step - st) / TR * ww) + 0.5; tctx.moveTo(xt, 0); tctx.lineTo(xt, h - 5); }
+    tctx.stroke(); tctx.strokeStyle = pal.tick; tctx.beginPath();
+    for (st = step - (step % sec); st > step - TR; st -= sec) { xt = Math.round(left + ww - (step - st) / TR * ww) + 0.5; tctx.moveTo(xt, h - 5); tctx.lineTo(xt, h); }
     tctx.stroke();
-    tctx.font = '500 9px "JetBrains Mono", monospace'; tctx.textBaseline = 'top';
+    if (!many) { tctx.strokeStyle = pal.grid; tctx.beginPath(); tctx.moveTo(0, Math.round(h / 2) + 0.5); tctx.lineTo(w, Math.round(h / 2) + 0.5); tctx.stroke(); }
+    tctx.font = '600 10px "JetBrains Mono", monospace'; tctx.textBaseline = 'top';
     for (var qq = 0; qq < marks.length; qq++) {
       var age = step - marks[qq]; if (age > TR) continue; var xm = left + ww - age / TR * ww;
-      tctx.strokeStyle = 'rgba(' + pal.origin + ',.75)'; tctx.setLineDash([3, 3]); tctx.beginPath(); tctx.moveTo(xm, 1); tctx.lineTo(xm, h - 1); tctx.stroke(); tctx.setLineDash([]);
+      tctx.strokeStyle = 'rgba(' + pal.origin + ',.8)'; tctx.setLineDash([2, 3]); tctx.beginPath(); tctx.moveTo(xm, 1); tctx.lineTo(xm, h - 1); tctx.stroke(); tctx.setLineDash([]);
       if (qq === marks.length - 1) { tctx.fillStyle = 'rgba(' + pal.origin + ',.95)'; tctx.textAlign = 'left'; tctx.fillText('origin', xm + 4, 1); }
     }
     var stride = Math.max(1, Math.floor(TR / Math.max(1, ww)));
@@ -193,13 +201,11 @@
       var y0 = many ? top + sp * (s + 0.5) : h / 2, buf = stations[s].buf, x2, y2, v;
       if (agc) { for (k = 0; k < TR; k++) { var o = buf[(head + k) % TR]; cs[k + 1] = cs[k] + o * o; } }
       var gain = function (k) { if (!agc) return amp; var lo = Math.max(0, k - half), hi = Math.min(TR, k + half), r = Math.sqrt((cs[hi] - cs[lo]) / (hi - lo)); return lvl / Math.max(r, floor); };
-      if (many) {
-        if (sp >= 11 || s % 2 === 0) { tctx.fillStyle = pal.label; tctx.textAlign = 'left'; tctx.textBaseline = 'middle'; tctx.fillText(stations[s].code, 0, y0); tctx.textBaseline = 'top'; }
-        tctx.beginPath(); tctx.moveTo(left, y0);
-        for (k = 0; k < TR; k += stride) { v = buf[(head + k) % TR] * gain(k); x2 = left + k / (TR - 1) * ww; tctx.lineTo(x2, y0 - Math.max(0, Math.min(clip, v))); }
-        tctx.lineTo(left + ww, y0); tctx.closePath(); tctx.fillStyle = pal.fill; tctx.fill();
-      }
-      tctx.strokeStyle = pal.trace; tctx.lineWidth = many ? 1 : 1.25; tctx.lineJoin = 'round'; tctx.beginPath();
+      if (many && (sp >= 11 || s % 2 === 0)) { tctx.font = '500 10px "JetBrains Mono", monospace'; tctx.fillStyle = pal.label; tctx.textAlign = 'left'; tctx.textBaseline = 'middle'; tctx.fillText(stations[s].code, 0, y0); tctx.textBaseline = 'top'; }
+      tctx.beginPath(); tctx.moveTo(left, y0);                                     /* variable-area fill of the positive half, also for one trace */
+      for (k = 0; k < TR; k += stride) { v = buf[(head + k) % TR] * gain(k); x2 = left + k / (TR - 1) * ww; tctx.lineTo(x2, y0 - Math.max(0, Math.min(clip, v))); }
+      tctx.lineTo(left + ww, y0); tctx.closePath(); tctx.fillStyle = pal.fill; if (!many) tctx.globalAlpha = 0.7; tctx.fill(); tctx.globalAlpha = 1;
+      tctx.strokeStyle = pal.trace; tctx.lineWidth = many ? 1 : 1.6; tctx.lineJoin = 'round'; tctx.beginPath();
       for (k = 0; k < TR; k += stride) { v = buf[(head + k) % TR] * gain(k); x2 = left + k / (TR - 1) * ww; y2 = y0 - Math.max(-clip, Math.min(clip, v)); if (k) tctx.lineTo(x2, y2); else tctx.moveTo(x2, y2); }
       tctx.stroke();
     }

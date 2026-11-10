@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>Yuhan Wang — Seismology · ETH Zürich</title>
 <meta name="description" content="Yuhan Wang · Seismology &amp; Wave Physics group, ETH Zürich. A live wavefield: click to make an earthquake, then open the Wave Lab for arrays, fibre-optic sensing, time reversal, tomography, ambient noise and elastic waves.">
-<meta name="theme-color" content="#070a10">
+<meta name="theme-color" content="#070a12">
 <!-- theme before first paint: stored choice, else the system setting -->
 <script>(function(){var t=null;try{t=localStorage.getItem('yw-theme')}catch(e){}if(t!=='light'&&t!=='dark')t=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark';document.documentElement.setAttribute('data-theme',t)})();</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23070a10'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%234fd8e8'/%3E%3Ccircle cx='32' cy='32' r='16' fill='none' stroke='%234fd8e8' stroke-opacity='.65' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='25' fill='none' stroke='%23ff7a5c' stroke-opacity='.55' stroke-width='3'/%3E%3C/svg%3E">
@@ -17,24 +17,40 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
+/* design tokens (shared with the Wave Lab): matter is cool and quiet, energy is bright; one accent (cyan = p > 0) */
 :root{
-  --bg:#070a10; --bg2:#0c111a; --panel:rgba(255,255,255,.035);
-  --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.18);
-  --ink:#eef3f6; --ink2:#b9c5cd; --muted:#7c8a95;
-  --cyan:#4fd8e8; --coral:#ff7a5c; --slow:#eb5840; --fast:#4084ff;
+  --bg:#070a12; --bg2:#0b1019; --bg3:#111826;
+  --panel:rgba(148,170,214,.045); --panel2:rgba(148,170,214,.09);
+  --line:rgba(148,170,214,.11); --line2:rgba(148,170,214,.22);
+  --ink:#eef2f8; --ink2:#b3bfd0; --muted:#7a879c;
+  --cyan:#56e1f0; --accent-ink:#04161a;
+  --accent-soft:color-mix(in srgb,var(--cyan) 14%,transparent);
+  --accent-line:color-mix(in srgb,var(--cyan) 42%,transparent);
+  --coral:#ff8058; --amber:#ffbe54; --slow:#d9569b; --fast:#4d86ff;
+  --veil:7,10,18; --portrait1:#142231; --portrait2:#0a0f17;
+  --sh-1:inset 0 1px 0 rgba(255,255,255,.04), 0 8px 24px -12px rgba(0,0,0,.6);
+  --sh-2:inset 0 1px 0 rgba(255,255,255,.05), 0 24px 56px -20px rgba(0,0,0,.7);
+  --glass-a:.68;
   --display:"Space Grotesk",system-ui,sans-serif; --serif:"Instrument Serif",Georgia,serif;
   --sans:"Inter",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
   --pad:clamp(1rem,4vw,3rem);
-  --veil:7,10,16; --portrait1:#142231; --portrait2:#0a0f17;
+  --sp-1:2px; --sp-2:4px; --sp-3:8px; --sp-4:12px; --sp-5:16px; --sp-6:24px; --sp-7:32px; --sp-8:48px;
+  --r-sm:6px; --r-md:10px; --r-lg:14px; --r-xl:20px; --r-pill:999px; --bw:1px; --blur:16px;
+  --ease:cubic-bezier(.2,.7,.2,1); --t-fast:120ms; --t-mid:180ms; --t-slow:260ms;
   color-scheme:dark;
 }
-/* light theme: same layout, ink on paper; the wavefield switches to teal and coral ink */
+/* light theme: same layout, ink on warm paper; the wavefield switches to teal and coral ink */
 :root[data-theme="light"]{
-  --bg:#f3f5f7; --bg2:#e8ecf0; --panel:rgba(16,29,39,.035);
-  --line:rgba(16,29,39,.1); --line2:rgba(16,29,39,.2);
-  --ink:#101d27; --ink2:#33454f; --muted:#5d6f7b;
-  --cyan:#0b7894; --coral:#d9472f; --slow:#d9472f; --fast:#2f6fd6;
-  --veil:243,245,247; --portrait1:#e1ecf1; --portrait2:#f3f5f7;
+  --bg:#f4f3ee; --bg2:#fbfaf7; --bg3:#ffffff;
+  --panel:rgba(28,36,52,.035); --panel2:rgba(28,36,52,.07);
+  --line:rgba(28,36,52,.10); --line2:rgba(28,36,52,.20);
+  --ink:#131a26; --ink2:#3a4658; --muted:#667185;
+  --cyan:#007c8f; --accent-ink:#ffffff;
+  --coral:#d4472b; --amber:#a56800; --slow:#b53c7d; --fast:#2b61d4;
+  --veil:244,243,238; --portrait1:#e4ece9; --portrait2:#f4f3ee;
+  --sh-1:0 1px 2px rgba(28,36,52,.06), 0 8px 24px -14px rgba(28,36,52,.18);
+  --sh-2:0 2px 4px rgba(28,36,52,.06), 0 24px 56px -24px rgba(28,36,52,.28);
+  --glass-a:.80;
   color-scheme:light;
 }
 *{box-sizing:border-box}
@@ -56,11 +72,11 @@ img{display:block; max-width:100%}
 #field, #fieldgl{position:absolute; inset:0; width:100%; height:100%; display:block; z-index:0}
 #overlay{position:absolute; inset:0; width:100%; height:100%; display:block; z-index:2; pointer-events:none}
 .hero::after{content:""; position:absolute; inset:0; z-index:1; pointer-events:none;
-  background:radial-gradient(ellipse 55% 45% at 22% 68%, rgba(var(--veil),.55), transparent 70%),
-             linear-gradient(to bottom, rgba(var(--veil),.55), transparent 16%, transparent 66%, rgba(var(--veil),.9))}
+  background:radial-gradient(ellipse 55% 45% at 22% 68%, rgba(var(--veil),.45), transparent 70%),
+             linear-gradient(to bottom, rgba(var(--veil),.45), transparent 16%, transparent 66%, rgba(var(--veil),.9))}
 .top{position:absolute; z-index:5; top:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between; padding:1.15rem var(--pad)}
 .mark{display:flex; align-items:center; gap:.65rem; font:700 1rem var(--display); letter-spacing:.01em; text-decoration:none}
-.mark i{width:9px; height:9px; border-radius:50%; background:var(--cyan); box-shadow:0 0 0 4px rgba(79,216,232,.14), 0 0 16px var(--cyan)}
+.mark i{width:9px; height:9px; border-radius:50%; background:var(--cyan); box-shadow:0 0 0 4px color-mix(in srgb,var(--cyan) 16%,transparent), 0 0 16px var(--cyan)}
 .top nav{display:flex; gap:.25rem}
 .top nav a{font-size:.88rem; color:var(--ink2); text-decoration:none; padding:.42rem .85rem; border-radius:999px; border:1px solid transparent; transition:border-color .2s, color .2s}
 .top nav a:hover{border-color:var(--line2); color:var(--ink)}
@@ -71,24 +87,26 @@ img{display:block; max-width:100%}
 .theme-btn .moon, :root[data-theme="light"] .theme-btn .sun{display:none}
 :root[data-theme="light"] .theme-btn .moon{display:block}
 .grid2{display:grid; grid-template-columns:1fr 1fr; gap:4px; margin:.35rem 0 .2rem}
-.grid2 button{padding:.4rem .45rem; border:1px solid var(--line2); border-radius:10px; background:none; color:var(--ink2); font:500 .72rem var(--sans); cursor:pointer}
-.grid2 button:hover{border-color:var(--cyan); color:var(--ink)}
-.grid2 button[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}
+.grid2 button{padding:7px 8px; border:1px solid var(--line2); border-radius:var(--r-md); background:none; color:var(--ink2); font:500 12.5px/1.25 var(--sans); cursor:pointer; transition:background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease)}
+.grid2 button:hover{background:var(--panel2); color:var(--ink)}
+.grid2 button[aria-pressed="true"]{background:var(--accent-soft); color:var(--cyan); border-color:transparent; box-shadow:inset 0 0 0 1px var(--accent-line)}
 
 .hero-copy{position:absolute; z-index:3; left:var(--pad); bottom:calc(var(--seis-h) + 5vh); max-width:min(820px,80vw); pointer-events:none; transition:bottom .35s ease}
-.kicker{display:flex; align-items:center; gap:.75rem; margin:0 0 1.1rem; font:500 .76rem var(--mono); letter-spacing:.22em; text-transform:uppercase; color:var(--cyan)}
+.kicker{display:flex; align-items:center; gap:.75rem; margin:0 0 1.1rem; font:500 .76rem var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--cyan)}
 .kicker::before{content:""; width:30px; height:1px; background:var(--cyan)}
 .hero h1{margin:0; font:700 clamp(3.4rem,10vw,8.4rem)/.86 var(--display); letter-spacing:-.045em; text-shadow:0 4px 50px rgba(var(--veil),.75)}
 .tagline{margin:1.1rem 0 0; font:400 clamp(1.45rem,3vw,2.3rem)/1.15 var(--serif); color:var(--ink2)}
 .tagline em{color:var(--ink)}
 .hint{pointer-events:auto; margin-top:1.7rem; display:inline-flex; align-items:center; gap:.7rem; padding:.68rem 1.1rem; border-radius:999px; border:1px solid var(--line2); background:rgba(var(--veil),.5); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); color:var(--ink); font:500 .9rem var(--sans); cursor:pointer; transition:border-color .2s, background .2s}
-.hint:hover{border-color:var(--cyan); background:rgba(79,216,232,.08)}
+.hint:hover{border-color:var(--cyan); background:color-mix(in srgb,var(--cyan) 8%,transparent)}
 .pulse{width:9px; height:9px; border-radius:50%; background:var(--coral); animation:pulse 1.8s infinite}
-@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,122,92,.6)}80%,100%{box-shadow:0 0 0 14px rgba(255,122,92,0)}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,128,88,.6)}80%,100%{box-shadow:0 0 0 14px rgba(255,128,88,0)}}
 
-.glass{border:1px solid var(--line); background:rgba(var(--veil),.55); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px)}
+.glass{border:1px solid var(--line2); background:rgba(var(--veil),var(--glass-a)); -webkit-backdrop-filter:blur(var(--blur)) saturate(1.4); backdrop-filter:blur(var(--blur)) saturate(1.4); box-shadow:var(--sh-1)}
+@keyframes pop-in{from{opacity:0; transform:translateY(4px) scale(.98)}}
+@keyframes pop-in-mid{from{opacity:0; transform:translateY(calc(-50% + 4px)) scale(.98)}}
 .catalog{position:absolute; z-index:3; right:var(--pad); top:5.4rem; width:min(300px,40vw); padding:.9rem 1rem .8rem; border-radius:16px; font:400 .74rem var(--mono); color:var(--ink2); cursor:default}
-.cat-h{display:flex; justify-content:space-between; align-items:center; margin:0 0 .6rem; font-size:.64rem; letter-spacing:.16em; text-transform:uppercase; color:var(--muted)}
+.cat-h{display:flex; justify-content:space-between; align-items:center; margin:0 0 .6rem; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
 .cat-h b{font:500 .8rem var(--mono); color:var(--ink); letter-spacing:0}
 #events{list-style:none; margin:0; padding:0; display:grid; gap:.38rem}
 #events li{display:grid; grid-template-columns:3.4rem 1fr auto; gap:.5rem; align-items:baseline; animation:pop .45s ease}
@@ -109,41 +127,49 @@ img{display:block; max-width:100%}
 .short{display:none}
 
 /* ---------- wave-lab toolbar + option panel ---------- */
-.lab{position:absolute; z-index:6; right:var(--pad); top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:3px; padding:5px; border-radius:16px; cursor:default}
-.lab button{position:relative; width:38px; height:38px; display:grid; place-items:center; border-radius:11px; border:0; background:none; color:var(--ink2); cursor:pointer; transition:background .15s, color .15s}
-.lab button:hover{background:color-mix(in srgb,var(--ink) 9%,transparent); color:var(--ink)}
-.lab button svg{width:20px; height:20px}
-.lab button[aria-pressed="true"]{background:var(--ink); color:var(--bg)}
-.lab button[data-tool="slow"][aria-pressed="true"]{background:var(--slow); color:#fff}
-.lab button[data-tool="fast"][aria-pressed="true"]{background:var(--fast); color:#fff}
-.lab .sep{height:1px; margin:3px 6px; background:var(--line2)}
-.lab-pop{position:absolute; z-index:6; right:calc(var(--pad) + 58px); top:50%; transform:translateY(-50%); width:272px; max-height:calc(100% - 9rem); overflow:auto; padding:.95rem 1rem 1rem; border-radius:16px; font-size:.8rem; color:var(--ink2); cursor:default}
+.lab{position:absolute; z-index:6; right:var(--pad); top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:2px; padding:4px; border-radius:var(--r-lg); cursor:default}
+.lab button{position:relative; width:40px; height:40px; display:grid; place-items:center; border-radius:var(--r-md); border:0; background:none; color:var(--ink2); cursor:pointer; transition:background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease)}
+.lab button:hover{background:var(--panel2); color:var(--ink)}
+.lab button svg{width:20px; height:20px; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round}
+.lab button[aria-pressed="true"]{background:var(--accent-soft); color:var(--cyan); box-shadow:inset 0 0 0 1px var(--accent-line)}
+.lab button[data-tool="slow"][aria-pressed="true"]{background:color-mix(in srgb,var(--slow) 22%,transparent); color:var(--slow); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--slow) 55%,transparent)}
+.lab button[data-tool="fast"][aria-pressed="true"]{background:color-mix(in srgb,var(--fast) 22%,transparent); color:var(--fast); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--fast) 55%,transparent)}
+.lab .sep{height:1px; margin:3px 7px; background:var(--line2)}
+/* hover tips on devices with a pointer: the button's own label, to the left of the toolbar */
+@media (hover:hover){
+  .lab button::after{content:attr(aria-label); position:absolute; right:calc(100% + 10px); top:50%; transform:translateY(-50%); padding:5px 9px; border-radius:8px; border:1px solid var(--line2); background:var(--bg3); color:var(--ink); font:500 12px/1.3 var(--sans); white-space:nowrap; box-shadow:var(--sh-1); opacity:0; pointer-events:none; transition:opacity var(--t-fast) var(--ease) 0s}
+  .lab button:hover::after{opacity:1; transition-delay:350ms}
+  .lab:has(+ .lab-pop:not([hidden])) button[aria-pressed="true"]::after{display:none}
+}
+.lab-pop{position:absolute; z-index:6; right:calc(var(--pad) + 60px); top:50%; transform:translateY(-50%); width:272px; max-height:calc(100% - 9rem); overflow:auto; padding:14px 16px 16px; border-radius:var(--r-lg); box-shadow:var(--sh-2); font:400 13px/1.5 var(--sans); color:var(--ink2); cursor:default; animation:pop-in-mid var(--t-mid) var(--ease)}
 .lab-pop[hidden]{display:none}
 .lab-pop.wide{width:340px}
-.pop-top{display:flex; align-items:center; justify-content:space-between; margin:0 0 .45rem}
-.pop-h{margin:0; font:500 .66rem var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--ink)}
+.pop-top{display:flex; align-items:center; justify-content:space-between; margin:0 0 6px}
+.pop-h{margin:0; font:500 11px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--ink2)}
 .pop-x{border:0; background:none; color:var(--muted); font:400 1.1rem/1 var(--sans); cursor:pointer; padding:.1rem .3rem}
 .pop-x:hover{color:var(--ink)}
 .pop-hint{margin:0 0 .7rem; line-height:1.5}
 .pop-row{display:flex; justify-content:space-between; align-items:baseline; margin:.65rem 0 .2rem}
-.pop-row output{font:500 .74rem var(--mono); color:var(--ink)}
-.lab-pop input[type="range"]{width:100%; margin:0; accent-color:var(--cyan)}
-.seg{display:flex; gap:2px; margin:.35rem 0 .2rem; padding:2px; border:1px solid var(--line2); border-radius:999px}
-.seg button{flex:1; padding:.32rem .4rem; border:0; border-radius:999px; background:none; color:var(--ink2); font:500 .72rem var(--sans); cursor:pointer}
-.seg button[aria-pressed="true"]{background:var(--ink); color:var(--bg)}
+.pop-row output{font:500 12px var(--mono); color:var(--ink)}
+.lab-pop input[type="range"]{width:100%; height:18px; margin:0; accent-color:var(--cyan)}
+.seg{display:flex; gap:2px; margin:.35rem 0 .2rem; padding:3px; border:1px solid var(--line2); border-radius:var(--r-md); background:var(--panel)}
+.seg button{flex:1; padding:5px 8px; border:0; border-radius:7px; background:none; color:var(--ink2); font:500 12.5px var(--sans); cursor:pointer; white-space:nowrap; transition:background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease)}
+.seg button:hover{background:var(--panel2); color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft); color:var(--cyan); box-shadow:inset 0 0 0 1px var(--accent-line)}
 .radio{display:flex; align-items:flex-start; gap:.5rem; margin:.35rem 0; line-height:1.35; cursor:pointer}
 .radio input{margin:.15rem 0 0; accent-color:var(--cyan)}
 .radio small{display:block; color:var(--muted); font-size:.72rem}
 .chk{display:flex; align-items:center; gap:.45rem; margin:.5rem 0 0; cursor:pointer}
 .chk input{accent-color:var(--cyan)}
 .btns{display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.8rem}
-.pbtn{padding:.38rem .7rem; border-radius:999px; border:1px solid var(--line2); background:none; color:var(--ink); font:500 .74rem var(--sans); cursor:pointer}
-.pbtn:hover{border-color:var(--cyan)}
+.pbtn{padding:7px 12px; border-radius:var(--r-md); border:1px solid var(--line2); background:none; color:var(--ink); font:500 12.5px/1.25 var(--sans); cursor:pointer; transition:background var(--t-fast) var(--ease), filter var(--t-fast) var(--ease)}
+.pbtn:hover{background:var(--panel2)}
 .pop-info p{margin:.45rem 0; line-height:1.55}
 .pop-info b{color:var(--ink); font-weight:600}
 .pop-info code{font-family:var(--mono); font-size:.92em; color:var(--cyan)}
-.pbtn.go{background:var(--ink); color:var(--bg); border-color:var(--ink); font-weight:600}
-.pbtn.go:hover{background:var(--cyan); border-color:var(--cyan)}
+.pbtn.go{background:var(--cyan); color:var(--accent-ink); border-color:var(--cyan); font-weight:600}
+.pbtn.go:hover{background:var(--cyan); filter:brightness(1.08)}
+.pbtn.go:active{transform:translateY(1px); transition:transform 80ms linear}
 .pop-more{margin:.9rem 0 0; padding-top:.7rem; border-top:1px solid var(--line); font-size:.76rem}
 .pop-more a{color:var(--cyan); text-decoration:none}
 .pop-more a:hover{text-decoration:underline}
@@ -152,19 +178,19 @@ img{display:block; max-width:100%}
 /* ---------- seismograms ---------- */
 .seis{position:absolute; z-index:3; left:0; right:0; bottom:0; padding:0 var(--pad) .9rem; cursor:default}
 .seis.many{padding-top:1.6rem; background:linear-gradient(to top, rgba(var(--veil),.94), rgba(var(--veil),.86) 82%, rgba(var(--veil),0))}
-.seis-row{display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:.35rem; font:500 .66rem var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--muted)}
+.seis-row{display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:.35rem; font:500 11px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
 .live{color:var(--cyan)}
 .live::before{content:"● "; animation:blink 1.6s infinite}
 @keyframes blink{50%{opacity:.25}}
 #trace{display:block; width:100%; height:72px; transition:height .3s ease}
-/* velocity legend: the model is always drawn under the waves */
-.vlegend{flex:none; display:inline-flex; align-items:center; gap:.65rem; font:500 .64rem var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--ink2); background:rgba(var(--veil),.5); border:1px solid var(--line2); border-radius:999px; padding:.42rem .8rem; cursor:help}
-.vlegend > span{display:inline-flex; align-items:center; gap:.35rem}
-.vlegend i{display:inline-block; width:10px; height:10px; border-radius:3px}
+/* velocity legend: the model is always drawn under the waves; one slow → fast gradient bar, as in the Wave Lab */
+.vlegend{flex:none; display:inline-flex; align-items:center; gap:10px; font:500 11px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--ink2); background:rgba(var(--veil),.5); border:1px solid var(--line2); border-radius:var(--r-pill); padding:5px 12px; cursor:help}
+.vlegend .vramp{display:inline-flex; align-items:center; gap:6px; text-transform:none; letter-spacing:0; font:400 12px var(--sans)}
+.vramp i{display:block; width:28px; height:8px; border-radius:4px; flex:none; background:linear-gradient(90deg,var(--slow),color-mix(in srgb,var(--slow) 25%,var(--bg2)) 46%,color-mix(in srgb,var(--fast) 25%,var(--bg2)) 54%,var(--fast))}
 
 /* ============================== SECTIONS ============================== */
 .sec{max-width:1240px; margin:0 auto; padding:clamp(4.5rem,13vh,8.5rem) var(--pad)}
-.label{display:flex; align-items:center; gap:.9rem; margin-bottom:clamp(2rem,5vh,3.2rem); font:500 .72rem var(--mono); letter-spacing:.2em; text-transform:uppercase; color:var(--muted)}
+.label{display:flex; align-items:center; gap:.9rem; margin-bottom:clamp(2rem,5vh,3.2rem); font:500 .72rem var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
 .label b{color:var(--cyan); font-weight:500}
 .label::after{content:""; flex:1; height:1px; background:var(--line)}
 .about{display:grid; grid-template-columns:minmax(0,1.45fr) minmax(0,1fr); gap:clamp(2rem,6vw,6rem); align-items:center}
@@ -180,7 +206,7 @@ a.tag:hover{border-color:var(--cyan); color:var(--ink)}
 .portrait .rings circle:nth-child(2){animation-delay:-1.66s}
 .portrait .rings circle:nth-child(3){animation-delay:-3.33s}
 @keyframes ring{from{transform:scale(.2); stroke-opacity:.35}to{transform:scale(1.6); stroke-opacity:0}}
-.portrait span{position:relative; font:500 .72rem var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--muted); margin-top:40%}
+.portrait span{position:relative; font:500 .72rem var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-top:40%}
 .feature{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); border:1px solid var(--line); border-radius:28px; overflow:hidden; background:var(--panel)}
 .feature-img{position:relative; min-height:340px; background:#000}
 .feature-img img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:62% 50%; transition:transform .8s ease}
@@ -195,7 +221,7 @@ a.tag:hover{border-color:var(--cyan); color:var(--ink)}
 .more{margin-top:1.4rem; font-size:.95rem}
 .cards{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem}
 .rc{position:relative; padding:1.6rem 1.5rem 1.4rem; border-radius:22px; border:1px solid var(--line); background:var(--panel); overflow:hidden; min-height:250px; display:flex; flex-direction:column; gap:.7rem}
-.rc .n{font:500 .74rem var(--mono); color:var(--cyan); letter-spacing:.1em}
+.rc .n{font:500 .74rem var(--mono); color:var(--cyan); letter-spacing:.08em}
 .rc h3{margin:0; font:600 1.35rem/1.15 var(--display); letter-spacing:-.01em}
 .rc p{margin:0; color:var(--ink2); font-size:.95rem}
 .rc svg{margin-top:auto; width:100%; height:44px}
@@ -218,7 +244,7 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
 .labgrid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:22px; overflow:hidden}
 .lc{position:relative; display:flex; flex-direction:column; gap:.45rem; padding:1.4rem 1.5rem 1.5rem; background:var(--bg); text-decoration:none; transition:background .2s}
 .lc:hover{background:var(--bg2)}
-.lc .n{font:500 .72rem var(--mono); color:var(--cyan); letter-spacing:.1em}
+.lc .n{font:500 .72rem var(--mono); color:var(--cyan); letter-spacing:.08em}
 .lc h3{margin:0; font:600 1.2rem/1.2 var(--display); letter-spacing:-.01em}
 .lc p{margin:0; font-size:.92rem; color:var(--ink2)}
 .lc .ar{position:absolute; right:1.3rem; top:1.25rem; font:500 .8rem var(--mono); color:var(--muted); transition:transform .2s, color .2s}
@@ -237,9 +263,11 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
 @media (max-width:640px){
   .top nav{display:none}
   .hero-copy{bottom:calc(var(--seis-h) + 2vh); max-width:92vw}
+  .kicker{letter-spacing:.12em}
   .lab{top:3.7rem; left:1rem; right:1rem; transform:none; flex-direction:row; justify-content:space-between; overflow-x:auto}
-  .lab .sep{width:1px; height:auto; margin:6px 2px}
-  .lab-pop, .lab-pop.wide{top:7.2rem; left:1rem; right:1rem; width:auto; transform:none; max-height:calc(100% - 9rem - var(--seis-h))}
+  .lab button{width:40px; height:40px; flex:none}
+  .lab .sep{width:1px; height:auto; margin:7px 2px}
+  .lab-pop, .lab-pop.wide{top:7.2rem; left:1rem; right:1rem; width:auto; transform:none; max-height:calc(100% - 9rem - var(--seis-h)); animation-name:pop-in}
   .catalog{top:7.2rem; right:1rem; width:auto; max-width:62vw; padding:.55rem .75rem}
   .cta-row{gap:.5rem; margin-top:1.3rem}
   .cta-row .hint{padding:.6rem .95rem; font-size:.86rem}
@@ -250,12 +278,12 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
   #events li{grid-template-columns:auto auto}
   #events .who{display:none}
   .seis-row > span{letter-spacing:.08em}
-  .vlegend{padding:.38rem .6rem; letter-spacing:.06em; gap:.45rem}
+  .vlegend{padding:5px 10px; gap:8px}
   .vlegend .long{display:none}
 }
 @media (prefers-reduced-motion:reduce){
-  .pulse, .live::before, .portrait .rings circle{animation:none}
-  .hero-copy, #trace{transition:none}
+  .pulse, .live::before, .portrait .rings circle, .lab-pop{animation:none}
+  .hero-copy, #trace, .lab button, .lab button::after, .seg button, .grid2 button, .pbtn{transition:none}
 }
 </style>
 </head>
@@ -295,15 +323,15 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
   </aside>
 
   <div class="lab glass" id="lab" role="toolbar" aria-label="Wave lab" aria-orientation="vertical">
-    <button type="button" data-tool="quake" aria-pressed="true" aria-label="Earthquake (Q)" title="Earthquake · Q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="9.6" opacity=".5"/></svg></button>
-    <button type="button" data-tool="slow" aria-pressed="false" aria-label="Paint a low-velocity body (S)" title="Low-velocity body · S"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3.5c4.6 0 8.5 3.3 8 8.1-.5 4.7-4.6 8.5-9.2 8-4.4-.4-7.6-4.2-7.2-8.6C4 6.6 7.6 3.5 12 3.5z"/><path d="M8.3 12h7.4"/></svg></button>
-    <button type="button" data-tool="fast" aria-pressed="false" aria-label="Paint a high-velocity body (F)" title="High-velocity body · F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3.5c4.6 0 8.5 3.3 8 8.1-.5 4.7-4.6 8.5-9.2 8-4.4-.4-7.6-4.2-7.2-8.6C4 6.6 7.6 3.5 12 3.5z"/><path d="M8.3 12h7.4M12 8.3v7.4"/></svg></button>
-    <button type="button" data-tool="erase" aria-pressed="false" aria-label="Erase structure (E)" title="Erase structure · E"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M14.5 4.5 20 10l-8.5 8.5H6l-2.5-2.5z"/><path d="M9 10l5.5 5.5M11 18.5h9"/></svg></button>
-    <button type="button" data-tool="scatter" aria-pressed="false" aria-label="Add point scatterers (C)" title="Point scatterers · C"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="7" r="1.7"/><circle cx="15.5" cy="5" r="1.7"/><circle cx="11" cy="12" r="1.7"/><circle cx="18.5" cy="13.5" r="1.7"/><circle cx="6.5" cy="17.5" r="1.7"/><circle cx="14" cy="19.5" r="1.7"/></svg></button>
-    <button type="button" data-tool="array" aria-pressed="false" aria-label="Receivers: stations and arrays (A)" title="Receivers · A"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M1.5 8h6l-3 5.2zM9 8h6l-3 5.2zM16.5 8h6l-3 5.2z"/><path d="M2 17.5h20" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 2.4"/></svg></button>
+    <button type="button" data-tool="quake" aria-pressed="true" aria-label="Earthquake (Q)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="9.6" opacity=".5"/></svg></button>
+    <button type="button" data-tool="slow" aria-pressed="false" aria-label="Paint a low-velocity body (S)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3.5c4.6 0 8.5 3.3 8 8.1-.5 4.7-4.6 8.5-9.2 8-4.4-.4-7.6-4.2-7.2-8.6C4 6.6 7.6 3.5 12 3.5z"/><path d="M8.3 12h7.4"/></svg></button>
+    <button type="button" data-tool="fast" aria-pressed="false" aria-label="Paint a high-velocity body (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3.5c4.6 0 8.5 3.3 8 8.1-.5 4.7-4.6 8.5-9.2 8-4.4-.4-7.6-4.2-7.2-8.6C4 6.6 7.6 3.5 12 3.5z"/><path d="M8.3 12h7.4M12 8.3v7.4"/></svg></button>
+    <button type="button" data-tool="erase" aria-pressed="false" aria-label="Erase structure (E)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M14.5 4.5 20 10l-8.5 8.5H6l-2.5-2.5z"/><path d="M9 10l5.5 5.5M11 18.5h9"/></svg></button>
+    <button type="button" data-tool="scatter" aria-pressed="false" aria-label="Add point scatterers (C)"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="7" r="1.7"/><circle cx="15.5" cy="5" r="1.7"/><circle cx="11" cy="12" r="1.7"/><circle cx="18.5" cy="13.5" r="1.7"/><circle cx="6.5" cy="17.5" r="1.7"/><circle cx="14" cy="19.5" r="1.7"/></svg></button>
+    <button type="button" data-tool="array" aria-pressed="false" aria-label="Receivers: stations and arrays (A)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M1.5 8h6l-3 5.2zM9 8h6l-3 5.2zM16.5 8h6l-3 5.2z"/><path d="M2 17.5h20" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 2.4"/></svg></button>
     <span class="sep" aria-hidden="true"></span>
-    <button type="button" data-panel="model" aria-pressed="false" aria-label="Model and boundaries (M)" title="Model &amp; boundaries · M"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg></button>
-    <button type="button" data-panel="info" aria-pressed="false" aria-label="What is this wavefield? (I)" title="What is this? · I"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.6v.2"/></svg></button>
+    <button type="button" data-panel="model" aria-pressed="false" aria-label="Model and boundaries (M)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg></button>
+    <button type="button" data-panel="info" aria-pressed="false" aria-label="What is this wavefield? (I)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.6v.2"/></svg></button>
   </div>
   <div class="lab-pop glass" id="labPop" role="dialog" aria-label="Wave lab options" hidden></div>
 
@@ -311,7 +339,7 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
     <div class="seis-row">
       <span><span class="live">Live</span> · <span id="seisLabel">Station YW01 · pressure</span></span>
       <span class="seis-r">
-        <span class="vlegend" title="The background is the velocity model. Recovering it from recorded waves is what seismic tomography does."><span class="long">Velocity model</span><span><i style="background:var(--slow)"></i>slow</span><span><i style="background:var(--fast)"></i>fast</span></span>
+        <span class="vlegend" title="The background is the velocity model. Recovering it from recorded waves is what seismic tomography does."><span class="long">Velocity model</span><span class="vramp">slow<i></i>fast</span></span>
       </span>
     </div>
     <canvas id="trace" aria-hidden="true"></canvas>
@@ -417,7 +445,7 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
   var root=document.documentElement, btn=document.getElementById('themeBtn'), meta=document.querySelector('meta[name="theme-color"]');
   function stored(){try{return localStorage.getItem('yw-theme')}catch(e){return null}}
   function apply(t,save){
-    root.setAttribute('data-theme',t); if(meta) meta.setAttribute('content',t==='light'?'#f3f5f7':'#070a10');
+    root.setAttribute('data-theme',t); if(meta) meta.setAttribute('content',t==='light'?'#f4f3ee':'#070a12');
     btn.setAttribute('aria-label',t==='light'?'Switch to the dark theme':'Switch to the light theme');
     if(save){try{localStorage.setItem('yw-theme',t)}catch(e){}}
     document.dispatchEvent(new CustomEvent('themechange',{detail:t}));
