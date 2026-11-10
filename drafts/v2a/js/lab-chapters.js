@@ -850,38 +850,39 @@
     },
     data: function (ctx, w, h) {
       var pal = L.pal, gx = this.gx, gz = this.gz, inv = this.inv, self = this, narrow = w < 640;
-      var mw = narrow ? (w - 28 - 24) / 3 : Math.min((w * 0.66 - 52) / 3, (h - 62) * gx / gz), mh = mw * gz / gx, y0 = 20;
+      var mw = narrow ? (w - 28 - 24) / 3 : Math.min((w * 0.78 - 52) / 3, (h - 62) * gx / gz), mh = mw * gz / gx;
+      var yT = Math.max(2, Math.round((h - mh - 52) / 2)), y0 = yT + 18, yB = y0 + mh + 34;   /* titles · maps · colour bar, centred as one group */
       var x0 = narrow ? 14 : w - 14 - 3 * mw - 24;
       function map(X, title, val) {
-        L.panelLabel(ctx, title, X, 2);
+        L.panelLabel(ctx, title, X, yT);
         for (var k = 0; k < gz; k++) for (var i = 0; i < gx; i++) { var c = val(k * gx + i); ctx.fillStyle = 'rgb(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ')'; ctx.fillRect(X + i * mw / gx, y0 + k * mh / gz, mw / gx + 0.6, mh / gz + 0.6); }
         ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.strokeRect(X + 0.5, y0 + 0.5, mw - 1, mh - 1);
       }
       var span = this.span();
       map(x0, 'TRUE MODEL', function (j) { return L.velCol(self.truth[j] - 1, span); });
       map(x0 + mw + 12, inv ? 'RECOVERED · ' + (inv.mode === 'bent' ? 'BENT' : 'STRAIGHT') + ' RAYS' : 'RECOVERED', function (j) { return inv ? L.velCol(inv.v[j] - 1, span) : (pal.pn || pal.bg); }, false);
-      map(x0 + 2 * (mw + 12), 'RAY COVERAGE', function (j) { var a = inv ? Math.min(1, inv.hits[j] / (0.5 * inv.hmax)) : 0, b = pal.pn || pal.bg, c = pal.pos; return [b[0] + (c[0] - b[0]) * a * 0.8, b[1] + (c[1] - b[1]) * a * 0.8, b[2] + (c[2] - b[2]) * a * 0.8]; }, false);
+      map(x0 + 2 * (mw + 12), 'RAY COVERAGE', function (j) { var a = inv ? Math.min(1, inv.hits[j] / (0.5 * inv.hmax)) : 0, b = pal.pn || pal.bg, c = pal.pos; return [b[0] + (c[0] - b[0]) * a * 0.5, b[1] + (c[1] - b[1]) * a * 0.5, b[2] + (c[2] - b[2]) * a * 0.5]; }, false);
       if (!inv) { L.font(ctx, 10, 400); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('run the survey', x0 + mw + 12 + mw / 2, y0 + mh / 2); }
       L.colorbar(ctx, x0, y0 + mh + 10, Math.min(2 * mw + 12, 220), 8, function (t) { return L.velCol(t * span, span); }, '−' + Math.round(span * 100) + ' %', '+' + Math.round(span * 100) + ' %', 'velocity vs. v = 1');
       if (narrow) return;
       /* left: the current (or last) shot gather with its picks */
-      var gw = x0 - 14 - 22, GH = h - 30;
-      L.panelLabel(ctx, this.phase === 'idle' ? 'SHOT GATHER' : 'SHOT ' + Math.min(this.shot + 1, this.S.length) + ' · GATHER AND PICKS', 14, 2);
-      if (!this.buf) { L.font(ctx, 10, 400); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('waiting for the first shot', 14 + gw / 2, 18 + GH / 2); return; }
+      var gw = x0 - 14 - 22, GH = yB - 16 - y0;                                    /* same top and bottom as the map group */
+      L.panelLabel(ctx, this.phase === 'idle' ? 'SHOT GATHER' : 'SHOT ' + Math.min(this.shot + 1, this.S.length) + ' · GATHER AND PICKS', 14, yT);
+      if (!this.buf) { L.font(ctx, 10, 400); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('waiting for the first shot', 14 + gw / 2, y0 + GH / 2); return; }
       var nR = this.R.length, len = this.len, kk = this.phase === 'survey' ? this.k : len, sp = GH / nR, peak = 1e-9, r, i;
       for (r = 0; r < nR; r++) for (i = 0; i < kk; i++) { var aa = Math.abs(this.buf[r * len + i]); if (aa > peak) peak = aa; }
       var stride = Math.max(1, Math.floor(len / (gw * 1.5)));
-      ctx.lineWidth = 0.9; ctx.strokeStyle = L.rgba(pal.ink, 0.55);
+      ctx.lineWidth = 0.9; ctx.strokeStyle = L.rgba(pal.ink, 0.38);
       for (r = 0; r < nR; r++) {
         if (!this.use[r]) continue;
-        var yb = 18 + sp * (r + 0.5); ctx.beginPath();
+        var yb = y0 + sp * (r + 0.5); ctx.beginPath();
         for (i = 0; i < kk; i += stride) { var yy = yb - Math.max(-1.5 * sp, Math.min(1.5 * sp, this.buf[r * len + i] / peak * 2.2 * sp * 4)); if (i) ctx.lineTo(14 + i / (len - 1) * gw, yy); else ctx.moveTo(14, yy); }
         ctx.stroke();
       }
       var sh = this.phase === 'survey' ? this.shot : this.S.length - 1;
       ctx.fillStyle = L.rgba(pal.neg, 0.95);
-      this.rays.forEach(function (ry) { if (ry.shot === sh) { ctx.beginPath(); ctx.arc(14 + ry.pk / (len - 1) * gw, 18 + sp * (ry.ri + 0.5), 1.8, 0, 6.2832); ctx.fill(); } });
-      L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textBaseline = 'top'; ctx.textAlign = 'left'; ctx.fillText('0 s', 14, h - 11); ctx.textAlign = 'right'; ctx.fillText(L.fmt(len / L.rate, 1) + ' s · dots = picks', 14 + gw, h - 11);
+      this.rays.forEach(function (ry) { if (ry.shot === sh) { ctx.beginPath(); ctx.arc(14 + ry.pk / (len - 1) * gw, y0 + sp * (ry.ri + 0.5), 1.8, 0, 6.2832); ctx.fill(); } });
+      L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textBaseline = 'top'; ctx.textAlign = 'left'; ctx.fillText('0 s', 14, yB - 12); ctx.textAlign = 'right'; ctx.fillText(L.fmt(len / L.rate, 1) + ' s · dots = picks', 14 + gw, yB - 12);
     },
     csv: function () {
       if (!this.rays.length) return null;

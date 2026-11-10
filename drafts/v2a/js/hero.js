@@ -188,7 +188,7 @@
     for (st = step - (step % sec); st > step - TR; st -= sec) { xt = Math.round(left + ww - (step - st) / TR * ww) + 0.5; tctx.moveTo(xt, h - 5); tctx.lineTo(xt, h); }
     tctx.stroke();
     if (!many) { tctx.strokeStyle = pal.grid; tctx.beginPath(); tctx.moveTo(0, Math.round(h / 2) + 0.5); tctx.lineTo(w, Math.round(h / 2) + 0.5); tctx.stroke(); }
-    tctx.font = '600 10px "JetBrains Mono", monospace'; tctx.textBaseline = 'top';
+    tctx.font = '500 10px "JetBrains Mono", monospace'; tctx.textBaseline = 'top';
     for (var qq = 0; qq < marks.length; qq++) {
       var age = step - marks[qq]; if (age > TR) continue; var xm = left + ww - age / TR * ww;
       tctx.strokeStyle = 'rgba(' + pal.origin + ',.8)'; tctx.setLineDash([2, 3]); tctx.beginPath(); tctx.moveTo(xm, 1); tctx.lineTo(xm, h - 1); tctx.stroke(); tctx.setLineDash([]);

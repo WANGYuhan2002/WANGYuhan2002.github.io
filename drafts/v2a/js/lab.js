@@ -38,8 +38,8 @@
     if (window.matchMedia) matchMedia('(prefers-color-scheme: light)').addEventListener('change', function (e) { if (!stored()) apply(e.matches ? 'light' : 'dark', false); });
     window.addEventListener('storage', function (e) { if (e.key === 'yw-theme' && (e.newValue === 'light' || e.newValue === 'dark')) apply(e.newValue, false); });
   })();
-  /* the velocity model is always shown under the waves; in the lab it is the object of study, so its tint is stronger than on the homepage */
-  function labPal() { var b = WE.PAL[theme()], o = {}; for (var k in b) o[k] = b[k]; o.tint = b.tint * 1.25; return o; }
+  /* the velocity model is always shown under the waves; the lab uses the homepage tint (a stronger one made large layered areas too loud) */
+  function labPal() { var b = WE.PAL[theme()], o = {}; for (var k in b) o[k] = b[k]; o.tint = b.tint * 1.0; return o; }
   L.pal = labPal();
   document.addEventListener('themechange', function () { L.pal = labPal(); if (L.eng) L.eng.setDisplay(L.pal, S.reveal); });
 
@@ -344,7 +344,7 @@
     var amp = (many ? 0.95 * sp : h / 2 - 3) / rec.peak * (o.gain || 1), clip = many ? 1.4 * sp : h / 2 - 1;
     var stride = Math.max(1, Math.floor(len / Math.max(1, ww * 1.5))), half = Math.round(L.rate * 0.25), floor = 0.02 * rec.peak, lvl = many ? 0.45 * sp : 0.35 * h;
     if (o.marks) {
-      L.font(ctx, 10, 600); ctx.textBaseline = 'top'; ctx.lineWidth = 1;
+      L.font(ctx, 10); ctx.textBaseline = 'top'; ctx.lineWidth = 1;
       for (var q = 0; q < o.marks.length; q++) {
         var age = o.now - o.marks[q].n; if (age < 0 || age > len) continue;
         var xm = X + left + ww - age / len * ww;
