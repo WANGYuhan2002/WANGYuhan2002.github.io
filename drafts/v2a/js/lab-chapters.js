@@ -46,39 +46,50 @@
   /* ======================================================================================
      1 · PLAYGROUND
      ====================================================================================== */
+  var MAXSTA = 12;
   L.register({
     id: 'play', title: 'Playground', physics: 'acoustic',
-    goal: 'Build a medium, then shake it. Every click is an earthquake, and every edit changes how the waves travel.',
-    tools: ['quake', '|', 'slow', 'fast', 'erase', 'scatter'],
+    goal: 'Build a medium, then shake it. Every click is an acoustic source, every edit changes how the waves travel, and the stations you place record what arrives.',
+    tools: ['quake', '|', 'slow', 'fast', 'erase', 'scatter', '|', 'station'],
+    shareWhat: 'the model, your edits, the boundaries and your stations',
     st: { m: null, sta: null, bc: 'absorb', agc: false, autoFree: false, did: {} },
     enter: function () {
-      var st = this.st;
+      var st = this.st, pts;
       if (st.m) L.model.load(st.m); else L.model.setPreset('random');
       L.setModel(); L.setBC(st.bc);
-      var p = st.sta ? L.fromN(st.sta, 3) : L.clampIn(L.nx * 0.78, L.ny * 0.56, 3);
-      this.rec = new L.Rec([{ x: p[0], y: p[1], code: 'YW01' }], L.TR);
-      L.setProbes([[p[0], p[1]]]); this.head(); this.auto = performance.now();
+      if (st.sta && st.sta.length) pts = st.sta.map(function (q) { var p = L.fromN(q, 3); return { x: p[0], y: p[1], code: q[2] || 'YW01' }; });
+      else { var p0 = L.clampIn(L.nx * 0.78, L.ny * 0.56, 3); pts = [{ x: p0[0], y: p0[1], code: 'YW01' }]; }
+      this.rec = new L.Rec(pts, L.TR); this.probes(); this.head(); this.auto = performance.now();
       if (!st.did.quake) setTimeout(function () { if (S.ch === 'play' && L.eng) L.quake(Math.round(L.nx * 0.42), Math.round(L.ny * 0.38), { mag: 2.9, sound: false }); }, 350);
     },
-    head: function () { L.setData('Station <b>YW01</b> · pressure p(t) · last 6 s', L.seg('agc', [['0', 'True amplitude'], ['1', 'AGC 0.5 s']], this.st.agc ? '1' : '0', 'sm')); },
-    save: function () { this.st.m = L.model.serialize(); var r = this.rec.pts[0]; this.st.sta = L.toN([r.x, r.y]); },
+    probes: function () { L.setProbes(this.rec.pts.map(function (p) { return [p.x, p.y]; })); },
+    head: function () {
+      var n = this.rec.n;
+      L.setData((n === 1 ? 'Station <b>' + this.rec.pts[0].code + '</b>' : '<b>' + n + '</b> stations') + ' · pressure p(t) · last 6 s', L.seg('agc', [['0', 'True amplitude'], ['1', 'AGC 0.5 s']], this.st.agc ? '1' : '0', 'sm'));
+    },
+    save: function () { this.st.m = L.model.serialize(); this.st.sta = this.rec.pts.map(function (p) { var q = L.toN([p.x, p.y]); return [q[0], q[1], p.code]; }); },
     serialize: function () { var st = this.st; return { m: st.m, sta: st.sta, bc: st.bc, agc: st.agc ? 1 : 0 }; },
-    load: function (o) { var st = this.st; st.m = o.m || null; st.sta = o.sta || null; st.bc = o.bc || 'absorb'; st.agc = !!o.agc; st.did = { model: true }; },
+    load: function (o) {
+      var st = this.st; st.m = o.m || null; st.bc = o.bc || 'absorb'; st.agc = !!o.agc; st.did = { model: true };
+      st.sta = Array.isArray(o.sta) && Array.isArray(o.sta[0]) ? o.sta : (o.sta ? [[o.sta[0], o.sta[1], 'YW01']] : null);   /* older links held one station */
+    },
     steps: function () {
       var st = this.st, d = st.did;
       return [
-        { t: 'Pick a starting model', d: 'A map view, or a geological cross-section whose top edge is the Earth’s surface.', c: modelChips(L.model.preset), done: !!d.model },
-        { t: 'Shape the medium', d: 'With the tools on the wavefield: paint <b>slow</b> (S) or <b>fast</b> (F) bodies, <b>erase</b> (E), or drop point <b>scatterers</b> (C). Click a tool again for its options.', c: '<div class="btns">' + L.btn('sprinkle', 'Sprinkle 30 scatterers') + L.btn('resetEdits', 'Undo all edits') + '</div>', done: !!d.edit },
-        { t: 'Make an earthquake', d: 'Click anywhere with the earthquake tool (Q). Station YW01 records the pressure in the panel below; drag its triangle to move it.', done: !!d.quake },
+        { t: 'Pick a starting model', d: 'A map view, or a geological cross-section whose top edge is the Earth’s surface.', c: modelChips(L.model.preset), done: !!(d.model || d.edit || d.sta || d.bc) },   /* moving on counts as a choice */
+        { t: 'Shape the medium', d: 'With the tools above the field: paint <b>slow</b> (S) or <b>fast</b> (F) bodies, <b>erase</b> (E), or drop point <b>scatterers</b> (C). Click a tool again for its options.', c: '<div class="btns">' + L.btn('sprinkle', 'Sprinkle 30 scatterers') + L.btn('resetEdits', 'Undo all edits') + '</div>', done: !!d.edit },
+        { t: 'Place your stations', d: 'With the station tool (T), click to add up to ' + MAXSTA + ' stations; drag any station to move it, double-click to remove it. With more than one, the panel below becomes a record section.', c: '<div class="btns">' + L.btn('oneSta', 'Back to one station', '', this.rec && this.rec.n === 1) + '</div>', done: !!d.sta },
+        { t: 'Make an earthquake', d: 'Click anywhere with the earthquake tool (Q): an acoustic point source, a Ricker pulse of pressure. Its options set the magnitude and the peak frequency.', done: !!d.quake },
         { t: 'Change the boundaries', c: bcRadios(st.bc), done: !!d.bc }
       ];
     },
-    explain: function () { return physicsExplain(bcExplain + '<p><b>Not physical:</b> magnitudes only scale the source amplitude.</p>'); },
+    explain: function () { return physicsExplain(bcExplain + '<p><b>Receivers</b> sample p(t) at their positions every time step (bilinear interpolation). <b>Not physical:</b> magnitudes only scale the source amplitude.</p>'); },
     act: function (a, v) {
       if (a === 'preset') this.choose(v);
       else if (a === 'reroll') this.choose('layered', 2 + Math.floor(Math.random() * 1e6));
       else if (a === 'resetEdits') { L.model.setPreset(L.model.preset, L.model.seed); L.setModel(); }
       else if (a === 'agc') { this.st.agc = v === '1'; this.head(); }
+      else if (a === 'oneSta') { var p = this.rec.pts[0]; this.rec = this.rec.remap([{ x: p.x, y: p.y, code: p.code }], [0]); this.probes(); this.head(); L.refresh(); }
     },
     choose: function (p, seed) {
       var st = this.st; L.model.setPreset(p, seed || L.model.seed); L.setModel(); st.did.model = true;
@@ -89,19 +100,43 @@
     input: function (id, v) { if (id.indexOf('bc-') === 0) { var st = this.st; st.bc = v; st.autoFree = false; L.setBC(v); st.did.bc = true; L.refresh(); } },
     onEdit: function () { if (!this.st.did.edit) { this.st.did.edit = true; L.refresh(); } },
     onQuake: function () { if (!this.st.did.quake) { this.st.did.quake = true; L.refresh(); } },
-    handles: function () { var r = this.rec.pts[0]; return [{ x: r.x, y: r.y, id: 0, dy: -8 }]; },
-    moveHandle: function (id, c) { var r = this.rec.pts[0]; r.x = c[0]; r.y = c[1]; L.setProbes([[c[0], c[1]]]); },
+    toolOptions: function (t) {
+      if (t === 'station') return '<p>Click to add a station (up to ' + MAXSTA + '). Drag any station to move it; double-click one to remove it.</p><div class="btns">' + L.btn('oneSta', 'Back to one station') + '</div>';
+      return null;
+    },
+    down: function (c) {
+      if (S.tool !== 'station') return false;
+      var pts = this.rec.pts;
+      if (pts.length >= MAXSTA) { L.toast('Up to ' + MAXSTA + ' stations: drag one, or double-click to remove it'); return true; }
+      var used = pts.map(function (p) { return p.code; }), code = 'YW01';
+      for (var k = 1; k < 100; k++) { code = 'YW' + (k < 10 ? '0' : '') + k; if (used.indexOf(code) < 0) break; }
+      var q = L.clampIn(c[0], c[1], 2), np = pts.map(function (p) { return { x: p.x, y: p.y, code: p.code }; }).concat([{ x: q[0], y: q[1], code: code }]);
+      this.rec = this.rec.remap(np, np.map(function (p, i) { return i < pts.length ? i : -1; }));
+      this.probes(); this.head();
+      if (!this.st.did.sta) { this.st.did.sta = true; L.refresh(); } else L.refresh();
+      return true;
+    },
+    handles: function () { return this.rec.pts.map(function (r, i) { return { x: r.x, y: r.y, id: i, dy: -8 }; }); },
+    moveHandle: function (id, c) { var r = this.rec.pts[id]; r.x = c[0]; r.y = c[1]; this.probes(); if (!this.st.did.sta) { this.st.did.sta = true; } },
+    dropHandle: function () { L.refresh(); },
+    removeHandle: function (id) {
+      var pts = this.rec.pts; if (pts.length <= 1) return;
+      var keep = [], np = [];
+      pts.forEach(function (p, i) { if (i !== id) { np.push({ x: p.x, y: p.y, code: p.code }); keep.push(i); } });
+      this.rec = this.rec.remap(np, keep); this.probes(); this.head(); L.refresh();
+    },
     onSamples: function (b, n, nP) { this.rec.push(b, n, nP, 0); },
     tick: function () {
       var now = performance.now();
-      if (!L.reduceMotion && !S.paused && !L.dragging() && now - L.lastUser > 12000 && now - this.auto > 9000) {
+      if (!L.reduceMotion && !S.paused && !L.dragging() && S.tool === 'quake' && now - L.lastUser > 12000 && now - this.auto > 9000) {
         this.auto = now; L.quake(Math.round(L.nx * (0.3 + 0.6 * Math.random())), Math.round(L.ny * (0.15 + 0.6 * Math.random())), { mag: +(1.6 + Math.random() * 0.8).toFixed(1), sound: false });
       }
     },
     overlay: function (ctx) { stations(ctx, this.rec.pts); },
     data: function (ctx, w, h) {
+      var many = this.rec.n > 1;
       L.drawSection(ctx, 14, 4, w - 28, h - 24, this.rec, { agc: this.st.agc, marks: L.marks, now: L.eng.n });
-      L.timeAxis(ctx, 14, h - 20, w - 28, 6, this.rec.len, L.eng.n);
+      L.timeAxis(ctx, many ? 52 : 14, h - 20, many ? w - 66 : w - 28, 6, this.rec.len, L.eng.n);
     },
     csv: function () { return L.recCSV(this.rec, ['p'], 'pressure, arbitrary units'); }
   });

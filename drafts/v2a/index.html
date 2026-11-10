@@ -1,6 +1,7 @@
 <!doctype html>
-<!-- v2a · dark & interactive. The hero is a live 2-D wave simulation (click = earthquake, station YW01 records it).
-     The full wave lab (arrays & DAS, time reversal, tomography, ambient noise, elastic waves) lives in ./lab/. -->
+<!-- v2a · dark & interactive. The hero is a live 2-D acoustic wave simulation with a small toolbar: sources, painted
+     velocity structure, scatterers, receivers you place yourself, models and boundaries. The full Wave Lab (arrays & DAS,
+     time reversal, tomography, ambient noise, elastic waves) lives in ./lab/. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -105,9 +106,48 @@ img{display:block; max-width:100%}
 .lab-link svg{width:16px; height:16px; transition:transform .2s}
 .lab-link:hover svg{transform:translateX(3px)}
 .seis-r{display:flex; align-items:center; gap:.4rem; flex:none}
-.model-sel{appearance:none; -webkit-appearance:none; font:500 .66rem var(--mono); letter-spacing:.06em; color:var(--ink2); background:rgba(var(--veil),.5) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%237c8a95' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right .55rem center/10px; border:1px solid var(--line2); border-radius:999px; padding:.42rem 1.6rem .42rem .8rem; cursor:pointer}
-.model-sel:hover{border-color:var(--cyan); color:var(--ink)}
 .short{display:none}
+
+/* ---------- wave-lab toolbar + option panel ---------- */
+.lab{position:absolute; z-index:6; right:var(--pad); top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:3px; padding:5px; border-radius:16px; cursor:default}
+.lab button{position:relative; width:38px; height:38px; display:grid; place-items:center; border-radius:11px; border:0; background:none; color:var(--ink2); cursor:pointer; transition:background .15s, color .15s}
+.lab button:hover{background:color-mix(in srgb,var(--ink) 9%,transparent); color:var(--ink)}
+.lab button svg{width:20px; height:20px}
+.lab button[aria-pressed="true"]{background:var(--ink); color:var(--bg)}
+.lab button[data-tool="slow"][aria-pressed="true"]{background:var(--slow); color:#fff}
+.lab button[data-tool="fast"][aria-pressed="true"]{background:var(--fast); color:#fff}
+.lab .sep{height:1px; margin:3px 6px; background:var(--line2)}
+.lab-pop{position:absolute; z-index:6; right:calc(var(--pad) + 58px); top:50%; transform:translateY(-50%); width:272px; max-height:calc(100% - 9rem); overflow:auto; padding:.95rem 1rem 1rem; border-radius:16px; font-size:.8rem; color:var(--ink2); cursor:default}
+.lab-pop[hidden]{display:none}
+.lab-pop.wide{width:340px}
+.pop-top{display:flex; align-items:center; justify-content:space-between; margin:0 0 .45rem}
+.pop-h{margin:0; font:500 .66rem var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--ink)}
+.pop-x{border:0; background:none; color:var(--muted); font:400 1.1rem/1 var(--sans); cursor:pointer; padding:.1rem .3rem}
+.pop-x:hover{color:var(--ink)}
+.pop-hint{margin:0 0 .7rem; line-height:1.5}
+.pop-row{display:flex; justify-content:space-between; align-items:baseline; margin:.65rem 0 .2rem}
+.pop-row output{font:500 .74rem var(--mono); color:var(--ink)}
+.lab-pop input[type="range"]{width:100%; margin:0; accent-color:var(--cyan)}
+.seg{display:flex; gap:2px; margin:.35rem 0 .2rem; padding:2px; border:1px solid var(--line2); border-radius:999px}
+.seg button{flex:1; padding:.32rem .4rem; border:0; border-radius:999px; background:none; color:var(--ink2); font:500 .72rem var(--sans); cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink); color:var(--bg)}
+.radio{display:flex; align-items:flex-start; gap:.5rem; margin:.35rem 0; line-height:1.35; cursor:pointer}
+.radio input{margin:.15rem 0 0; accent-color:var(--cyan)}
+.radio small{display:block; color:var(--muted); font-size:.72rem}
+.chk{display:flex; align-items:center; gap:.45rem; margin:.5rem 0 0; cursor:pointer}
+.chk input{accent-color:var(--cyan)}
+.btns{display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.8rem}
+.pbtn{padding:.38rem .7rem; border-radius:999px; border:1px solid var(--line2); background:none; color:var(--ink); font:500 .74rem var(--sans); cursor:pointer}
+.pbtn:hover{border-color:var(--cyan)}
+.pop-info p{margin:.45rem 0; line-height:1.55}
+.pop-info b{color:var(--ink); font-weight:600}
+.pop-info code{font-family:var(--mono); font-size:.92em; color:var(--cyan)}
+.pbtn.go{background:var(--ink); color:var(--bg); border-color:var(--ink); font-weight:600}
+.pbtn.go:hover{background:var(--cyan); border-color:var(--cyan)}
+.pop-more{margin:.9rem 0 0; padding-top:.7rem; border-top:1px solid var(--line); font-size:.76rem}
+.pop-more a{color:var(--cyan); text-decoration:none}
+.pop-more a:hover{text-decoration:underline}
+
 
 /* ---------- seismograms ---------- */
 .seis{position:absolute; z-index:3; left:0; right:0; bottom:0; padding:0 var(--pad) .9rem; cursor:default}
@@ -120,7 +160,7 @@ img{display:block; max-width:100%}
 .reveal{flex:none; font:500 .66rem var(--mono); letter-spacing:.14em; text-transform:uppercase; color:var(--ink2); background:rgba(var(--veil),.5); border:1px solid var(--line2); border-radius:999px; padding:.42rem .8rem; cursor:pointer; transition:all .2s}
 .reveal:hover{border-color:var(--cyan); color:var(--ink)}
 .reveal[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}
-.legend{position:absolute; right:var(--pad); bottom:calc(100% + .6rem); margin:0; max-width:min(420px,80vw); padding:.75rem .9rem; border-radius:14px; border:1px solid var(--line2); background:rgba(var(--veil),.74); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); font:400 .78rem/1.5 var(--sans); color:var(--ink2)}
+.legend{position:absolute; right:calc(var(--pad) + 62px); bottom:calc(100% + .6rem); margin:0; max-width:min(420px,80vw); padding:.75rem .9rem; border-radius:14px; border:1px solid var(--line2); background:rgba(var(--veil),.74); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); font:400 .78rem/1.5 var(--sans); color:var(--ink2)}
 .legend b{color:var(--ink)}
 .legend .sw{display:inline-block; width:10px; height:10px; border-radius:2px; vertical-align:-1px; margin:0 .2rem 0 .1rem}
 
@@ -194,19 +234,20 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
 }
 @media (max-height:780px) and (min-width:641px){
   #events li:nth-child(n+3){display:none}
+  .lab button{width:34px; height:34px}
 }
 @media (max-width:640px){
   .top nav{display:none}
   .hero-copy{bottom:calc(var(--seis-h) + 2vh); max-width:92vw}
-  .hero{--seis-h:150px}
-  .catalog{top:3.9rem; right:1rem; width:auto; max-width:62vw; padding:.55rem .75rem}
+  .lab{top:3.7rem; left:1rem; right:1rem; transform:none; flex-direction:row; justify-content:space-between; overflow-x:auto}
+  .lab .sep{width:1px; height:auto; margin:6px 2px}
+  .lab-pop, .lab-pop.wide{top:7.2rem; left:1rem; right:1rem; width:auto; transform:none; max-height:calc(100% - 9rem - var(--seis-h))}
+  .catalog{top:7.2rem; right:1rem; width:auto; max-width:62vw; padding:.55rem .75rem}
   .cta-row{gap:.5rem; margin-top:1.3rem}
   .cta-row .hint{padding:.6rem .95rem; font-size:.86rem}
-  .seis-row{flex-wrap:wrap; row-gap:.45rem}
-  .seis-r{flex-basis:100%}
-  .model-sel{flex:1; min-width:0}
   .long{display:none}
   .short{display:inline}
+  .legend{right:var(--pad)}
   .catalog .cat-h{margin-bottom:.25rem}
   #events li:not(:first-child){display:none}
   #events li{grid-template-columns:auto auto}
@@ -255,15 +296,23 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
     <ol id="events" aria-live="polite"><li><span class="empty">Listening… no events yet</span></li></ol>
   </aside>
 
+  <div class="lab glass" id="lab" role="toolbar" aria-label="Wave lab" aria-orientation="vertical">
+    <button type="button" data-tool="quake" aria-pressed="true" aria-label="Earthquake (Q)" title="Earthquake · Q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="9.6" opacity=".5"/></svg></button>
+    <button type="button" data-tool="slow" aria-pressed="false" aria-label="Paint a low-velocity body (S)" title="Low-velocity body · S"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3.5c4.6 0 8.5 3.3 8 8.1-.5 4.7-4.6 8.5-9.2 8-4.4-.4-7.6-4.2-7.2-8.6C4 6.6 7.6 3.5 12 3.5z"/><path d="M8.3 12h7.4"/></svg></button>
+    <button type="button" data-tool="fast" aria-pressed="false" aria-label="Paint a high-velocity body (F)" title="High-velocity body · F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3.5c4.6 0 8.5 3.3 8 8.1-.5 4.7-4.6 8.5-9.2 8-4.4-.4-7.6-4.2-7.2-8.6C4 6.6 7.6 3.5 12 3.5z"/><path d="M8.3 12h7.4M12 8.3v7.4"/></svg></button>
+    <button type="button" data-tool="erase" aria-pressed="false" aria-label="Erase structure (E)" title="Erase structure · E"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M14.5 4.5 20 10l-8.5 8.5H6l-2.5-2.5z"/><path d="M9 10l5.5 5.5M11 18.5h9"/></svg></button>
+    <button type="button" data-tool="scatter" aria-pressed="false" aria-label="Add point scatterers (C)" title="Point scatterers · C"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="7" r="1.7"/><circle cx="15.5" cy="5" r="1.7"/><circle cx="11" cy="12" r="1.7"/><circle cx="18.5" cy="13.5" r="1.7"/><circle cx="6.5" cy="17.5" r="1.7"/><circle cx="14" cy="19.5" r="1.7"/></svg></button>
+    <button type="button" data-tool="array" aria-pressed="false" aria-label="Receivers: stations and arrays (A)" title="Receivers · A"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M1.5 8h6l-3 5.2zM9 8h6l-3 5.2zM16.5 8h6l-3 5.2z"/><path d="M2 17.5h20" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 2.4"/></svg></button>
+    <span class="sep" aria-hidden="true"></span>
+    <button type="button" data-panel="model" aria-pressed="false" aria-label="Model and boundaries (M)" title="Model &amp; boundaries · M"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg></button>
+    <button type="button" data-panel="info" aria-pressed="false" aria-label="What is this wavefield? (I)" title="What is this? · I"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.6v.2"/></svg></button>
+  </div>
+  <div class="lab-pop glass" id="labPop" role="dialog" aria-label="Wave lab options" hidden></div>
+
   <div class="seis">
     <div class="seis-row">
-      <span><span class="live">Live</span> · Station YW01</span>
+      <span><span class="live">Live</span> · <span id="seisLabel">Station YW01 · pressure</span></span>
       <span class="seis-r">
-        <select class="model-sel" id="heroModel" aria-label="Hidden velocity structure">
-          <option value="random">Map · random blobs</option><option value="homogeneous">Map · uniform</option>
-          <option value="layered">Section · folded layers</option><option value="basin">Section · sedimentary basin</option>
-          <option value="slab">Section · subduction zone</option><option value="salt">Section · salt dome</option>
-        </select>
         <button class="reveal" id="reveal" type="button" aria-pressed="false">Reveal<span class="long"> hidden structure</span></button>
       </span>
     </div>
@@ -324,7 +373,7 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
 </section>
 
 <!-- =============================== WAVE LAB =============================== -->
-<section class="sec" id="lab">
+<section class="sec" id="wavelab">
   <p class="label"><b>04</b> Wave Lab</p>
   <div class="say">
     <h2 class="big">Six experiments, <em>live</em> in your browser.</h2>
@@ -362,7 +411,7 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
 
 <footer>
   <span>© 2026 Yuhan Wang · Zürich</span>
-  <span>Hero: a live finite-difference solution of the 2-D acoustic wave equation (on the GPU where WebGL2 allows). More in the <a href="lab/">Wave Lab</a>.</span>
+  <span>Hero: a live finite-difference solution of the 2-D acoustic wave equation (on the GPU where WebGL2 allows). Use the toolbar to paint structure, drop scatterers and place receivers; more in the <a href="lab/">Wave Lab</a>.</span>
 </footer>
 
 <script>

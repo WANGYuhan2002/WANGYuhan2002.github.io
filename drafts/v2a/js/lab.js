@@ -18,7 +18,7 @@
 
   var L = window.Lab = { CH: {}, ORDER: [], WE: WE, WM: WM, coarse: coarse, reduceMotion: reduceMotion, marks: [] };
   var S = L.S = { ch: 'play', backend: WE.gpuAvailable() ? 'gpu' : 'cpu', fine: false, speed: 1, sound: false, haptics: false,
-    reveal: false, paused: false, tool: 'quake', mag: 3.2, magRandom: true, brushR: 14, brushS: 0.2, explain: false };
+    reveal: false, paused: false, tool: 'quake', mag: 3.2, magRandom: true, fmul: 1, brushR: 14, brushS: 0.2, explain: false };
   S.q = 1;                                                               /* grid scale; lowered automatically on a busy device */
   try { var saved = JSON.parse(localStorage.getItem('yw-lab') || '{}'); if (saved.backend === 'cpu' || (saved.backend === 'gpu' && WE.gpuAvailable())) S.backend = saved.backend; if (saved.fine) S.fine = true; if (saved.speed) S.speed = saved.speed; if (saved.q >= 0.5 && saved.q < 1) S.q = saved.q; } catch (e) {}
   function persist() { try { localStorage.setItem('yw-lab', JSON.stringify({ backend: S.backend, fine: S.fine, speed: S.speed, q: S.q })); } catch (e) {} }
@@ -76,7 +76,7 @@
   L.quake = function (x, y, o) {
     o = o || {};
     var M = o.mag != null ? o.mag : (S.magRandom ? +(2.2 + Math.random() * 2.4).toFixed(1) : S.mag);
-    var s = L.eng.addSource({ x: x, y: y, amp: L.magAmp(M) * (o.ampMul || 1), kind: o.kind || 0 });
+    var s = L.eng.addSource({ x: x, y: y, amp: L.magAmp(M) * (o.ampMul || 1), kind: o.kind || 0, fmul: o.fmul || S.fmul });
     L.marks.push({ n: L.eng.n, x: s.x, y: s.y, M: M, t: performance.now() }); if (L.marks.length > 12) L.marks.shift();
     if (S.sound && o.sound !== false) thump(Math.min(1, 0.3 + 0.17 * (M - 2)));
     return s;
@@ -98,6 +98,12 @@
   };
   Rec.prototype.get = function (k, i, comp) { return (comp ? this.x : this.z)[k][(this.head + i) % this.len]; };   /* i = 0 is the oldest sample */
   Rec.prototype.clear = function () { for (var k = 0; k < this.n; k++) { this.z[k].fill(0); this.x[k].fill(0); } this.peak = 0; };
+  /* a new receiver set; traces of receivers listed in keep (old index per new receiver, or -1) are carried over */
+  Rec.prototype.remap = function (pts, keep) {
+    var r = new Rec(pts, this.len); r.head = this.head; r.count = this.count; r.peak = this.peak;
+    for (var k = 0; k < pts.length; k++) if (keep[k] >= 0) { r.z[k] = this.z[keep[k]]; r.x[k] = this.x[keep[k]]; }
+    return r;
+  };
   L.Rec = Rec;
 
   /* ---------------- tool strip ---------------- */
@@ -110,10 +116,11 @@
     line: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M1.5 8h6l-3 5.2zM9 8h6l-3 5.2zM16.5 8h6l-3 5.2z"/><path d="M2 17.5h20" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 2.4"/></svg>',
     ring: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8" stroke-dasharray="2.4 2.4"/><path d="M12 2.2 9.8 6h4.4zM21.8 12 18 9.8v4.4zM12 21.8l2.2-3.8H9.8zM2.2 12 6 14.2V9.8z" fill="currentColor" stroke="none"/></svg>',
     fiber: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 18c3-8 6 2 9-5s6-4 9-9"/><circle cx="3" cy="18" r="1.7" fill="currentColor" stroke="none"/></svg>',
-    source: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l2.3 6.2L21 9.5l-5.3 4.1L17.6 21 12 17.2 6.4 21l1.9-7.4L3 9.5l6.7-.3z" stroke-linejoin="round"/></svg>'
+    source: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l2.3 6.2L21 9.5l-5.3 4.1L17.6 21 12 17.2 6.4 21l1.9-7.4L3 9.5l6.7-.3z" stroke-linejoin="round"/></svg>',
+    station: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7h11l-5.5 9.5z" fill="currentColor" stroke="none"/><path d="M18.5 3.5v6M15.5 6.5h6"/><path d="M3 20h18" stroke-dasharray="2 2.4"/></svg>'
   };
   var TOOL = { quake: ['Earthquake', 'Q'], slow: ['Low-velocity body', 'S'], fast: ['High-velocity body', 'F'], erase: ['Erase structure', 'E'], scatter: ['Point scatterers', 'C'],
-    line: ['Line array', 'L'], ring: ['Ring array', 'O'], fiber: ['Fibre-optic cable (DAS)', 'D'], source: ['Hidden source', 'Q'] };
+    line: ['Line array', 'L'], ring: ['Ring array', 'O'], fiber: ['Fibre-optic cable (DAS)', 'D'], source: ['Hidden source', 'Q'], station: ['Stations', 'T'] };
   L.TOOL = TOOL;
   function renderTools() {
     var ch = L.CH[S.ch], h = '';
@@ -136,7 +143,13 @@
   function toptHTML(t) {
     var ch = L.CH[S.ch], body = ch.toolOptions ? ch.toolOptions(t) : null;
     if (body == null) {
-      if (t === 'quake') body = '<p>Click or tap the wavefield to fire a source (a Ricker wavelet). <kbd>Shift</kbd>-click for a big one.</p>' + L.range('tMag', 'Magnitude', 1.5, 5, 0.1, S.mag, S.magRandom ? 'random' : 'M ' + S.mag.toFixed(1)) + L.check('tMagR', 'random magnitude', S.magRandom);
+      if (t === 'quake') {
+        var fh = function (m) { return L.fmt(L.eng.fHz * m, 0) + ' Hz'; }, ppw = L.eng.ppw / S.fmul;
+        body = '<p>Click or tap the wavefield to fire ' + (L.eng.physics === 'elastic' ? 'a source' : 'an <b>acoustic point source</b> (a pressure pulse, P waves only)') + ' with a Ricker time function. <kbd>Shift</kbd>-click for a big one.</p>' +
+          L.range('tMag', 'Magnitude', 1.5, 5, 0.1, S.mag, S.magRandom ? 'random' : 'M ' + S.mag.toFixed(1)) + L.check('tMagR', 'random magnitude', S.magRandom) +
+          '<p style="margin:.7rem 0 .3rem">Peak frequency</p>' + L.seg('fmul', [['0.6', fh(0.6)], ['1', fh(1)], ['1.6', fh(1.6)]], String(S.fmul), 'sm') +
+          '<p style="margin:.4rem 0 0">' + L.fmt(ppw, 0) + ' grid points per wavelength at v = 1' + (ppw < 9 ? ': short waves start to suffer from <b>numerical dispersion</b> (they trail ripples).' : '.') + '</p>';
+      }
       else if (t === 'slow' || t === 'fast') body = '<p>Drag to paint. Inside the brush the velocity becomes <b>' + (t === 'slow' ? '1 − strength' : '1 + strength') + '</b> (background 1), with a soft edge.</p>' + L.range('tR', 'Radius', 4, 40, 1, S.brushR, brushKm()) + L.range('tS', 'Strength', 5, t === 'fast' ? 38 : 50, 1, Math.round(S.brushS * 100), (t === 'slow' ? '−' : '+') + Math.round(S.brushS * 100) + ' %');
       else if (t === 'erase') body = '<p>Drag to restore the background velocity (v = 1).</p>' + L.range('tR', 'Radius', 4, 40, 1, S.brushR, brushKm());
       else if (t === 'scatter') body = '<p>Click or drag to drop point scatterers: small inclusions at 35 % of the background velocity. Each one re-radiates the passing wave; many of them build up a coda.</p><div class="btns"><button class="pbtn" type="button" data-act="sprinkle">Sprinkle 30</button><button class="pbtn" type="button" data-act="clearScat">Clear all</button></div>';
@@ -175,6 +188,7 @@
     var b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
     var a = b.dataset.act, v = b.dataset.val, ch = L.CH[S.ch];
     if (a === 'closeTopt') { closeTopt(); return; }
+    if (a === 'fmul') { S.fmul = +v; openTopt('quake'); return; }
     if (a === 'sprinkle') { sprinkle(30); if (ch.onEdit) ch.onEdit(); return; }
     if (a === 'clearScat') { L.model.clearScatter(); L.setModel(); if (ch.onEdit) ch.onEdit(); return; }
     if (settingsAct(a, v)) return;
@@ -255,6 +269,7 @@
     if ((k === 'paint' || k === 'scatter') && ch.onEdit) ch.onEdit();
   }
   view.addEventListener('pointerup', endDrag); view.addEventListener('pointercancel', endDrag);
+  view.addEventListener('dblclick', function (e) { var ch = L.CH[S.ch], h = hitHandle(e); if (h && ch.removeHandle) ch.removeHandle(h.id); });
   view.addEventListener('pointerleave', function () { L.cursor = null; });
   L.dragging = function () { return drag; };
 
