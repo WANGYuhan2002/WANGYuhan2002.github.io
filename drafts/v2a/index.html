@@ -67,7 +67,7 @@ img{display:block; max-width:100%}
 .draft{position:fixed; left:12px; bottom:12px; z-index:50; margin:0; font:500 11px/1.4 var(--mono); color:#1a0f0b; background:var(--coral); padding:6px 10px; border-radius:999px; box-shadow:0 6px 20px rgba(0,0,0,.4)}
 
 /* ================================ HERO ================================ */
-.hero{--seis-h:132px; position:relative; height:100svh; min-height:660px; overflow:hidden; cursor:crosshair; -webkit-user-select:none; user-select:none; touch-action:manipulation; isolation:isolate}
+.hero{--seis-h:168px; position:relative; height:100svh; min-height:660px; overflow:hidden; cursor:crosshair; -webkit-user-select:none; user-select:none; touch-action:manipulation; isolation:isolate}
 .hero.editing{touch-action:none}
 #field, #fieldgl{position:absolute; inset:0; width:100%; height:100%; display:block; z-index:0}
 #overlay{position:absolute; inset:0; width:100%; height:100%; display:block; z-index:2; pointer-events:none}
@@ -182,7 +182,8 @@ img{display:block; max-width:100%}
 .live{color:var(--cyan)}
 .live::before{content:"● "; animation:blink 1.6s infinite}
 @keyframes blink{50%{opacity:.25}}
-#trace{display:block; width:100%; height:72px; transition:height .3s ease}
+/* one fixed height for one station or many (set again by hero.js): adding stations never moves the page */
+#trace{display:block; width:100%; height:108px; transition:height .3s ease}
 /* velocity legend: the model is always drawn under the waves; one slow → fast gradient bar, as in the Wave Lab */
 .vlegend{flex:none; display:inline-flex; align-items:center; gap:10px; font:500 11px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--ink2); background:rgba(var(--veil),.5); border:1px solid var(--line2); border-radius:var(--r-pill); padding:5px 12px; cursor:help}
 .vlegend .vramp{display:inline-flex; align-items:center; gap:6px; text-transform:none; letter-spacing:0; font:400 12px var(--sans)}
@@ -262,6 +263,8 @@ footer{max-width:1240px; margin:0 auto; padding:2rem var(--pad) 3rem; display:fl
 }
 @media (max-width:640px){
   .top nav{display:none}
+  .hero{--seis-h:152px}
+  #trace{height:92px}
   .hero-copy{bottom:calc(var(--seis-h) + 2vh); max-width:92vw}
   .kicker{letter-spacing:.12em}
   .lab{top:3.7rem; left:1rem; right:1rem; transform:none; flex-direction:row; justify-content:space-between; overflow-x:auto}

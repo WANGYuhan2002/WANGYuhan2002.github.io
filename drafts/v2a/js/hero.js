@@ -64,7 +64,9 @@
     netKind = kind;
     stations = arr.map(function (s) { return { x: clampX(s.x), y: clampY(s.y), code: s.code, buf: new Float32Array(TR) }; });
     probes(); peak = 0.08; updateSeisLabel();
-    var h = stations.length > 1 ? Math.min(228, 10 + stations.length * 14) : 72;
+    /* the seismogram strip keeps one height whatever the number of stations, so adding a station never pushes the page up;
+       several stations share it as a record section (at most SHOWN traces: every k-th one for a larger array) */
+    var h = seisH();
     tcv.style.height = h + 'px'; hero.style.setProperty('--seis-h', (h + 60) + 'px');
     tcv.parentNode.classList.toggle('many', stations.length > 1);
     if (panel === 'array') updateCounts();
@@ -88,9 +90,12 @@
     setStations(arr.map(function (s) { return { x: s.x, y: s.y, code: s.code }; }), arr.length === 1 && arr[0].code === 'YW01' ? 'single' : netKind);
     for (var i = 0; i < bufs.length; i++) stations[i].buf = bufs[i];
   }
+  var SHOWN = 12;
+  function seisH() { return W <= 640 ? 92 : 108; }                                  /* fixed strip height (CSS px), as in the page CSS */
+  function traceStep() { return Math.max(1, Math.ceil(stations.length / SHOWN)); }   /* 1, or 2 for 13–24 stations */
   function updateSeisLabel() {
-    var n = stations.length, s = netKind === 'line' ? 'Line array · ' + n + ' stations' : (netKind === 'ring' ? 'Ring array · ' + n + ' stations' : (n === 1 ? 'Station ' + stations[0].code : n + ' stations'));
-    seisLabel.textContent = s + ' · pressure' + (agc ? ' · AGC 0.5 s' : '');
+    var n = stations.length, s = netKind === 'line' ? 'Line array · ' + n + ' stations' : (netKind === 'ring' ? 'Ring array · ' + n + ' stations' : (n === 1 ? 'Station ' + stations[0].code : n + ' stations')), k = traceStep();
+    seisLabel.textContent = s + (k > 1 ? ' (every ' + (k === 2 ? '2nd' : k + 'th') + ' shown)' : '') + ' · pressure' + (agc ? ' · AGC 0.5 s' : '');
   }
   function arrayPositions(d) {
     var out = [], n = arrN, k;
@@ -180,7 +185,8 @@
     var n = stations.length, many = n > 1, m = 0, s, k, step = eng.n;
     for (s = 0; s < n; s++) { var bf = stations[s].buf; for (k = 0; k < TR; k++) { var a = bf[k] < 0 ? -bf[k] : bf[k]; if (a > m) m = a; } }
     peak = Math.max(0.08, m, peak * 0.995);
-    var left = many ? 42 : 0, top = many ? 4 : 2, bot = many ? 4 : 2, ww = w - left, sp = (h - top - bot) / n;
+    var ks = traceStep(), rows = Math.ceil(n / ks);                                /* traces drawn: every ks-th station */
+    var left = many ? 42 : 0, top = many ? 4 : 2, bot = many ? 4 : 2, ww = w - left, sp = (h - top - bot) / rows;
     var amp = (many ? 0.95 * sp : (h / 2 - 4)) / peak, clip = many ? 1.4 * sp : h / 2 - 2, sec = Math.round(rate), st, xt;
     tctx.lineWidth = 1; tctx.strokeStyle = pal.grid; tctx.beginPath();            /* a grid line every second, and short ticks at the bottom */
     for (st = step - (step % sec); st > step - TR; st -= sec) { xt = Math.round(left + ww - (step - st) / TR * ww) + 0.5; tctx.moveTo(xt, 0); tctx.lineTo(xt, h - 5); }
@@ -197,11 +203,11 @@
     var stride = Math.max(1, Math.floor(TR / Math.max(1, ww)));
     var half = Math.round(rate * 0.25), floor = 0.02 * peak, lvl = many ? 0.45 * sp : 0.35 * h;
     if (agc && (!cs || cs.length !== TR + 1)) cs = new Float64Array(TR + 1);
-    for (s = 0; s < n; s++) {
-      var y0 = many ? top + sp * (s + 0.5) : h / 2, buf = stations[s].buf, x2, y2, v;
+    for (s = 0; s < n; s += ks) {
+      var row = s / ks, y0 = many ? top + sp * (row + 0.5) : h / 2, buf = stations[s].buf, x2, y2, v;
       if (agc) { for (k = 0; k < TR; k++) { var o = buf[(head + k) % TR]; cs[k + 1] = cs[k] + o * o; } }
       var gain = function (k) { if (!agc) return amp; var lo = Math.max(0, k - half), hi = Math.min(TR, k + half), r = Math.sqrt((cs[hi] - cs[lo]) / (hi - lo)); return lvl / Math.max(r, floor); };
-      if (many && (sp >= 11 || s % 2 === 0)) { tctx.font = '500 10px "JetBrains Mono", monospace'; tctx.fillStyle = pal.label; tctx.textAlign = 'left'; tctx.textBaseline = 'middle'; tctx.fillText(stations[s].code, 0, y0); tctx.textBaseline = 'top'; }
+      if (many && (sp >= 11 || row % 2 === 0)) { tctx.font = '500 10px "JetBrains Mono", monospace'; tctx.fillStyle = pal.label; tctx.textAlign = 'left'; tctx.textBaseline = 'middle'; tctx.fillText(stations[s].code, 0, y0); tctx.textBaseline = 'top'; }
       tctx.beginPath(); tctx.moveTo(left, y0);                                     /* variable-area fill of the positive half, also for one trace */
       for (k = 0; k < TR; k += stride) { v = buf[(head + k) % TR] * gain(k); x2 = left + k / (TR - 1) * ww; tctx.lineTo(x2, y0 - Math.max(0, Math.min(clip, v))); }
       tctx.lineTo(left + ww, y0); tctx.closePath(); tctx.fillStyle = pal.fill; if (!many) tctx.globalAlpha = 0.7; tctx.fill(); tctx.globalAlpha = 1;
