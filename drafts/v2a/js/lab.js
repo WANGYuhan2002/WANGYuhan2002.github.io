@@ -11,14 +11,14 @@
   function $(id) { return document.getElementById(id); }
   var root = document.documentElement, view = $('view'), glc = $('glc'), cpuc = $('cpuc'), ovc = $('ovc'), octx = ovc.getContext('2d');
   var dcv = $('datac'), dctx = dcv.getContext('2d'), insp = $('insp'), toolsEl = $('tools'), topt = $('topt');
-  var hudEl = $('hud'), progEl = $('prog'), toastEl = $('toast'), revealBtn = $('revealBtn'), legendEl = $('legend');
+  var hudEl = $('hud'), progEl = $('prog'), toastEl = $('toast'), legendEl = $('legend');
   var setPop = $('setPop'), sharePop = $('sharePop'), exportMenu = $('exportMenu'), exportBtn = $('exportBtn'), setBtn = $('setBtn');
   function mm(q) { return !!(window.matchMedia && matchMedia(q).matches); }
   var reduceMotion = mm('(prefers-reduced-motion: reduce)'), coarse = mm('(pointer: coarse)');
 
   var L = window.Lab = { CH: {}, ORDER: [], WE: WE, WM: WM, coarse: coarse, reduceMotion: reduceMotion, marks: [] };
   var S = L.S = { ch: 'play', backend: WE.gpuAvailable() ? 'gpu' : 'cpu', fine: false, speed: 1, sound: false, haptics: false,
-    reveal: false, paused: false, tool: 'quake', mag: 3.2, magRandom: true, fmul: 1, brushR: 14, brushS: 0.2, explain: false };
+    reveal: true, paused: false, tool: 'quake', mag: 3.2, magRandom: true, fmul: 1, brushR: 14, brushS: 0.2, explain: false };
   S.q = 1;                                                               /* grid scale; lowered automatically on a busy device */
   try { var saved = JSON.parse(localStorage.getItem('yw-lab') || '{}'); if (saved.backend === 'cpu' || (saved.backend === 'gpu' && WE.gpuAvailable())) S.backend = saved.backend; if (saved.fine) S.fine = true; if (saved.speed) S.speed = saved.speed; if (saved.q >= 0.5 && saved.q < 1) S.q = saved.q; } catch (e) {}
   function persist() { try { localStorage.setItem('yw-lab', JSON.stringify({ backend: S.backend, fine: S.fine, speed: S.speed, q: S.q })); } catch (e) {} }
@@ -29,7 +29,7 @@
     var btn = $('themeBtn'), meta = document.querySelector('meta[name="theme-color"]');
     function stored() { try { return localStorage.getItem('yw-theme'); } catch (e) { return null; } }
     function apply(t, save) {
-      root.setAttribute('data-theme', t); if (meta) meta.setAttribute('content', t === 'light' ? '#f3f5f7' : '#070a10');
+      root.setAttribute('data-theme', t); if (meta) meta.setAttribute('content', t === 'light' ? '#f4f3ee' : '#070a12');
       btn.setAttribute('aria-label', t === 'light' ? 'Switch to the dark theme' : 'Switch to the light theme');
       if (save) { try { localStorage.setItem('yw-theme', t); } catch (e) {} }
       document.dispatchEvent(new CustomEvent('themechange', { detail: t }));
@@ -38,8 +38,8 @@
     if (window.matchMedia) matchMedia('(prefers-color-scheme: light)').addEventListener('change', function (e) { if (!stored()) apply(e.matches ? 'light' : 'dark', false); });
     window.addEventListener('storage', function (e) { if (e.key === 'yw-theme' && (e.newValue === 'light' || e.newValue === 'dark')) apply(e.newValue, false); });
   })();
-  /* the lab shows waves on top of revealed structure most of the time, so the structure tint is lighter than on the homepage */
-  function labPal() { var b = WE.PAL[theme()], o = {}; for (var k in b) o[k] = b[k]; o.tint = b.tint * 0.55; return o; }
+  /* the velocity model is always shown under the waves; the lab uses the homepage tint (a stronger one made large layered areas too loud) */
+  function labPal() { var b = WE.PAL[theme()], o = {}; for (var k in b) o[k] = b[k]; o.tint = b.tint * 1.0; return o; }
   L.pal = labPal();
   document.addEventListener('themechange', function () { L.pal = labPal(); if (L.eng) L.eng.setDisplay(L.pal, S.reveal); });
 
@@ -249,7 +249,7 @@
       var big = e.shiftKey, src = L.quake(c[0], c[1], big ? { mag: 7 } : (ch.quakeOpts ? ch.quakeOpts() : null));
       if (big) mega();
       if (ch.onQuake) ch.onQuake(src);
-    } else if (t === 'slow' || t === 'fast' || t === 'erase') { if (t !== 'erase' && !S.reveal && !ch.keepHidden) L.setReveal(true); capture(e); drag = { kind: 'paint', last: c }; stamp(c); }
+    } else if (t === 'slow' || t === 'fast' || t === 'erase') { capture(e); drag = { kind: 'paint', last: c }; stamp(c); }
     else if (t === 'scatter') { capture(e); drag = { kind: 'scatter', last: c }; scatterAt(c); }
   });
   view.addEventListener('pointermove', function (e) {
@@ -276,45 +276,61 @@
   /* ---------------- overlay ---------------- */
   function sizeOverlay() { var d = Math.min(2, window.devicePixelRatio || 1); L.dpr = d; ovc.width = Math.round(L.W * d); ovc.height = Math.round(L.H * d); }
   L.rgba = function (c, a) { return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; };
+  /* marks on the field: a crisp halo outline under the fill (no blurred shadows) */
+  function halo(ctx, alpha, lw) { ctx.lineJoin = 'round'; ctx.lineWidth = lw || 1.5; ctx.strokeStyle = L.pal.halo; ctx.globalAlpha = alpha == null ? 1 : alpha; ctx.stroke(); ctx.globalAlpha = 1; }
   L.tri = function (ctx, x, y, s, alpha, col) {
     ctx.beginPath(); ctx.moveTo(x - s, y - s * 1.7); ctx.lineTo(x + s, y - s * 1.7); ctx.lineTo(x, y); ctx.closePath();
-    ctx.fillStyle = L.rgba(col || L.pal.ink, alpha); ctx.shadowColor = L.pal.halo; ctx.shadowBlur = 6; ctx.fill(); ctx.shadowBlur = 0;
+    halo(ctx, alpha); ctx.fillStyle = L.rgba(col || L.pal.ink, alpha); ctx.fill();
   };
   L.label = function (ctx, s, x, y, align, col) {
-    ctx.font = '500 10px "JetBrains Mono", monospace'; ctx.textAlign = align || 'center'; ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = col || L.rgba(L.pal.ink, 0.95); ctx.shadowColor = L.pal.halo; ctx.shadowBlur = 4; ctx.fillText(s, x, y); ctx.shadowBlur = 0;
+    ctx.font = '600 10.5px "JetBrains Mono", monospace'; ctx.textAlign = align || 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.lineJoin = 'round'; ctx.miterLimit = 2; ctx.lineWidth = 3; ctx.strokeStyle = L.pal.halo; ctx.strokeText(s, x, y);
+    ctx.fillStyle = col || L.rgba(L.pal.ink, 0.96); ctx.fillText(s, x, y);
   };
   L.star = function (ctx, x, y, r, col, alpha) {
     ctx.beginPath();
     for (var k = 0; k < 10; k++) { var a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * 0.45 : r; ctx.lineTo(x + rr * Math.cos(a), y + rr * Math.sin(a)); }
-    ctx.closePath(); ctx.fillStyle = L.rgba(col, alpha); ctx.shadowColor = L.pal.halo; ctx.shadowBlur = 6; ctx.fill(); ctx.shadowBlur = 0;
+    ctx.closePath(); halo(ctx, alpha); ctx.fillStyle = L.rgba(col, alpha); ctx.fill();
   };
   function drawOverlay() {
     var ch = L.CH[S.ch], k, pal = L.pal, now = performance.now();
     octx.setTransform(L.dpr, 0, 0, L.dpr, 0, 0); octx.clearRect(0, 0, L.W, L.H);
     var sc = L.model.scat, rs = Math.max(2.2, 1.6 * L.res / L.nx * L.W);
-    for (k = 0; k < sc.length; k++) { octx.beginPath(); octx.arc(L.sx(sc[k][0]), L.sy(sc[k][1]), rs, 0, 6.2832); octx.fillStyle = L.rgba(pal.ink, 0.92); octx.fill(); octx.lineWidth = 1; octx.strokeStyle = pal.halo; octx.stroke(); }
-    if (!ch.noMarks) for (k = 0; k < L.marks.length; k++) { var m = L.marks[k], age = (now - m.t) / 2500; if (age < 1) L.star(octx, L.sx(m.x), L.sy(m.y), 7, pal.neg, 0.9 * (1 - age)); }
+    for (k = 0; k < sc.length; k++) { octx.beginPath(); octx.arc(L.sx(sc[k][0]), L.sy(sc[k][1]), rs, 0, 6.2832); octx.fillStyle = L.rgba(pal.ink, 0.9); octx.fill(); octx.lineWidth = 1; octx.strokeStyle = L.rgba(pal.edge || pal.ink, 0.6); octx.stroke(); }
+    if (!ch.noMarks) for (k = 0; k < L.marks.length; k++) {
+      var m = L.marks[k], age = (now - m.t) / 2500; if (age >= 1) continue;
+      if (age < 0.5 && !L.reduceMotion) { octx.beginPath(); octx.arc(L.sx(m.x), L.sy(m.y), 7 + 30 * age, 0, 6.2832); octx.lineWidth = 1.2; octx.strokeStyle = L.rgba(pal.neg, 0.55 * (1 - age)); octx.stroke(); }
+      L.star(octx, L.sx(m.x), L.sy(m.y), 7, pal.neg, 0.9 * (1 - age));
+    }
     if (ch.overlay) ch.overlay(octx);
     var t = S.tool;
     if (L.cursor && !coarse && (t === 'slow' || t === 'fast' || t === 'erase') && (ch.tools || []).indexOf(t) >= 0) {
       octx.beginPath(); octx.arc(L.sx(L.cursor[0]), L.sy(L.cursor[1]), S.brushR * L.res / L.nx * L.W, 0, 6.2832);
-      octx.setLineDash([5, 5]); octx.lineWidth = 1.4; octx.strokeStyle = t === 'slow' ? L.rgba(pal.slow, 1) : (t === 'fast' ? L.rgba(pal.fast, 1) : L.rgba(pal.ink, 0.8)); octx.stroke(); octx.setLineDash([]);
+      octx.setLineDash([3, 4]); octx.lineWidth = 1.25; octx.strokeStyle = t === 'slow' ? L.rgba(pal.slow, 1) : (t === 'fast' ? L.rgba(pal.fast, 1) : L.rgba(pal.ink, 0.8)); octx.stroke(); octx.setLineDash([]);
     }
   }
 
   /* ---------------- data panel helpers ---------------- */
   L.font = function (ctx, px, w) { ctx.font = (w || 500) + ' ' + px + 'px "JetBrains Mono", monospace'; };
-  L.panelLabel = function (ctx, s, x, y, col) { L.font(ctx, 9.5); ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillStyle = col || L.pal.label; ctx.fillText(s, x, y); };
-  /* time axis of a rolling window: ticks every second, labelled relative to now */
-  L.timeAxis = function (ctx, X, Y, w, h, len, nowStep) {
-    var pal = L.pal, sec = Math.round(L.rate);
-    ctx.strokeStyle = pal.tick; ctx.lineWidth = 1; ctx.beginPath();
-    for (var st = nowStep - (nowStep % sec), k = 0; st > nowStep - len; st -= sec, k++) { var xt = X + w - (nowStep - st) / len * w; ctx.moveTo(xt + 0.5, Y); ctx.lineTo(xt + 0.5, Y + h); }
+  L.panelLabel = function (ctx, s, x, y, col) { L.font(ctx, 10, 600); ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillStyle = col || L.pal.label; ctx.fillText(s, x, y); };
+  /* time axis of a rolling window: a grid line every second through the trace area (from gridTop), short ticks, labels relative to now */
+  L.timeAxis = function (ctx, X, Y, w, h, len, nowStep, gridTop) {
+    var pal = L.pal, sec = Math.round(L.rate), st, xt;
+    ctx.lineWidth = 1;
+    if (gridTop != null) {
+      ctx.strokeStyle = pal.grid; ctx.beginPath();
+      for (st = nowStep - (nowStep % sec); st > nowStep - len; st -= sec) { xt = X + w - (nowStep - st) / len * w; ctx.moveTo(xt + 0.5, gridTop); ctx.lineTo(xt + 0.5, Y); }
+      ctx.stroke();
+    }
+    ctx.strokeStyle = pal.tick; ctx.beginPath();
+    for (st = nowStep - (nowStep % sec); st > nowStep - len; st -= sec) { xt = X + w - (nowStep - st) / len * w; ctx.moveTo(xt + 0.5, Y); ctx.lineTo(xt + 0.5, Y + h); }
     ctx.stroke();
-    L.font(ctx, 9); ctx.fillStyle = pal.label; ctx.textBaseline = 'bottom';
+    L.font(ctx, 10); ctx.textBaseline = 'bottom';
     var secs = Math.floor(len / L.rate);
-    for (var s = 0; s <= secs; s += (w < 360 ? 2 : 1)) { var xs = X + w - s * L.rate / len * w; ctx.textAlign = s === 0 ? 'right' : 'center'; ctx.fillText(s === 0 ? 'now' : '−' + s + ' s', xs - (s === 0 ? 1 : 0), Y + h + 11); }
+    for (var s = 0; s <= secs; s += (w < 360 ? 2 : 1)) {
+      var xs = X + w - s * L.rate / len * w; ctx.textAlign = s === 0 ? 'right' : 'center'; ctx.fillStyle = s === 0 ? L.rgba(pal.pos, 0.95) : pal.label;
+      ctx.fillText(s === 0 ? 'now' : '−' + s + ' s', xs - (s === 0 ? 1 : 0), Y + h + 11);
+    }
   };
   /* record section: wiggles with variable-area fill, one common gain (relative amplitudes kept) or AGC */
   var cs = null;
@@ -324,15 +340,15 @@
     var idx = o.order || null, nn = idx ? idx.length : n;
     for (s = 0; s < nn; s++) { var a = (comp ? rec.x : rec.z)[idx ? idx[s] : s]; for (k = 0; k < len; k++) { v = a[k] < 0 ? -a[k] : a[k]; if (v > m) m = v; } }
     rec.peak = Math.max(o.floor || 0.02, m, rec.peak * 0.995);
-    var left = o.left != null ? o.left : (many ? 38 : 0), ww = w - left, sp = h / nn;
+    var left = o.left != null ? o.left : (many ? 42 : 0), ww = w - left, sp = h / nn;
     var amp = (many ? 0.95 * sp : h / 2 - 3) / rec.peak * (o.gain || 1), clip = many ? 1.4 * sp : h / 2 - 1;
     var stride = Math.max(1, Math.floor(len / Math.max(1, ww * 1.5))), half = Math.round(L.rate * 0.25), floor = 0.02 * rec.peak, lvl = many ? 0.45 * sp : 0.35 * h;
     if (o.marks) {
-      L.font(ctx, 9); ctx.textBaseline = 'top';
+      L.font(ctx, 10); ctx.textBaseline = 'top'; ctx.lineWidth = 1;
       for (var q = 0; q < o.marks.length; q++) {
         var age = o.now - o.marks[q].n; if (age < 0 || age > len) continue;
         var xm = X + left + ww - age / len * ww;
-        ctx.strokeStyle = 'rgba(' + pal.origin + ',.7)'; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(xm + 0.5, Y); ctx.lineTo(xm + 0.5, Y + h); ctx.stroke(); ctx.setLineDash([]);
+        ctx.strokeStyle = 'rgba(' + pal.origin + ',.8)'; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(xm + 0.5, Y); ctx.lineTo(xm + 0.5, Y + h); ctx.stroke(); ctx.setLineDash([]);
         if (q === o.marks.length - 1) { ctx.fillStyle = 'rgba(' + pal.origin + ',.95)'; ctx.textAlign = 'left'; ctx.fillText(o.markLabel || 'origin', xm + 4, Y + 1); }
       }
     }
@@ -341,33 +357,34 @@
       var tr = idx ? idx[s] : s, y0 = many ? Y + sp * (s + 0.5) : Y + h / 2, x2, y2;
       if (o.agc) { for (k = 0; k < len; k++) { var ov = rec.get(tr, k, comp); cs[k + 1] = cs[k] + ov * ov; } }
       var gain = function (k) { if (!o.agc) return amp; var lo = Math.max(0, k - half), hi = Math.min(len, k + half), r = Math.sqrt((cs[hi] - cs[lo]) / (hi - lo)); return lvl / Math.max(r, floor); };
-      if (many) {
-        if (o.codes !== false && (sp >= 11 || s % 2 === 0)) { L.font(ctx, 9); ctx.fillStyle = pal.label; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(rec.pts[tr].code || '', X, y0); }
-        if (o.fill !== false) {
-          ctx.beginPath(); ctx.moveTo(X + left, y0);
-          for (k = 0; k < len; k += stride) { v = rec.get(tr, k, comp) * gain(k); ctx.lineTo(X + left + k / (len - 1) * ww, y0 - Math.max(0, Math.min(clip, v))); }
-          ctx.lineTo(X + left + ww, y0); ctx.closePath(); ctx.fillStyle = o.fillStyle || pal.fill; ctx.fill();
-        }
+      if (many && o.codes !== false && (sp >= 11 || s % 2 === 0)) { L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(rec.pts[tr].code || '', X, y0); }
+      if (!many) { ctx.strokeStyle = pal.grid; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(X + left, Math.round(y0) + 0.5); ctx.lineTo(X + left + ww, Math.round(y0) + 0.5); ctx.stroke(); }
+      if (o.fill !== false) {                                                /* variable-area fill of the positive half, also for a single trace */
+        ctx.beginPath(); ctx.moveTo(X + left, y0);
+        for (k = 0; k < len; k += stride) { v = rec.get(tr, k, comp) * gain(k); ctx.lineTo(X + left + k / (len - 1) * ww, y0 - Math.max(0, Math.min(clip, v))); }
+        ctx.lineTo(X + left + ww, y0); ctx.closePath(); ctx.fillStyle = o.fillStyle || pal.fill;
+        if (!many) ctx.globalAlpha = 0.7; ctx.fill(); ctx.globalAlpha = 1;
       }
-      ctx.strokeStyle = o.stroke || pal.trace; ctx.lineWidth = many ? 1 : 1.25; ctx.lineJoin = 'round'; ctx.beginPath();
+      ctx.strokeStyle = o.stroke || pal.trace; ctx.lineWidth = many ? 1 : 1.6; ctx.lineJoin = 'round'; ctx.beginPath();
       for (k = 0; k < len; k += stride) { v = rec.get(tr, k, comp) * gain(k); x2 = X + left + k / (len - 1) * ww; y2 = y0 - Math.max(-clip, Math.min(clip, v)); if (k) ctx.lineTo(x2, y2); else ctx.moveTo(x2, y2); }
       ctx.stroke();
     }
+    return { x: X + left, w: ww, y: Y, h: h };                                /* the trace area, for the time axis */
   };
   /* diverging colour for signed values in −1…1 (the wavefield's own pos/neg colours over the panel background) */
   L.div = function (v) {
-    var pal = L.pal, b = pal.bg, c = v >= 0 ? pal.pos : pal.neg, a = Math.min(1, Math.abs(v)); a = Math.pow(a, 0.8);
+    var pal = L.pal, b = pal.pn || pal.bg, c = v >= 0 ? pal.pos : pal.neg, a = Math.min(1, Math.abs(v)); a = Math.pow(a, 0.7);
     return [b[0] + (c[0] - b[0]) * a, b[1] + (c[1] - b[1]) * a, b[2] + (c[2] - b[2]) * a];
   };
-  /* velocity colour (slow → red, fast → blue), as in the revealed structure */
+  /* velocity colour (slow → berry, fast → cobalt), the saturated swatches of the structure shown under the waves */
   L.velCol = function (dv, span) {
-    var pal = L.pal, b = pal.bg, c = dv < 0 ? pal.slow : pal.fast, a = Math.min(1, Math.abs(dv) / (span || 0.25)); a = Math.pow(a, 0.85) * 0.92;
+    var pal = L.pal, b = pal.pn || pal.bg, c = dv < 0 ? pal.slow : pal.fast, a = Math.min(1, Math.abs(dv) / (span || 0.25)); a = Math.pow(a, 0.85) * 0.92;
     return [b[0] + (c[0] - b[0]) * a, b[1] + (c[1] - b[1]) * a, b[2] + (c[2] - b[2]) * a];
   };
   L.colorbar = function (ctx, x, y, w, h, fn, lo, hi, title) {
     for (var i = 0; i < w; i++) { var c = fn(-1 + 2 * i / (w - 1)); ctx.fillStyle = 'rgb(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ')'; ctx.fillRect(x + i, y, 1.5, h); }
-    ctx.strokeStyle = L.pal.tick; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-    L.font(ctx, 9); ctx.fillStyle = L.pal.label; ctx.textBaseline = 'top';
+    ctx.lineWidth = 1; ctx.strokeStyle = L.pal.tick; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    L.font(ctx, 10); ctx.fillStyle = L.pal.label; ctx.textBaseline = 'top';
     ctx.textAlign = 'left'; ctx.fillText(lo, x, y + h + 3); ctx.textAlign = 'right'; ctx.fillText(hi, x + w, y + h + 3);
     if (title) { ctx.textAlign = 'center'; ctx.fillText(title, x + w / 2, y + h + 3); }
   };
@@ -405,27 +422,20 @@
     progEl.style.width = p == null ? '0' : (Math.max(0, Math.min(1, p)) * 100).toFixed(1) + '%';
   }
   L.legendAcoustic = function () {
-    return '<span><i class="sw" style="background:var(--cyan)"></i>p &gt; 0</span><span><i class="sw" style="background:var(--coral)"></i>p &lt; 0</span>' +
-      (S.reveal ? '<span><i class="sw" style="background:var(--slow)"></i>slow</span><span><i class="sw" style="background:var(--fast)"></i>fast</span>' : '');
+    return '<span><i class="sw" style="background:var(--cyan)"></i>p &gt; 0</span><span><i class="sw" style="background:var(--coral)"></i>p &lt; 0</span>' + L.legendVel();
   };
-  L.updateLegend = function () { var ch = L.CH[S.ch]; legendEl.innerHTML = ch.legend ? ch.legend() : L.legendAcoustic(); };
+  L.legendVel = function () { return '<span class="vramp" title="Velocity model under the waves: slower than v = 1 to faster">slow<i></i>fast</span>'; };
+  L.updateLegend = function () { var ch = L.CH[S.ch]; legendEl.innerHTML = ch.legend ? ch.legend() : L.legendAcoustic(); fitLegend(); };
+  /* the legend stays on one line: drop trailing items (the least important ones) while it does not fit */
+  function fitLegend() {
+    var it = legendEl.children, n = it.length, k, tot = 0, cw = legendEl.clientWidth, gap = parseFloat(getComputedStyle(legendEl).columnGap) || 0;
+    for (k = 0; k < n; k++) it[k].style.display = '';
+    if (!cw) return;
+    for (k = 0; k < n; k++) tot += it[k].offsetWidth + (k ? gap : 0);
+    for (k = n - 1; k > 0 && tot > cw + 0.5; k--) { tot -= it[k].offsetWidth + gap; it[k].style.display = 'none'; }
+  }
   var tt = 0;
   L.toast = function (s, ms) { toastEl.textContent = s; toastEl.classList.add('on'); clearTimeout(tt); tt = setTimeout(function () { toastEl.classList.remove('on'); }, ms || 2600); };
-  L.setReveal = function (on) {
-    S.reveal = on; L.eng.setDisplay(L.pal, on);
-    revealLabel(on);
-    L.updateLegend(); var ch = L.CH[S.ch]; if (ch.onReveal) ch.onReveal(on);
-  };
-  revealBtn.addEventListener('click', function () { L.setReveal(!S.reveal); });
-  /* the structure toggle: an eye icon, with a text label where the bar has room */
-  function revealLabel(on) {
-    revealBtn.setAttribute('aria-pressed', on); revealBtn.setAttribute('aria-label', on ? 'Hide the velocity structure (V)' : 'Show the velocity structure (V)');
-    revealBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      (on ? '<path d="M3 3l18 18M10.6 5.1A10.4 10.4 0 0 1 12 5c6 0 10 7 10 7a17.6 17.6 0 0 1-3.2 3.9M6.6 6.6C3.9 8.4 2 12 2 12s4 7 10 7a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/>'
-          : '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>') +
-      '</svg><span class="lbl">' + (on ? 'Hide structure' : 'Show structure') + '</span>';
-  }
-  revealLabel(S.reveal);
   function mega() {
     if (!reduceMotion) { view.classList.remove('shake'); void view.offsetWidth; view.classList.add('shake'); }
     if (S.haptics && navigator.vibrate) navigator.vibrate([60, 40, 120]);
@@ -520,7 +530,7 @@
   }
   function shareURL() {
     saveCh(); var ch = L.CH[S.ch];
-    return encode({ v: 1, c: S.ch, r: S.reveal ? 1 : 0, s: ch.serialize ? ch.serialize() : null }).then(function (code) { return location.origin + location.pathname + '#s=' + code; });
+    return encode({ v: 1, c: S.ch, s: ch.serialize ? ch.serialize() : null }).then(function (code) { return location.origin + location.pathname + '#s=' + code; });
   }
   var lastURL = '';
   function copyLink() {
@@ -546,9 +556,9 @@
     var w = L.W, h = L.H, dh = dcv.clientHeight, cap = 46, sc = 2, c = document.createElement('canvas'), x = c.getContext('2d');
     c.width = Math.round(w * sc); c.height = Math.round((h + dh + 30 + cap) * sc); x.scale(sc, sc);
     var css = getComputedStyle(root);
-    x.fillStyle = css.getPropertyValue('--bg').trim() || '#070a10'; x.fillRect(0, 0, w, h + dh + 30 + cap);
+    x.fillStyle = css.getPropertyValue('--bg').trim() || '#070a12'; x.fillRect(0, 0, w, h + dh + 30 + cap);
     x.imageSmoothingEnabled = true; x.drawImage(L.eng.canvas, 0, 0, w, h); x.drawImage(ovc, 0, 0, w, h);
-    x.fillStyle = css.getPropertyValue('--bg2').trim() || '#0b0f17'; x.fillRect(0, h, w, dh + 30);
+    x.fillStyle = css.getPropertyValue('--bg2').trim() || '#0b1019'; x.fillRect(0, h, w, dh + 30);
     x.fillStyle = css.getPropertyValue('--ink2').trim(); x.font = '500 10px "JetBrains Mono", monospace'; x.textBaseline = 'top'; x.textAlign = 'left';
     x.fillText($('dataTitle').textContent.toUpperCase(), 16, h + 10); x.drawImage(dcv, 0, h + 30, w, dh);
     x.fillStyle = css.getPropertyValue('--ink').trim(); x.font = '700 15px "Space Grotesk", sans-serif'; x.fillText('Wave Lab · ' + ch.title, 16, h + dh + 40);
@@ -584,15 +594,13 @@
     document.querySelectorAll('.rail a').forEach(function (a) { if (a.dataset.ch === id) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
     if (loaded) ch.load(loaded);
     S.tool = (ch.tools && ch.tools[0]) || 'none'; closeTopt();
-    if (S.reveal !== !!ch.revealDefault && !loaded) S.reveal = !!ch.revealDefault;
-    revealLabel(S.reveal);
     L.build(); renderTools(); L.refresh(); L.updateLegend();
     document.title = ch.title + ' · Wave Lab · Yuhan Wang';
   };
   function route() {
     var h = location.hash.slice(1);
     if (h.indexOf('s=') === 0) {
-      decode(h.slice(2)).then(function (o) { if (o && L.CH[o.c]) { S.reveal = !!o.r; L.go(o.c, o.s || {}); L.toast('Shared scenario loaded'); } else L.go('play'); }, function () { L.toast('This link could not be read'); L.go('play'); });
+      decode(h.slice(2)).then(function (o) { if (o && L.CH[o.c]) { L.go(o.c, o.s || {}); L.toast('Shared scenario loaded'); } else L.go('play'); }, function () { L.toast('This link could not be read'); L.go('play'); });
       return;
     }
     L.go(L.CH[h] ? h : (L.eng ? S.ch : 'play'));
@@ -605,9 +613,8 @@
     var k = e.key, ch = L.CH[S.ch];
     if (/^[1-6]$/.test(k)) { location.hash = L.ORDER[+k - 1]; return; }
     if (k === ' ' || k === 'p' || k === 'P') { e.preventDefault(); S.paused = !S.paused; return; }
-    if (k === 'v' || k === 'V') { L.setReveal(!S.reveal); return; }
     if (k === 'Escape') { closePops(); closeTopt(); return; }
-    if (k === '?') { L.toast('1–6 experiments · Q S F E C tools · V structure · Space pause · Shift-click: M 7', 5000); return; }
+    if (k === '?') { L.toast('1–6 experiments · Q S F E C T tools · Space pause · Shift-click: M 7', 5000); return; }
     var t = (ch.tools || []).filter(function (t) { return t !== '|' && TOOL[t][1].toLowerCase() === k.toLowerCase(); })[0];
     if (t) L.selectTool(t, true);
   });
@@ -664,11 +671,12 @@
       var r = view.getBoundingClientRect();
       if (Math.abs(r.width - lastW) > 60 || Math.abs(r.height - lastH) > 120) { lastW = r.width; lastH = r.height; saveCh(); L.build(); L.refresh(); }
       else { L.W = r.width; L.H = r.height; sizeOverlay(); }
+      fitLegend();
     }, 250);
   });
   L.start = function () {
     var r = view.getBoundingClientRect(); lastW = r.width; lastH = r.height;
     route(); start();
-    if (window.console && console.log) console.log('%cWave Lab%c — every frame is a finite-difference solution of the wave equation, computed in your browser. Try Shift-click.', 'font-weight:700;color:#4fd8e8', 'color:inherit');
+    if (window.console && console.log) console.log('%cWave Lab%c — every frame is a finite-difference solution of the wave equation, computed in your browser. Try Shift-click.', 'font-weight:700;color:#56e1f0', 'color:inherit');
   };
 })();

@@ -23,10 +23,10 @@
   function pad2(k) { return (k < 9 ? '0' : '') + (k + 1); }
   /* triangles for receivers; labels for the first and last of an array (and all of them when there are few) */
   function stations(ctx, pts, o) {
-    o = o || {}; var many = pts.length > 1, s = many ? 5 : 7;
+    o = o || {}; var many = pts.length > 1, s0 = many ? 5 : 6.5, dg = L.dragging(), hid = dg && dg.kind === 'handle' && dg.h ? dg.h.id : -1;
     for (var k = 0; k < pts.length; k++) {
-      var p = pts[k], X = L.sx(p.x), Y = Math.max(s * 1.7 + 2, L.sy(p.y));
-      L.tri(ctx, X, Y, s, o.alpha || 0.95, o.col);
+      var on = k === hid, s = on ? s0 * 1.3 : s0, p = pts[k], X = L.sx(p.x), Y = Math.max(s * 1.7 + 2, L.sy(p.y));
+      L.tri(ctx, X, Y, s, on ? 1 : (o.alpha || 0.96), on ? L.pal.pos : o.col);
       if (o.labels !== false && (pts.length <= 4 || k === 0 || k === pts.length - 1)) {
         var ly = Y - s * 1.7 - 5; if (ly < 12) ly = Y + 13;
         L.label(ctx, p.code, X, ly);
@@ -93,7 +93,7 @@
     },
     choose: function (p, seed) {
       var st = this.st; L.model.setPreset(p, seed || L.model.seed); L.setModel(); st.did.model = true;
-      if (L.model.view() === 'section') { if (st.bc === 'absorb') { st.bc = 'free'; st.autoFree = true; L.setBC('free'); } if (!S.reveal) L.setReveal(true); }
+      if (L.model.view() === 'section') { if (st.bc === 'absorb') { st.bc = 'free'; st.autoFree = true; L.setBC('free'); } }
       else if (st.autoFree && st.bc === 'free') { st.bc = 'absorb'; st.autoFree = false; L.setBC('absorb'); }
       L.refresh();
     },
@@ -134,9 +134,8 @@
     },
     overlay: function (ctx) { stations(ctx, this.rec.pts); },
     data: function (ctx, w, h) {
-      var many = this.rec.n > 1;
-      L.drawSection(ctx, 14, 4, w - 28, h - 24, this.rec, { agc: this.st.agc, marks: L.marks, now: L.eng.n });
-      L.timeAxis(ctx, many ? 52 : 14, h - 20, many ? w - 66 : w - 28, 6, this.rec.len, L.eng.n);
+      var g = L.drawSection(ctx, 14, 4, w - 28, h - 24, this.rec, { agc: this.st.agc, marks: L.marks, now: L.eng.n });
+      L.timeAxis(ctx, g.x, h - 20, g.w, 6, this.rec.len, L.eng.n, 4);
     },
     csv: function () { return L.recCSV(this.rec, ['p'], 'pressure, arbitrary units'); }
   });
@@ -200,10 +199,10 @@
     }
     wf.cv.getContext('2d').putImageData(wf.img, 0, 0);
     ctx.imageSmoothingEnabled = true; ctx.drawImage(wf.cv, X, Y, w, h);
-    ctx.strokeStyle = L.pal.tick; ctx.strokeRect(X + 0.5, Y + 0.5, w - 1, h - 1);
+    ctx.lineWidth = 1; ctx.strokeStyle = L.pal.tick; ctx.strokeRect(X + 0.5, Y + 0.5, w - 1, h - 1);
   }
   L.register({
-    id: 'arrays', title: 'Arrays & DAS', physics: 'acoustic', revealDefault: true,
+    id: 'arrays', title: 'Arrays & DAS', physics: 'acoustic',
     goal: 'Record the same wavefield in two ways: with a line of seismometers, or with a fibre-optic cable that turns every few metres of glass into a strain sensor.',
     tools: ['quake', '|', 'line', 'ring', 'fiber'],
     shareWhat: 'the model, the array or the cable you laid out',
@@ -324,36 +323,36 @@
       if (this.das) {
         var P = this.das.pts; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
         ctx.beginPath(); for (k = 0; k < P.length; k++) { var X = L.sx(P[k][0]), Y = Math.max(2, L.sy(P[k][1])); if (k) ctx.lineTo(X, Y); else ctx.moveTo(X, Y); }
-        ctx.strokeStyle = pal.halo; ctx.lineWidth = 5; ctx.stroke(); ctx.strokeStyle = L.rgba(pal.pos, 0.95); ctx.lineWidth = 2.2; ctx.stroke();
+        ctx.strokeStyle = pal.halo; ctx.lineWidth = 4.5; ctx.stroke(); ctx.strokeStyle = L.rgba(pal.pos, 0.95); ctx.lineWidth = 2; ctx.stroke();
         var step = Math.round(L.nx / L.KM);                                   /* a tick every km */
-        for (k = step; k < P.length; k += step) { ctx.beginPath(); ctx.arc(L.sx(P[k][0]), Math.max(2, L.sy(P[k][1])), 2.4, 0, 6.2832); ctx.fillStyle = L.rgba(pal.ink, 0.9); ctx.fill(); }
+        for (k = step; k < P.length; k += step) { ctx.beginPath(); ctx.arc(L.sx(P[k][0]), Math.max(2, L.sy(P[k][1])), 2, 0, 6.2832); ctx.fillStyle = L.rgba(pal.ink, 0.9); ctx.fill(); }
         ctx.beginPath(); ctx.arc(L.sx(P[0][0]), Math.max(2, L.sy(P[0][1])), 4, 0, 6.2832); ctx.fillStyle = L.rgba(pal.pos, 1); ctx.fill();
         var ly = L.sy(P[0][1]) < 24 ? L.sy(P[0][1]) + 18 : L.sy(P[0][1]) - 9; L.label(ctx, '0 km', L.sx(P[0][0]) + 4, ly, 'left');
       } else if (this.rec) stations(ctx, this.rec.pts);
       if (this.drag) {
-        var g = this.drag; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.2; ctx.strokeStyle = L.rgba(pal.pos, 0.85); ctx.beginPath();
+        var g = this.drag; ctx.setLineDash([3, 4]); ctx.lineWidth = 1.25; ctx.strokeStyle = L.rgba(pal.pos, 0.85); ctx.beginPath();
         if (g.g === 'line') { ctx.moveTo(L.sx(g.a[0]), L.sy(g.a[1])); ctx.lineTo(L.sx(g.b[0]), L.sy(g.b[1])); }
         else ctx.arc(L.sx(g.a[0]), L.sy(g.a[1]), Math.hypot(g.b[0] - g.a[0], g.b[1] - g.a[1]) / L.nx * L.W, 0, 6.2832);
         ctx.stroke(); ctx.setLineDash([]);
         this.positions({ g: g.g, a: L.toN(g.a), b: L.toN(g.b) }, this.st.n).forEach(function (p) { L.tri(ctx, L.sx(p[0]), L.sy(p[1]), 5, 0.55); });
       }
       if (this.drawing) {
-        ctx.setLineDash([5, 4]); ctx.lineWidth = 2; ctx.strokeStyle = L.rgba(pal.pos, 0.9); ctx.beginPath();
+        ctx.setLineDash([3, 4]); ctx.lineWidth = 2; ctx.strokeStyle = L.rgba(pal.pos, 0.9); ctx.beginPath();
         this.drawing.forEach(function (p, i) { if (i) ctx.lineTo(L.sx(p[0]), L.sy(p[1])); else ctx.moveTo(L.sx(p[0]), L.sy(p[1])); });
         ctx.stroke(); ctx.setLineDash([]);
       }
     },
     data: function (ctx, w, h) {
-      if (this.rec) { L.drawSection(ctx, 14, 4, w - 28, h - 24, this.rec, { agc: this.st.agc, marks: L.marks, now: L.eng.n }); L.timeAxis(ctx, 52, h - 20, w - 66, 6, this.rec.len, L.eng.n); return; }
+      if (this.rec) { var g = L.drawSection(ctx, 14, 4, w - 28, h - 24, this.rec, { agc: this.st.agc, marks: L.marks, now: L.eng.n }); L.timeAxis(ctx, g.x, h - 20, g.w, 6, this.rec.len, L.eng.n, 4); return; }
       var das = this.das, left = 50, X = 14 + left, Wd = w - 28 - left, H = h - 26;
       drawWaterfall(ctx, X, 4, Wd, H, das, this.st.perCh);
-      L.font(ctx, 9); ctx.fillStyle = L.pal.label; ctx.textAlign = 'right'; ctx.textBaseline = 'top'; ctx.fillText('0 km', X - 6, 4);
+      L.font(ctx, 10); ctx.fillStyle = L.pal.label; ctx.textAlign = 'right'; ctx.textBaseline = 'top'; ctx.fillText('0 km', X - 6, 4);
       ctx.textBaseline = 'bottom'; ctx.fillText(L.fmt(L.km(das.np - 1), 1) + ' km', X - 6, 4 + H);
       ctx.save(); ctx.translate(18, 4 + H / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('along cable', 0, 0); ctx.restore();
-      if (L.marks.length) { var age = L.eng.n - L.marks[L.marks.length - 1].n; if (age <= das.len) { var xm = X + Wd - age / das.len * Wd; ctx.strokeStyle = 'rgba(' + L.pal.origin + ',.7)'; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(xm + 0.5, 4); ctx.lineTo(xm + 0.5, 4 + H); ctx.stroke(); ctx.setLineDash([]); } }
+      if (L.marks.length) { var age = L.eng.n - L.marks[L.marks.length - 1].n; if (age <= das.len) { var xm = X + Wd - age / das.len * Wd; ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(' + L.pal.origin + ',.8)'; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(xm + 0.5, 4); ctx.lineTo(xm + 0.5, 4 + H); ctx.stroke(); ctx.setLineDash([]); } }
       L.timeAxis(ctx, X, h - 20, Wd, 6, das.len, L.eng.n);
     },
-    legend: function () { return L.legendAcoustic() + (this.das ? '<span><i class="sw" style="background:var(--cyan);height:3px;border-radius:2px"></i>fibre · dot = 1 km</span>' : ''); },
+    legend: function () { return L.legendAcoustic() + (this.das ? '<span><i class="sw" style="background:var(--cyan);width:14px;height:3px;border-radius:2px"></i>fibre · dot = 1 km</span>' : ''); },
     csv: function () {
       if (this.rec) return L.recCSV(this.rec, ['p'], 'pressure, arbitrary units');
       var das = this.das; if (!das || !das.count) return null;
@@ -523,11 +522,11 @@
     overlay: function (ctx) {
       var pal = L.pal;
       stations(ctx, this.pts, { labels: false, alpha: 0.9, col: pal.pos });
-      if (this.st.mirror === 'ring') { ctx.setLineDash([3, 5]); ctx.strokeStyle = L.rgba(pal.pos, 0.35); ctx.beginPath(); ctx.arc(L.sx(L.nx / 2), L.sy(L.ny / 2), this.R / L.nx * L.W, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]); }
+      if (this.st.mirror === 'ring') { ctx.setLineDash([3, 4]); ctx.strokeStyle = L.rgba(pal.pos, 0.35); ctx.beginPath(); ctx.arc(L.sx(L.nx / 2), L.sy(L.ny / 2), this.R / L.nx * L.W, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]); }
       if (this.src && this.phase !== 'idle') {
         var X = L.sx(this.src[0]), Y = L.sy(this.src[1]);
         if (this.phase === 'record' && this.k < this.n0 * 2) L.star(ctx, X, Y, 8, pal.neg, 0.95);
-        ctx.beginPath(); ctx.arc(X, Y, 9, 0, 6.2832); ctx.lineWidth = 1.5; ctx.strokeStyle = L.rgba(pal.ink, 0.85); ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(X, Y, 9, 0, 6.2832); ctx.lineWidth = 1.5; ctx.strokeStyle = L.rgba(pal.ink, 0.85); ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]);
         if (this.phase !== 'reverse') L.label(ctx, 'true source', X, Y - 14);
       }
       if (this.img && this.phase === 'done') {
@@ -538,14 +537,14 @@
     },
     data: function (ctx, w, h) {
       if (!this.rec || this.phase === 'idle') { placeholder(ctx, w, h, 'Fire a source inside the mirror: its recordings appear here'); return; }
-      var pal = L.pal, nR = this.pts.length, show = [], k, i, wl = this.phase === 'reverse' || this.phase === 'done' ? w * 0.68 : w - 28, X = 14 + 38, Wt = wl - 14 - 38 - 10, H = h - 28;
+      var pal = L.pal, nR = this.pts.length, show = [], k, i, wl = this.phase === 'reverse' || this.phase === 'done' ? w * 0.68 : w - 28, X = 14 + 42, Wt = wl - 14 - 42 - 10, H = h - 28;
       var step = Math.max(1, Math.round(nR / 24)); for (k = 0; k < nR; k += step) show.push(k);
       var len = this.len, kRec = this.phase === 'record' ? this.k : len, peak = 1e-9;
       show.forEach(function (r) { for (i = 0; i < kRec; i++) { var a = Math.abs(this.rec[r][i]); if (a > peak) peak = a; } }, this);
       var sp = H / show.length, amp = (show.length > 1 ? 0.9 * sp : H / 2 - 3) / peak, stride = Math.max(1, Math.floor(len / (Wt * 1.5)));
       for (var q = 0; q < show.length; q++) {
         var r = show[q], y0 = 4 + sp * (q + 0.5), a = this.rec[r];
-        if (show.length <= 12 || q % 2 === 0) { L.font(ctx, 9); ctx.fillStyle = pal.label; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(this.pts[r].code, 14, y0); }
+        if (show.length <= 12 || q % 2 === 0) { L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(this.pts[r].code, 14, y0); }
         ctx.beginPath(); ctx.moveTo(X, y0);
         for (i = 0; i < kRec; i += stride) ctx.lineTo(X + i / (len - 1) * Wt, y0 - Math.max(0, Math.min(1.4 * sp, a[i] * amp)));
         ctx.lineTo(X + Math.min(kRec, len - 1) / (len - 1) * Wt, y0); ctx.closePath(); ctx.fillStyle = pal.fill; ctx.fill();
@@ -556,21 +555,21 @@
       var ph = this.phase === 'record' ? this.k : (this.phase === 'reverse' ? len - 1 - Math.min(this.k, len - 1) : null);
       if (ph != null) {
         var xp = X + ph / (len - 1) * Wt;
-        if (this.phase === 'reverse') { ctx.fillStyle = L.rgba(pal.bg, 0.55); ctx.fillRect(xp, 2, X + Wt - xp, H + 4); }
+        if (this.phase === 'reverse') { ctx.fillStyle = L.rgba(pal.pn || pal.bg, 0.55); ctx.fillRect(xp, 2, X + Wt - xp, H + 4); }
         ctx.strokeStyle = L.rgba(this.phase === 'reverse' ? pal.neg : pal.pos, 0.95); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(xp, 2); ctx.lineTo(xp, H + 6); ctx.stroke();
       }
-      L.font(ctx, 9); ctx.fillStyle = pal.label; ctx.textBaseline = 'top';
+      L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textBaseline = 'top';
       ctx.textAlign = 'left'; ctx.fillText('0 s', X, H + 10); ctx.textAlign = 'right'; ctx.fillText(L.fmt(len / L.rate, 1) + ' s', X + Wt, H + 10);
       ctx.textAlign = 'center'; ctx.fillText(this.phase === 'reverse' || this.phase === 'done' ? '◀ re-emitted last sample first' : 'recording time →', X + Wt / 2, H + 10);
       if (this.focusTr && (this.phase === 'reverse' || this.phase === 'done')) {
         var x0 = wl + 10, W2 = w - x0 - 14, H2 = H - 14, f = this.focusTr, mxF = 1e-12, kk = Math.min(this.k, this.total);
         for (i = 0; i < kk; i++) if (f[i] > mxF) mxF = f[i];
         L.panelLabel(ctx, 'p² AT THE TRUE SOURCE', x0, 2);
-        ctx.strokeStyle = pal.tick; ctx.strokeRect(x0 + 0.5, 16.5, W2 - 1, H2 - 1);
-        var xf = x0 + this.kf / (this.total - 1) * W2; ctx.setLineDash([3, 3]); ctx.strokeStyle = 'rgba(' + pal.origin + ',.7)'; ctx.beginPath(); ctx.moveTo(xf, 17); ctx.lineTo(xf, 16 + H2); ctx.stroke(); ctx.setLineDash([]);
+        ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.strokeRect(x0 + 0.5, 16.5, W2 - 1, H2 - 1);
+        var xf = x0 + this.kf / (this.total - 1) * W2; ctx.lineWidth = 1; ctx.setLineDash([2, 3]); ctx.strokeStyle = 'rgba(' + pal.origin + ',.8)'; ctx.beginPath(); ctx.moveTo(xf, 17); ctx.lineTo(xf, 16 + H2); ctx.stroke(); ctx.setLineDash([]);
         ctx.beginPath(); for (i = 0; i < kk; i += Math.max(1, Math.floor(this.total / W2))) { var yv = 16 + H2 - 2 - f[i] / mxF * (H2 - 8); if (i) ctx.lineTo(x0 + i / (this.total - 1) * W2, yv); else ctx.moveTo(x0, yv); }
         ctx.strokeStyle = L.rgba(pal.hot, 0.95); ctx.lineWidth = 1.4; ctx.stroke();
-        L.font(ctx, 9); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText('expected focus', xf, H + 10);
+        L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText('expected focus', xf, H + 10);
       }
     },
     csv: function () {
@@ -599,9 +598,9 @@
   function dot(a, b) { var s = 0; for (var i = 0; i < a.length; i++) s += a[i] * b[i]; return s; }
   L.register({
     id: 'tomo', title: 'Tomography', physics: 'acoustic',
-    goal: 'Hide a velocity model, shoot a survey through it, and recover the model from nothing but first-arrival travel times.',
+    goal: 'Shoot a survey through a velocity model, recover the model from nothing but first-arrival travel times, and compare it with the truth.',
     tools: ['quake', '|', 'slow', 'fast', 'erase'],
-    shareWhat: 'the hidden model, your edits and the survey geometry',
+    shareWhat: 'the true model, your edits and the survey geometry',
     st: { m: null, truth: 'random', geom: 'ring', smooth: 0.5, rays: 'bent', did: {} },
     noMarks: false,
     enter: function () {
@@ -629,7 +628,7 @@
     gridSetup: function () {
       var b = this.box, W = b[2] - b[0], H = b[3] - b[1];
       this.gx = 18; this.gz = Math.max(6, Math.round(18 * H / W)); this.cw = W / this.gx; this.chh = H / this.gz;
-      /* the hidden truth on the inversion grid: mean slowness per cell */
+      /* the true model on the inversion grid: mean slowness per cell */
       var nC = this.gx * this.gz, s = new Float64Array(nC), c = new Float64Array(nC), nx = L.nx;
       for (var y = Math.ceil(b[1]); y <= b[3]; y++) for (var x = Math.ceil(b[0]); x <= b[2]; x++) {
         var j = this.cell(x, y); if (j < 0) continue; var v = L.model.mask[y * nx + x] ? L.WE.VSCAT : L.model.v[y * nx + x]; s[j] += 1 / v; c[j]++;
@@ -769,12 +768,12 @@
     steps: function () {
       var st = this.st, d = st.did, ph = this.phase, inv = this.inv;
       return [
-        { t: 'Hide a model', d: 'Pick a hidden truth, or paint your own with the slow/fast brushes. <b>Show structure</b> (V) lets you peek.', c: '<div class="grid3">' + L.opt('truth', 'random', 'Random blobs', st.truth === 'random') + L.opt('truth', 'checker', 'Checker&shy;board', st.truth === 'checker') + L.opt('truth', 'custom', 'Paint your own', st.truth === 'custom') + '</div>', done: !!d.truth || ph !== 'idle' },
+        { t: 'Pick the true model', d: 'The survey will try to recover it; it stays visible under the waves. Or paint your own with the slow and fast brushes.', c: '<div class="grid3">' + L.opt('truth', 'random', 'Random blobs', st.truth === 'random') + L.opt('truth', 'checker', 'Checker&shy;board', st.truth === 'checker') + L.opt('truth', 'custom', 'Paint your own', st.truth === 'custom') + '</div>', done: !!d.truth || ph !== 'idle' },
         { t: 'Run the survey', d: st.geom === 'ring' ? '12 shots fired one after another, 48 receivers all around: rays cross in every direction.' : 'Cross-well: 10 shots in a borehole on the left, 40 receivers in one on the right. Rays are nearly horizontal.',
           c: L.seg('geom', [['ring', 'Surround'], ['cross', 'Cross-well']], st.geom) + '<div class="btns">' + L.btn('survey', ph === 'survey' ? 'Surveying…' : (ph === 'done' ? 'Run again' : 'Fire ' + this.S.length + ' shots'), 'go', ph === 'survey') + '</div>' + (ph === 'survey' ? '<p class="live" id="tomoLive"></p>' : ''), done: ph === 'done' },
         { t: 'Invert the travel times', d: 'First arrivals are picked automatically, then a damped, smoothed least-squares problem (CGLS) finds the slowness in ' + this.gx + ' × ' + this.gz + ' cells that best explains them. <b>Bent rays</b> re-bend every ray through the current model, three times.',
           c: L.seg('rays', [['straight', 'Straight rays'], ['bent', 'Bent rays']], st.rays) + L.range('smooth', 'Smoothing', 0, 100, 1, Math.round(st.smooth * 100), Math.round(st.smooth * 100) + ' %'), done: !!inv && ph === 'done' },
-        { t: 'Compare with the truth', d: 'The panel below shows the hidden truth, the recovered model and the ray coverage. Try the checkerboard: it shows where the survey can resolve detail, and where the rays smear it.', done: !!d.compare }
+        { t: 'Compare with the truth', d: 'The panel below shows the true model, the recovered model and the ray coverage. Try the checkerboard: it shows where the survey can resolve detail, and where the rays smear it.', done: !!d.compare }
       ];
     },
     results: function () {
@@ -792,7 +791,7 @@
     },
     act: function (a, v) {
       var st = this.st;
-      if (a === 'truth') { st.truth = v; st.did.truth = true; st.m = null; L.model.setPreset(v === 'checker' ? 'checker' : (v === 'custom' ? 'homogeneous' : 'random')); L.setModel(); this.reset(); if (v === 'custom') { L.selectTool('slow'); if (!S.reveal) L.setReveal(true); } L.refresh(); }
+      if (a === 'truth') { st.truth = v; st.did.truth = true; st.m = null; L.model.setPreset(v === 'checker' ? 'checker' : (v === 'custom' ? 'homogeneous' : 'random')); L.setModel(); this.reset(); if (v === 'custom') L.selectTool('slow'); L.refresh(); }
       else if (a === 'geom') { if (st.geom !== v) { st.geom = v; L.eng.clear(); this.geometry(); this.reset(); this.head(); L.refresh(); } }
       else if (a === 'survey') this.startSurvey();
       else if (a === 'rays') { if (st.rays !== v) { st.rays = v; this.head(); if (this.rays.length && this.phase !== 'survey') this.invert(); L.refresh(); } }
@@ -813,7 +812,6 @@
       if (this.rays.length && this.phase !== 'survey') this.tmr = setTimeout(function () { self.invert(); var r = document.querySelector('.res'); if (r) r.outerHTML = self.results(); }, 220);
     },
     onEdit: function () { if (this.st.truth !== 'custom') this.st.truth = 'custom'; this.reset(); L.refresh(); },
-    onReveal: function () { if (this.phase === 'done' && !this.st.did.compare) { this.st.did.compare = true; L.refresh(); } },
     ffwd: function () { return this.phase === 'survey'; },
     busy: function () { return this.phase !== 'idle'; },                    /* never rebuild under a survey or its results */
     ffwdCap: function () { return Math.max(1, this.len - this.k); },
@@ -825,7 +823,7 @@
         this.pick(); this.invert(); this.shot++;                              /* during the survey: straight rays, fast, after every shot */
         if (this.shot < this.S.length) this.nextShot();
         else {
-          var self = this; this.phase = 'done'; L.eng.clear(); this.st.did.compare = this.st.did.compare || S.reveal;
+          var self = this; this.phase = 'done'; L.eng.clear(); this.st.did.compare = true;            /* truth and result are side by side now */
           if (this.st.rays === 'bent') { this.bending = true; setTimeout(function () { self.invert(); self.bending = false; L.refresh(); }, 40); }   /* let the screen update first */
           L.refresh();
         }
@@ -833,12 +831,12 @@
     },
     after: function () { if (this.phase === 'survey') L.text('tomoLive', 'Shot ' + (this.shot + 1) + ' of ' + this.S.length + ' · ' + this.rays.length + ' travel times picked'); },
     progress: function () { return this.phase === 'survey' ? (this.shot + this.k / this.len) / this.S.length : null; },
-    hud: function () { if (this.phase === 'survey') return ['<b class="em">Shot ' + (this.shot + 1) + ' / ' + this.S.length + '</b>', 'fast-forward'];   /* the bar under the field shows the progress */ if (this.phase === 'done') return [this.bending ? 'Bending rays…' : this.rays.length + ' rays']; return ['Hidden model']; },
+    hud: function () { if (this.phase === 'survey') return ['<b class="em">Shot ' + (this.shot + 1) + ' / ' + this.S.length + '</b>', 'fast-forward'];   /* the bar under the field shows the progress */ if (this.phase === 'done') return [this.bending ? 'Bending rays…' : this.rays.length + ' rays']; return ['Ready to shoot']; },
     legend: function () { return L.legendAcoustic() + '<span>★ shot</span><span>▼ receiver</span><span>— ray</span>'; },
     overlay: function (ctx) {
       var pal = L.pal, self = this;
       if (this.rays.length) {
-        ctx.lineWidth = 1; ctx.strokeStyle = L.rgba(pal.ink, Math.min(0.16, 7 / this.rays.length + 0.04)); ctx.beginPath();
+        ctx.lineWidth = 0.8; ctx.strokeStyle = L.rgba(pal.edge || pal.ink, Math.min(0.14, 6 / this.rays.length + 0.03)); ctx.beginPath();
         if (this.paths && this.inv && this.inv.mode === 'bent') this.paths.forEach(function (P) { ctx.moveTo(L.sx(P[0][0]), L.sy(P[0][1])); for (var q = 1; q < P.length; q++) ctx.lineTo(L.sx(P[q][0]), L.sy(P[q][1])); });
         else this.rays.forEach(function (r) { ctx.moveTo(L.sx(r.s[0]), L.sy(r.s[1])); ctx.lineTo(L.sx(r.r[0]), L.sy(r.r[1])); });
         ctx.stroke();
@@ -852,39 +850,39 @@
     },
     data: function (ctx, w, h) {
       var pal = L.pal, gx = this.gx, gz = this.gz, inv = this.inv, self = this, narrow = w < 640;
-      var mw = narrow ? (w - 28 - 16) / 3 : Math.min((w * 0.66 - 28) / 3, (h - 58) * gx / gz), mh = mw * gz / gx, y0 = 18;
-      var x0 = narrow ? 14 : w - 14 - 3 * mw - 16;
-      function map(X, title, val, hidden) {
-        L.panelLabel(ctx, title, X, 2);
+      var mw = narrow ? (w - 28 - 24) / 3 : Math.min((w * 0.78 - 52) / 3, (h - 62) * gx / gz), mh = mw * gz / gx;
+      var yT = 2, y0 = 20;                                        /* top-aligned: the four panel titles share one row with the gather's */
+      var x0 = narrow ? 14 : w - 14 - 3 * mw - 24;
+      function map(X, title, val) {
+        L.panelLabel(ctx, title, X, yT);
         for (var k = 0; k < gz; k++) for (var i = 0; i < gx; i++) { var c = val(k * gx + i); ctx.fillStyle = 'rgb(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ')'; ctx.fillRect(X + i * mw / gx, y0 + k * mh / gz, mw / gx + 0.6, mh / gz + 0.6); }
-        ctx.strokeStyle = pal.tick; ctx.strokeRect(X + 0.5, y0 + 0.5, mw - 1, mh - 1);
-        if (hidden) { ctx.fillStyle = L.rgba(pal.bg, 0.86); ctx.fillRect(X, y0, mw, mh); L.font(ctx, 10, 400); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('hidden · Show structure to peek', X + mw / 2, y0 + mh / 2); }
+        ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.strokeRect(X + 0.5, y0 + 0.5, mw - 1, mh - 1);
       }
-      var hide = !(S.reveal || this.phase === 'done'), span = this.span();
-      map(x0, hide ? 'TRUE MODEL · HIDDEN' : 'TRUE MODEL', function (j) { return L.velCol(self.truth[j] - 1, span); }, hide);
-      map(x0 + mw + 8, inv ? 'RECOVERED · ' + (inv.mode === 'bent' ? 'BENT' : 'STRAIGHT') + ' RAYS' : 'RECOVERED', function (j) { return inv ? L.velCol(inv.v[j] - 1, span) : pal.bg; }, false);
-      map(x0 + 2 * (mw + 8), 'RAY COVERAGE', function (j) { var a = inv ? Math.min(1, inv.hits[j] / (0.5 * inv.hmax)) : 0, b = pal.bg, c = pal.ink; return [b[0] + (c[0] - b[0]) * a * 0.8, b[1] + (c[1] - b[1]) * a * 0.8, b[2] + (c[2] - b[2]) * a * 0.8]; }, false);
-      if (!inv) { L.font(ctx, 10, 400); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('run the survey', x0 + mw + 8 + mw / 2, y0 + mh / 2); }
-      L.colorbar(ctx, x0, y0 + mh + 8, Math.min(2 * mw + 8, 220), 7, function (t) { return L.velCol(t * span, span); }, '−' + Math.round(span * 100) + ' %', '+' + Math.round(span * 100) + ' %', 'velocity vs. v = 1');
+      var span = this.span();
+      map(x0, 'TRUE MODEL', function (j) { return L.velCol(self.truth[j] - 1, span); });
+      map(x0 + mw + 12, inv ? 'RECOVERED · ' + (inv.mode === 'bent' ? 'BENT' : 'STRAIGHT') + ' RAYS' : 'RECOVERED', function (j) { return inv ? L.velCol(inv.v[j] - 1, span) : (pal.pn || pal.bg); }, false);
+      map(x0 + 2 * (mw + 12), 'RAY COVERAGE', function (j) { var a = inv ? Math.min(1, inv.hits[j] / (0.5 * inv.hmax)) : 0, b = pal.pn || pal.bg, c = pal.pos; return [b[0] + (c[0] - b[0]) * a * 0.5, b[1] + (c[1] - b[1]) * a * 0.5, b[2] + (c[2] - b[2]) * a * 0.5]; }, false);
+      if (!inv) { L.font(ctx, 10, 400); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('run the survey', x0 + mw + 12 + mw / 2, y0 + mh / 2); }
+      L.colorbar(ctx, x0, y0 + mh + 10, Math.min(2 * mw + 12, 220), 8, function (t) { return L.velCol(t * span, span); }, '−' + Math.round(span * 100) + ' %', '+' + Math.round(span * 100) + ' %', 'velocity vs. v = 1');
       if (narrow) return;
       /* left: the current (or last) shot gather with its picks */
-      var gw = x0 - 14 - 22, GH = h - 30;
-      L.panelLabel(ctx, this.phase === 'idle' ? 'SHOT GATHER' : 'SHOT ' + Math.min(this.shot + 1, this.S.length) + ' · GATHER AND PICKS', 14, 2);
-      if (!this.buf) { L.font(ctx, 10, 400); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('waiting for the first shot', 14 + gw / 2, 18 + GH / 2); return; }
+      var gw = x0 - 14 - 22, g0 = y0, GH = h - 12 - g0;                            /* full panel height (48 traces stay readable); starts where the maps start */
+      L.panelLabel(ctx, this.phase === 'idle' ? 'SHOT GATHER' : 'SHOT ' + Math.min(this.shot + 1, this.S.length) + ' · GATHER AND PICKS', 14, yT);
+      if (!this.buf) { L.font(ctx, 10, 400); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('waiting for the first shot', 14 + gw / 2, g0 + GH / 2); return; }
       var nR = this.R.length, len = this.len, kk = this.phase === 'survey' ? this.k : len, sp = GH / nR, peak = 1e-9, r, i;
       for (r = 0; r < nR; r++) for (i = 0; i < kk; i++) { var aa = Math.abs(this.buf[r * len + i]); if (aa > peak) peak = aa; }
       var stride = Math.max(1, Math.floor(len / (gw * 1.5)));
-      ctx.lineWidth = 0.8; ctx.strokeStyle = pal.trace;
+      ctx.lineWidth = 0.9; ctx.strokeStyle = L.rgba(pal.ink, 0.38);
       for (r = 0; r < nR; r++) {
         if (!this.use[r]) continue;
-        var yb = 18 + sp * (r + 0.5); ctx.beginPath();
+        var yb = g0 + sp * (r + 0.5); ctx.beginPath();
         for (i = 0; i < kk; i += stride) { var yy = yb - Math.max(-1.5 * sp, Math.min(1.5 * sp, this.buf[r * len + i] / peak * 2.2 * sp * 4)); if (i) ctx.lineTo(14 + i / (len - 1) * gw, yy); else ctx.moveTo(14, yy); }
         ctx.stroke();
       }
       var sh = this.phase === 'survey' ? this.shot : this.S.length - 1;
       ctx.fillStyle = L.rgba(pal.neg, 0.95);
-      this.rays.forEach(function (ry) { if (ry.shot === sh) { ctx.beginPath(); ctx.arc(14 + ry.pk / (len - 1) * gw, 18 + sp * (ry.ri + 0.5), 1.8, 0, 6.2832); ctx.fill(); } });
-      L.font(ctx, 9); ctx.fillStyle = pal.label; ctx.textBaseline = 'top'; ctx.textAlign = 'left'; ctx.fillText('0 s', 14, h - 11); ctx.textAlign = 'right'; ctx.fillText(L.fmt(len / L.rate, 1) + ' s · dots = picks', 14 + gw, h - 11);
+      this.rays.forEach(function (ry) { if (ry.shot === sh) { ctx.beginPath(); ctx.arc(14 + ry.pk / (len - 1) * gw, g0 + sp * (ry.ri + 0.5), 1.8, 0, 6.2832); ctx.fill(); } });
+      L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textBaseline = 'top'; ctx.textAlign = 'left'; ctx.fillText('0 s', 14, h - 11); ctx.textAlign = 'right'; ctx.fillText(L.fmt(len / L.rate, 1) + ' s · dots = picks', 14 + gw, h - 11);
     },
     csv: function () {
       if (!this.rays.length) return null;
@@ -1001,7 +999,7 @@
       var pal = L.pal, now = performance.now();
       this.flash.forEach(function (f) { var age = (now - f.t) / 900; if (age < 1) { ctx.beginPath(); ctx.arc(L.sx(f.x), L.sy(f.y), 2 + 8 * age, 0, 6.2832); ctx.strokeStyle = L.rgba(pal.ink, 0.45 * (1 - age)); ctx.lineWidth = 1; ctx.stroke(); } });
       var a = this.sta[0], b = this.sta[1];
-      ctx.setLineDash([4, 5]); ctx.strokeStyle = L.rgba(pal.ink, 0.5); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(L.sx(a.x), L.sy(a.y)); ctx.lineTo(L.sx(b.x), L.sy(b.y)); ctx.stroke(); ctx.setLineDash([]);
+      ctx.setLineDash([3, 4]); ctx.strokeStyle = L.rgba(pal.ink, 0.5); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(L.sx(a.x), L.sy(a.y)); ctx.lineTo(L.sx(b.x), L.sy(b.y)); ctx.stroke(); ctx.setLineDash([]);
       L.label(ctx, L.fmt(L.km(Math.hypot(b.x - a.x, b.y - a.y)), 1) + ' km · t_AB ≈ ' + L.fmt(this.tAB, 2) + ' s', (L.sx(a.x) + L.sx(b.x)) / 2, (L.sy(a.y) + L.sy(b.y)) / 2 + 16);
       stations(ctx, this.sta);
     },
@@ -1009,29 +1007,29 @@
       var pal = L.pal, narrow = w < 640, lw = narrow ? 0 : Math.round(w * 0.3), X2 = narrow ? 14 : lw + 26, W2 = w - X2 - 14, Lg = this.Lg, k, i;
       if (!narrow) {
         L.panelLabel(ctx, 'RAW NOISE · LAST 6 S', 14, 2);
-        L.drawSection(ctx, 14, 16, lw, h - 38, this.rec, { left: 18, gain: 0.45 });
-        L.timeAxis(ctx, 32, h - 20, lw - 18, 6, this.rec.len, L.eng.n);
+        var g = L.drawSection(ctx, 14, 16, lw, h - 38, this.rec, { left: 18, gain: 0.45 });
+        L.timeAxis(ctx, g.x, h - 20, g.w, 6, this.rec.len, L.eng.n, 16);
       }
-      var H1 = Math.round((h - 34) * 0.48), y1 = 16, xs = function (l) { return X2 + (l + Lg) / (2 * Lg) * W2; };
+      var H1 = Math.round((h - 38) * 0.48), y1 = 16, xs = function (l) { return X2 + (l + Lg) / (2 * Lg) * W2; };
       L.panelLabel(ctx, 'CORRELATION STACK C_AB(τ) · ' + this.nWin + ' WINDOWS', X2, 2);
-      ctx.strokeStyle = pal.tick; ctx.strokeRect(X2 + 0.5, y1 + 0.5, W2 - 1, H1 - 1);
+      ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.strokeRect(X2 + 0.5, y1 + 0.5, W2 - 1, H1 - 1);
       var tl = this.tAB * L.rate;
-      [-tl, tl].forEach(function (l) { if (Math.abs(l) <= Lg) { ctx.setLineDash([3, 3]); ctx.strokeStyle = 'rgba(' + pal.origin + ',.75)'; ctx.beginPath(); ctx.moveTo(xs(l), y1); ctx.lineTo(xs(l), y1 + H1 + (h - 34 - H1)); ctx.stroke(); ctx.setLineDash([]); } });
-      L.font(ctx, 9); ctx.fillStyle = 'rgba(' + pal.origin + ',.95)'; ctx.textBaseline = 'top';
+      [-tl, tl].forEach(function (l) { if (Math.abs(l) <= Lg) { ctx.lineWidth = 1; ctx.setLineDash([2, 3]); ctx.strokeStyle = 'rgba(' + pal.origin + ',.8)'; ctx.beginPath(); ctx.moveTo(xs(l), y1); ctx.lineTo(xs(l), h - 22); ctx.stroke(); ctx.setLineDash([]); } });
+      L.font(ctx, 10); ctx.fillStyle = 'rgba(' + pal.origin + ',.95)'; ctx.textBaseline = 'top';
       if (tl <= Lg) { ctx.textAlign = 'left'; ctx.fillText('A→B  +t_AB', xs(tl) + 4, y1 + 3); ctx.textAlign = 'right'; ctx.fillText('−t_AB  B→A', xs(-tl) - 4, y1 + 3); }
       ctx.strokeStyle = pal.tick; ctx.beginPath(); ctx.moveTo(xs(0) + 0.5, y1); ctx.lineTo(xs(0) + 0.5, y1 + H1); ctx.stroke();
       if (this.nWin) {
         var st = this.stack, m = 1e-12; for (i = 0; i < st.length; i++) m = Math.max(m, Math.abs(st[i]));
         var stride = Math.max(1, Math.floor(st.length / (W2 * 1.5)));
         ctx.beginPath(); for (i = 0; i < st.length; i += stride) { var yy = y1 + H1 / 2 - st[i] / m * (H1 / 2 - 4); if (i) ctx.lineTo(xs(i - Lg), yy); else ctx.moveTo(xs(-Lg), yy); }
-        ctx.strokeStyle = pal.trace; ctx.lineWidth = 1.3; ctx.stroke();
+        ctx.strokeStyle = pal.trace; ctx.lineWidth = 1.5; ctx.stroke();
       } else { L.font(ctx, 10, 400); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(this.st.mode === 'off' ? 'switch on the noise' : 'collecting the first 3-s window…', X2 + W2 / 2, y1 + H1 / 2); }
       /* emergence: every window's correlation as one row, newest at the bottom */
-      var y2 = y1 + H1 + 6, H2 = h - 34 - H1 - 6, rows = this.rows, nr = 40, rh = H2 / nr;
-      L.font(ctx, 9); ctx.fillStyle = pal.label; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
-      ctx.strokeStyle = pal.tick; ctx.strokeRect(X2 + 0.5, y2 + 0.5, W2 - 1, H2 - 1);
+      var y2 = y1 + H1 + 6, H2 = h - 38 - H1 - 6, rows = this.rows, nr = 40, rh = H2 / nr;   /* bottom at h − 22, level with the raw-noise section */
+      L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.strokeRect(X2 + 0.5, y2 + 0.5, W2 - 1, H2 - 1);
       var cols = Math.min(2 * Lg + 1, Math.round(W2)), bin = (2 * Lg + 1) / cols, cw = W2 / cols;
-      var half = Math.max(1, Math.round(0.5 / L.eng.f0)), b0 = pal.bg, hc = pal.hot;
+      var half = Math.max(1, Math.round(0.5 / L.eng.f0)), b0 = pal.pn || pal.bg, hc = pal.hot;
       for (k = 0; k < rows.length; k++) {
         var row = rows[k], n2 = row.length, csum = new Float64Array(n2 + 1), e2 = 0;
         for (i = 0; i < n2; i++) { csum[i + 1] = csum[i] + Math.abs(row[i]); e2 += row[i] * row[i]; }
@@ -1043,7 +1041,7 @@
           ctx.fillRect(X2 + c * cw, yr, cw + 0.5, rh + 0.5);
         }
       }
-      L.font(ctx, 9); ctx.fillStyle = pal.label; ctx.textBaseline = 'top';
+      L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textBaseline = 'top';
       ctx.textAlign = 'left'; ctx.fillText('−' + L.fmt(Lg / L.rate, 0) + ' s', X2, h - 14); ctx.textAlign = 'center'; ctx.fillText(W2 > 520 ? 'lag τ · rows: stack envelope / RMS after each window, newest last' : 'lag τ', X2 + W2 / 2, h - 14); ctx.textAlign = 'right'; ctx.fillText('+' + L.fmt(Lg / L.rate, 0) + ' s', X2 + W2, h - 14);
     },
     csv: function () {
@@ -1059,7 +1057,7 @@
      ====================================================================================== */
   var KINDS = [['0', 'Explosion'], ['1', 'Shear'], ['2', 'Vertical force']], KMUL = [1, 0.35, 2.2];   /* shear sources radiate ~5× more S than P: scaled down so both stay readable */
   L.register({
-    id: 'elastic', title: 'Elastic waves', physics: 'elastic', revealDefault: true,
+    id: 'elastic', title: 'Elastic waves', physics: 'elastic',
     goal: 'Rock is solid, so it carries two kinds of body waves, P and S, and, along the free surface, the slow and strong Rayleigh wave.',
     tools: ['quake', '|', 'slow', 'fast', 'erase', 'scatter'],
     shareWhat: 'the model, your edits, the source type and the station',
@@ -1132,7 +1130,7 @@
     moveHandle: function (id, c) { this.sta[0].x = c[0]; L.setProbes([[c[0], 0.5]]); },
     onSamples: function (b, n, nP) { this.rec.push(b, n, nP, 0); },
     gain: function () { return this.g; }, gain2: function () { return this.g; },
-    legend: function () { return '<span><i class="sw" style="background:var(--cyan)"></i>P · |∇·v|</span><span><i class="sw" style="background:var(--amber)"></i>S · |∇×v|</span>' + (S.reveal ? '<span><i class="sw" style="background:var(--slow)"></i>slow</span><span><i class="sw" style="background:var(--fast)"></i>fast</span>' : ''); },
+    legend: function () { return '<span><i class="sw" style="background:var(--cyan)"></i>P · |∇·v|</span><span><i class="sw" style="background:var(--amber)"></i>S · |∇×v|</span>' + L.legendVel(); },
     overlay: function (ctx) { stations(ctx, this.sta); },
     data: function (ctx, w, h) {
       var pal = L.pal, narrow = w < 640, hw = narrow ? 0 : Math.min(200, Math.round(h * 0.95)), Wt = w - 28 - (hw ? hw + 18 : 0), H = h - 26, half = H / 2, rec = this.rec;
@@ -1141,35 +1139,38 @@
       rec.peak = Math.max(mz, rec.peak * 0.995, 1e-6);
       var amp = (half / 2 - 3) / rec.peak, stride = Math.max(1, Math.floor(rec.len / (Wt * 1.5)));
       [0, 1].forEach(function (c) {
-        var y0 = 4 + half * (c + 0.5); L.font(ctx, 9); ctx.fillStyle = pal.label; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(c ? 'X' : 'Z', 14, y0);
+        var y0 = 4 + half * (c + 0.5); L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(c ? 'X' : 'Z', 14, y0);
         ctx.beginPath(); for (k = 0; k < rec.len; k += stride) { var yy = y0 - Math.max(-half / 2, Math.min(half / 2, rec.get(0, k, c) * amp)); if (k) ctx.lineTo(28 + k / (rec.len - 1) * (Wt - 14), yy); else ctx.moveTo(28, yy); }
-        ctx.strokeStyle = c ? L.rgba(pal.sw, 0.95) : pal.trace; ctx.lineWidth = 1.2; ctx.stroke();
+        ctx.strokeStyle = c ? L.rgba(pal.sw, 0.95) : pal.trace; ctx.lineWidth = 1.4; ctx.stroke();
       });
       var r = this.last;
       if (r) {
         [['origin', 0], ['P', r.tp], ['S', r.ts]].forEach(function (m) {
           var age = L.eng.n - r.n - m[1] * L.rate; if (age < 0 || age > rec.len) return;
           var xm = 28 + (Wt - 14) - age / rec.len * (Wt - 14);
-          ctx.strokeStyle = m[0] === 'origin' ? 'rgba(' + pal.origin + ',.7)' : (m[0] === 'P' ? L.rgba(pal.pos, 0.8) : L.rgba(pal.sw, 0.85)); ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(xm + 0.5, 4); ctx.lineTo(xm + 0.5, 4 + H); ctx.stroke(); ctx.setLineDash([]);
-          L.font(ctx, 9); ctx.fillStyle = ctx.strokeStyle; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText(m[0] === 'origin' ? 'origin' : 'predicted ' + m[0], xm + 3, 4);
+          ctx.lineWidth = 1; ctx.strokeStyle = m[0] === 'origin' ? 'rgba(' + pal.origin + ',.8)' : (m[0] === 'P' ? L.rgba(pal.pos, 0.8) : L.rgba(pal.sw, 0.85)); ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(xm + 0.5, 4); ctx.lineTo(xm + 0.5, 4 + H); ctx.stroke(); ctx.setLineDash([]);
+          L.font(ctx, 10); ctx.fillStyle = ctx.strokeStyle; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText(m[0] === 'origin' ? 'origin' : 'predicted ' + m[0], xm + 3, 4);
         });
       }
-      L.timeAxis(ctx, 28, h - 20, Wt - 14, 6, rec.len, L.eng.n);
+      L.timeAxis(ctx, 28, h - 20, Wt - 14, 6, rec.len, L.eng.n, 4);
       if (!hw) return;
       /* particle motion over the last 1.2 s: X horizontal, Z vertical */
       var x0 = w - 14 - hw, y0 = 16, S2 = Math.min(hw, H - 14), n = Math.round(1.2 * L.rate), pm = 1e-9;
       L.panelLabel(ctx, 'PARTICLE MOTION · LAST 1.2 S', x0, 2);
-      ctx.strokeStyle = pal.tick; ctx.strokeRect(x0 + 0.5, y0 + 0.5, S2 - 1, S2 - 1);
-      ctx.beginPath(); ctx.moveTo(x0 + S2 / 2, y0); ctx.lineTo(x0 + S2 / 2, y0 + S2); ctx.moveTo(x0, y0 + S2 / 2); ctx.lineTo(x0 + S2, y0 + S2 / 2); ctx.stroke();
+      ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.strokeRect(x0 + 0.5, y0 + 0.5, S2 - 1, S2 - 1);
+      ctx.strokeStyle = pal.grid; ctx.beginPath(); ctx.moveTo(x0 + S2 / 2, y0); ctx.lineTo(x0 + S2 / 2, y0 + S2); ctx.moveTo(x0, y0 + S2 / 2); ctx.lineTo(x0 + S2, y0 + S2 / 2); ctx.stroke();
       for (i = rec.len - n; i < rec.len; i++) pm = Math.max(pm, Math.abs(rec.get(0, i, 0)), Math.abs(rec.get(0, i, 1)));
       pm = Math.max(pm, 0.06 * rec.peak);
       for (i = rec.len - n + 1; i < rec.len; i += 1) {
         var a = (i - (rec.len - n)) / n;
-        ctx.strokeStyle = L.rgba(pal.ink, 0.15 + 0.8 * a); ctx.lineWidth = 1.2; ctx.beginPath();
+        ctx.strokeStyle = L.rgba(pal.pos, 0.12 + 0.85 * a); ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.beginPath();
         ctx.moveTo(x0 + S2 / 2 + rec.get(0, i - 1, 1) / pm * (S2 / 2 - 6), y0 + S2 / 2 - rec.get(0, i - 1, 0) / pm * (S2 / 2 - 6));
         ctx.lineTo(x0 + S2 / 2 + rec.get(0, i, 1) / pm * (S2 / 2 - 6), y0 + S2 / 2 - rec.get(0, i, 0) / pm * (S2 / 2 - 6)); ctx.stroke();
       }
-      L.font(ctx, 9); ctx.fillStyle = pal.label; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillText('X →', x0 + S2 - 3, y0 + S2 / 2 - 2); ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('Z ↑', x0 + S2 / 2 + 3, y0 + 2);
+      ctx.lineCap = 'butt'; ctx.beginPath();                                   /* the newest sample */
+      ctx.arc(x0 + S2 / 2 + rec.get(0, rec.len - 1, 1) / pm * (S2 / 2 - 6), y0 + S2 / 2 - rec.get(0, rec.len - 1, 0) / pm * (S2 / 2 - 6), 3, 0, 6.2832);
+      ctx.fillStyle = L.rgba(pal.pos, 1); ctx.fill();
+      L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillText('X →', x0 + S2 - 3, y0 + S2 / 2 - 2); ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('Z ↑', x0 + S2 / 2 + 3, y0 + 2);
     },
     csv: function () { return L.recCSV(this.rec, ['Z_up', 'X_right'], 'ground velocity, arbitrary units'); }
   });

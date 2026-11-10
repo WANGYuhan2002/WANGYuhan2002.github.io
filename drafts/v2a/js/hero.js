@@ -9,7 +9,7 @@
   function $(id) { return document.getElementById(id); }
   var hero = $('hero'), glc = $('fieldgl'), cpuc = $('field'), ov = $('overlay'), octx = ov.getContext('2d');
   var tcv = $('trace'), tctx = tcv.getContext('2d'), list = $('events'), countEl = $('count');
-  var revealBtn = $('reveal'), legend = $('legend'), seisLabel = $('seisLabel'), lab = $('lab'), pop = $('labPop');
+  var seisLabel = $('seisLabel'), lab = $('lab'), pop = $('labPop');
   function mm(q) { return !!(window.matchMedia && matchMedia(q).matches); }
   var reduce = mm('(prefers-reduced-motion: reduce)'), coarse = mm('(pointer: coarse)');
   if (coarse) $('hintText').textContent = 'Tap to make an earthquake';
@@ -17,7 +17,7 @@
   /* ---------------- state ---------------- */
   var eng, model, nx, ny, rate, TR, W = 0, H = 0, lastW = 0, lastH = 0, dpr = 1, res = 1;
   var tool = 'quake', panel = null, brushR = 14, brushS = 0.2, quakeM = 3.2, quakeRandom = true;
-  var arrMode = 'stations', arrN = 12, bc = 'absorb', preset = 'random', seed = 1, autoFree = false, agc = false, reveal = false, paused = false;
+  var arrMode = 'stations', arrN = 12, bc = 'absorb', preset = 'random', seed = 1, autoFree = false, agc = false, paused = false;   /* the velocity model is always drawn under the waves */
   var stations = [], netKind = 'single', marks = [], peak = 0.08, head = 0, total = 0, drag = null, cursor = null, cs = null, saved = null;
   var lastUserT = -1e9, lastAutoT = 0, backend = WE.gpuAvailable() ? 'gpu' : 'cpu', q = 1, watch = new WE.Watchdog();   /* q: grid scale, lowered for this visit if the device falls behind */
   var MAXSTA = 12;
@@ -39,7 +39,7 @@
     nx = eng.nx; ny = eng.ny; rate = eng.rate; TR = Math.round(rate * 6); res = Math.max(1, nx / 480);
     model = new WM.Model(nx, ny);
     if (saved) model.load(saved.m); else model.setPreset(preset, seed);
-    eng.setModel(model); setBC(bc); eng.setDisplay(pal, reveal);
+    eng.setModel(model); setBC(bc); eng.setDisplay(pal, true);
     marks = []; peak = 0.08; head = 0;
     if (saved && saved.st.length) setStations(saved.st.map(function (p) { return { x: p[0] * nx, y: p[1] * nx, code: p[2] }; }), saved.kind);
     else oneStation();
@@ -51,18 +51,12 @@
     eng.setBoundary(b === 'box' ? { top: false, bottom: false, left: false, right: false } : (b === 'free' ? { top: false, bottom: true, left: true, right: true } : { top: true, bottom: true, left: true, right: true }), 0.5);
   }
   function setPreset(p) { preset = p; model.setPreset(p, seed); eng.setModel(model); }
-  /* cross-sections get a free surface on top and the structure revealed; map views go back to absorbing edges */
+  /* cross-sections get a free surface on top; map views go back to absorbing edges */
   function choosePreset(p) {
     setPreset(p);
-    if (model.view() === 'section') { if (bc === 'absorb') { setBC('free'); autoFree = true; } if (!reveal) setReveal(true); }
+    if (model.view() === 'section') { if (bc === 'absorb') { setBC('free'); autoFree = true; } }
     else if (autoFree && bc === 'free') { setBC('absorb'); autoFree = false; }
     if (panel === 'model') openPanel('model');
-  }
-  function setReveal(on) {
-    reveal = on; eng.setDisplay(pal, on);
-    revealBtn.setAttribute('aria-pressed', on); legend.hidden = !on;
-    revealBtn.innerHTML = on ? 'Hide<span class="long"> structure</span>' : 'Reveal<span class="long"> hidden structure</span>';
-    var cb = $('pReveal'); if (cb) cb.checked = on;
   }
 
   /* ---------------- receivers ---------------- */
@@ -143,24 +137,29 @@
 
   /* ---------------- drawing ---------------- */
   function sx(x) { return (x + 0.5) / nx * W; } function sy(y) { return (y + 0.5) / ny * H; }
-  function tri(x, y, s, alpha) {
+  /* stations: a crisp halo outline under the fill (no blurred shadow) */
+  function tri(x, y, s, alpha, col) {
     octx.beginPath(); octx.moveTo(x - s, y - s * 1.7); octx.lineTo(x + s, y - s * 1.7); octx.lineTo(x, y); octx.closePath();
-    octx.fillStyle = rgba(pal.ink, alpha); octx.shadowColor = pal.halo; octx.shadowBlur = 6; octx.fill(); octx.shadowBlur = 0;
+    octx.lineJoin = 'round'; octx.lineWidth = 1.5; octx.strokeStyle = pal.halo; octx.globalAlpha = alpha; octx.stroke(); octx.globalAlpha = 1;
+    octx.fillStyle = rgba(col || pal.ink, alpha); octx.fill();
   }
   function drawOverlay() {
     octx.setTransform(dpr, 0, 0, dpr, 0, 0); octx.clearRect(0, 0, W, H);
     var sc = model.scat, rs = Math.max(2.4, 1.6 * res / nx * W), k;
-    for (k = 0; k < sc.length; k++) { octx.beginPath(); octx.arc(sx(sc[k][0]), sy(sc[k][1]), rs, 0, 6.2832); octx.fillStyle = rgba(pal.ink, 0.92); octx.fill(); octx.lineWidth = 1; octx.strokeStyle = pal.halo; octx.stroke(); }
-    var many = stations.length > 1, arrays = netKind === 'line' || netKind === 'ring';
-    octx.font = '500 10px "JetBrains Mono", monospace'; octx.textAlign = 'center';
+    for (k = 0; k < sc.length; k++) { octx.beginPath(); octx.arc(sx(sc[k][0]), sy(sc[k][1]), rs, 0, 6.2832); octx.fillStyle = rgba(pal.ink, 0.9); octx.fill(); octx.lineWidth = 1; octx.strokeStyle = rgba(pal.edge || pal.ink, 0.6); octx.stroke(); }
+    var many = stations.length > 1, arrays = netKind === 'line' || netKind === 'ring', s0 = many ? 5 : 6.5;
+    octx.font = '600 10.5px "JetBrains Mono", monospace'; octx.textAlign = 'center'; octx.lineJoin = 'round'; octx.miterLimit = 2;
     for (k = 0; k < stations.length; k++) {
       var st = stations[k], X = sx(st.x), Y = Math.max(13, sy(st.y)), active = drag && drag.kind === 'station' && drag.k === k;
-      tri(X, Y, active ? 8 : (many ? 5.5 : 7), 0.95);
-      if ((!arrays || k === 0 || k === stations.length - 1) && Y >= 70) { octx.fillStyle = rgba(pal.ink, 0.95); octx.shadowColor = pal.halo; octx.shadowBlur = 4; octx.fillText(st.code, X, Y - (many ? 13 : 17)); octx.shadowBlur = 0; }
+      tri(X, Y, active ? s0 * 1.3 : s0, active ? 1 : 0.96, active ? pal.pos : null);
+      if ((!arrays || k === 0 || k === stations.length - 1) && Y >= 70) {
+        var ly = Y - (many ? 13 : 17); octx.lineWidth = 3; octx.strokeStyle = pal.halo; octx.strokeText(st.code, X, ly);
+        octx.fillStyle = rgba(pal.ink, 0.96); octx.fillText(st.code, X, ly);
+      }
     }
     if (drag && drag.kind === 'array') {
       var pts = arrayPositions(drag);
-      octx.setLineDash([4, 4]); octx.lineWidth = 1.2; octx.strokeStyle = rgba(pal.pos, 0.85); octx.beginPath();
+      octx.setLineDash([3, 4]); octx.lineWidth = 1.25; octx.strokeStyle = rgba(pal.pos, 0.85); octx.beginPath();
       if (arrMode === 'line') { octx.moveTo(sx(drag.x0), sy(drag.y0)); octx.lineTo(sx(drag.x1), sy(drag.y1)); }
       else { octx.arc(sx(drag.x0), sy(drag.y0), Math.hypot(drag.x1 - drag.x0, drag.y1 - drag.y0) / nx * W, 0, 6.2832); }
       octx.stroke(); octx.setLineDash([]);
@@ -168,7 +167,7 @@
     }
     if (cursor && !coarse && (tool === 'slow' || tool === 'fast' || tool === 'erase')) {
       octx.beginPath(); octx.arc(sx(cursor[0]), sy(cursor[1]), brushR * res / nx * W, 0, 6.2832);
-      octx.setLineDash([5, 5]); octx.lineWidth = 1.4; octx.strokeStyle = tool === 'slow' ? rgba(pal.slow, 1) : (tool === 'fast' ? rgba(pal.fast, 1) : rgba(pal.ink, 0.8)); octx.stroke(); octx.setLineDash([]);
+      octx.setLineDash([3, 4]); octx.lineWidth = 1.25; octx.strokeStyle = tool === 'slow' ? rgba(pal.slow, 1) : (tool === 'fast' ? rgba(pal.fast, 1) : rgba(pal.ink, 0.8)); octx.stroke(); octx.setLineDash([]);
     }
   }
   /* seismograms: one trace, or a record section with variable-area wiggles; one common gain (relative amplitudes
@@ -181,15 +180,18 @@
     var n = stations.length, many = n > 1, m = 0, s, k, step = eng.n;
     for (s = 0; s < n; s++) { var bf = stations[s].buf; for (k = 0; k < TR; k++) { var a = bf[k] < 0 ? -bf[k] : bf[k]; if (a > m) m = a; } }
     peak = Math.max(0.08, m, peak * 0.995);
-    var left = many ? 40 : 0, top = many ? 4 : 2, bot = many ? 4 : 2, ww = w - left, sp = (h - top - bot) / n;
-    var amp = (many ? 0.95 * sp : (h / 2 - 4)) / peak, clip = many ? 1.4 * sp : h / 2 - 2, sec = Math.round(rate);
-    tctx.strokeStyle = pal.tick; tctx.lineWidth = 1; tctx.beginPath();
-    for (var st = step - (step % sec); st > step - TR; st -= sec) { var xt = left + ww - (step - st) / TR * ww; tctx.moveTo(xt, h - 5); tctx.lineTo(xt, h); }
+    var left = many ? 42 : 0, top = many ? 4 : 2, bot = many ? 4 : 2, ww = w - left, sp = (h - top - bot) / n;
+    var amp = (many ? 0.95 * sp : (h / 2 - 4)) / peak, clip = many ? 1.4 * sp : h / 2 - 2, sec = Math.round(rate), st, xt;
+    tctx.lineWidth = 1; tctx.strokeStyle = pal.grid; tctx.beginPath();            /* a grid line every second, and short ticks at the bottom */
+    for (st = step - (step % sec); st > step - TR; st -= sec) { xt = Math.round(left + ww - (step - st) / TR * ww) + 0.5; tctx.moveTo(xt, 0); tctx.lineTo(xt, h - 5); }
+    tctx.stroke(); tctx.strokeStyle = pal.tick; tctx.beginPath();
+    for (st = step - (step % sec); st > step - TR; st -= sec) { xt = Math.round(left + ww - (step - st) / TR * ww) + 0.5; tctx.moveTo(xt, h - 5); tctx.lineTo(xt, h); }
     tctx.stroke();
-    tctx.font = '500 9px "JetBrains Mono", monospace'; tctx.textBaseline = 'top';
+    if (!many) { tctx.strokeStyle = pal.grid; tctx.beginPath(); tctx.moveTo(0, Math.round(h / 2) + 0.5); tctx.lineTo(w, Math.round(h / 2) + 0.5); tctx.stroke(); }
+    tctx.font = '500 10px "JetBrains Mono", monospace'; tctx.textBaseline = 'top';
     for (var qq = 0; qq < marks.length; qq++) {
       var age = step - marks[qq]; if (age > TR) continue; var xm = left + ww - age / TR * ww;
-      tctx.strokeStyle = 'rgba(' + pal.origin + ',.75)'; tctx.setLineDash([3, 3]); tctx.beginPath(); tctx.moveTo(xm, 1); tctx.lineTo(xm, h - 1); tctx.stroke(); tctx.setLineDash([]);
+      tctx.strokeStyle = 'rgba(' + pal.origin + ',.8)'; tctx.setLineDash([2, 3]); tctx.beginPath(); tctx.moveTo(xm, 1); tctx.lineTo(xm, h - 1); tctx.stroke(); tctx.setLineDash([]);
       if (qq === marks.length - 1) { tctx.fillStyle = 'rgba(' + pal.origin + ',.95)'; tctx.textAlign = 'left'; tctx.fillText('origin', xm + 4, 1); }
     }
     var stride = Math.max(1, Math.floor(TR / Math.max(1, ww)));
@@ -199,13 +201,11 @@
       var y0 = many ? top + sp * (s + 0.5) : h / 2, buf = stations[s].buf, x2, y2, v;
       if (agc) { for (k = 0; k < TR; k++) { var o = buf[(head + k) % TR]; cs[k + 1] = cs[k] + o * o; } }
       var gain = function (k) { if (!agc) return amp; var lo = Math.max(0, k - half), hi = Math.min(TR, k + half), r = Math.sqrt((cs[hi] - cs[lo]) / (hi - lo)); return lvl / Math.max(r, floor); };
-      if (many) {
-        if (sp >= 11 || s % 2 === 0) { tctx.fillStyle = pal.label; tctx.textAlign = 'left'; tctx.textBaseline = 'middle'; tctx.fillText(stations[s].code, 0, y0); tctx.textBaseline = 'top'; }
-        tctx.beginPath(); tctx.moveTo(left, y0);
-        for (k = 0; k < TR; k += stride) { v = buf[(head + k) % TR] * gain(k); x2 = left + k / (TR - 1) * ww; tctx.lineTo(x2, y0 - Math.max(0, Math.min(clip, v))); }
-        tctx.lineTo(left + ww, y0); tctx.closePath(); tctx.fillStyle = pal.fill; tctx.fill();
-      }
-      tctx.strokeStyle = pal.trace; tctx.lineWidth = many ? 1 : 1.25; tctx.lineJoin = 'round'; tctx.beginPath();
+      if (many && (sp >= 11 || s % 2 === 0)) { tctx.font = '500 10px "JetBrains Mono", monospace'; tctx.fillStyle = pal.label; tctx.textAlign = 'left'; tctx.textBaseline = 'middle'; tctx.fillText(stations[s].code, 0, y0); tctx.textBaseline = 'top'; }
+      tctx.beginPath(); tctx.moveTo(left, y0);                                     /* variable-area fill of the positive half, also for one trace */
+      for (k = 0; k < TR; k += stride) { v = buf[(head + k) % TR] * gain(k); x2 = left + k / (TR - 1) * ww; tctx.lineTo(x2, y0 - Math.max(0, Math.min(clip, v))); }
+      tctx.lineTo(left + ww, y0); tctx.closePath(); tctx.fillStyle = pal.fill; if (!many) tctx.globalAlpha = 0.7; tctx.fill(); tctx.globalAlpha = 1;
+      tctx.strokeStyle = pal.trace; tctx.lineWidth = many ? 1 : 1.6; tctx.lineJoin = 'round'; tctx.beginPath();
       for (k = 0; k < TR; k += stride) { v = buf[(head + k) % TR] * gain(k); x2 = left + k / (TR - 1) * ww; y2 = y0 - Math.max(-clip, Math.min(clip, v)); if (k) tctx.lineTo(x2, y2); else tctx.moveTo(x2, y2); }
       tctx.stroke();
     }
@@ -228,7 +228,7 @@
     if (k >= 0 && tool !== 'slow' && tool !== 'fast' && tool !== 'erase' && tool !== 'scatter') { capture(e); drag = { kind: 'station', k: k }; return; }   /* stations can always be moved */
     if (tool === 'quake') { quake(c[0], c[1], 'you', quakeRandom ? null : quakeM); return; }
     capture(e);
-    if (tool === 'slow' || tool === 'fast' || tool === 'erase') { if (tool !== 'erase' && !reveal) setReveal(true); drag = { kind: 'paint', last: c }; stamp(c); }
+    if (tool === 'slow' || tool === 'fast' || tool === 'erase') { drag = { kind: 'paint', last: c }; stamp(c); }
     else if (tool === 'scatter') { scatterAt(c); drag = { kind: 'scatter', last: c }; updateCounts(); }
     else if (tool === 'array') { if (arrMode === 'stations') addStation(c); else drag = { kind: 'array', x0: c[0], y0: c[1], x1: c[0], y1: c[1] }; }
   });
@@ -260,7 +260,6 @@
   hero.addEventListener('pointerup', endDrag); hero.addEventListener('pointercancel', endDrag);
   hero.addEventListener('pointerleave', function () { cursor = null; });
   $('hint').addEventListener('click', function () { selectTool('quake', true); quake(Math.round(nx * (0.3 + 0.45 * Math.random())), Math.round(ny * (0.2 + 0.4 * Math.random())), 'you', quakeRandom ? null : quakeM); lastUserT = performance.now(); });
-  revealBtn.addEventListener('click', function () { setReveal(!reveal); });
 
   /* ---------------- toolbar & option panels ---------------- */
   var TITLES = { quake: 'Acoustic source', slow: 'Low-velocity body', fast: 'High-velocity body', erase: 'Erase structure', scatter: 'Point scatterers', array: 'Receivers', model: 'Model & boundaries', info: 'What is this wavefield?' };
@@ -288,11 +287,11 @@
       '<label class="radio"><input type="radio" name="pbc" value="absorb"' + (bc === 'absorb' ? ' checked' : '') + '><span>Absorbing on all sides<small>a damping layer: waves leave the screen</small></span></label>' +
       '<label class="radio"><input type="radio" name="pbc" value="free"' + (bc === 'free' ? ' checked' : '') + '><span>Free surface on top<small>p = 0 at the top edge: reflects with reversed polarity</small></span></label>' +
       '<label class="radio"><input type="radio" name="pbc" value="box"' + (bc === 'box' ? ' checked' : '') + '><span>Reflecting box<small>p = 0 on all edges, no damping layer</small></span></label>' +
-      '<label class="chk"><input type="checkbox" id="pReveal"' + (reveal ? ' checked' : '') + '> show velocity structure</label>' +
       '<div class="btns"><button class="pbtn" type="button" id="pPause">' + (paused ? 'Resume' : 'Pause') + '</button><button class="pbtn" type="button" id="pClear">Clear waves</button></div>' +
       '<p class="pop-more">More models, arrays, fibre-optic cables, time reversal, tomography and elastic waves: <a href="lab/">the Wave Lab →</a></p>';
     else if (name === 'info') h += '<div class="pop-info">' +
       '<p><b>Equation.</b> The 2-D constant-density acoustic wave equation <code>∂²p/∂t² = c(x, z)² ∇²p</code>. p is pressure, so only P waves exist here: no S or surface waves (those are in the Wave Lab\'s elastic experiment). Cyan is compression (p &gt; 0), coral is rarefaction (p &lt; 0).</p>' +
+      '<p><b>Velocity model.</b> Always drawn under the waves: red is slower than the background velocity (v &lt; 1), blue is faster, and thin lines mark sharp interfaces. Recovering this structure from recorded waves is what <b>seismic tomography</b> does.</p>' +
       '<p><b>Source.</b> Each click adds an acoustic point source to the pressure field: a Ricker wavelet (the second derivative of a Gaussian) with a peak frequency of ' + eng.fHz.toFixed(1) + ' Hz, spread over a 5 × 5-cell Gaussian footprint. The magnitude only scales its amplitude.</p>' +
       '<p><b>Receivers.</b> Each station samples p(t) at its position every time step (bilinear interpolation); the strip below shows the last 6 s. Place stations one by one, or as a line or ring array.</p>' +
       '<p><b>Numerics.</b> Second-order finite differences (leapfrog in time, 5-point Laplacian) on a ' + nx + ' × ' + ny + ' grid, computed live ' + (eng.backend === 'gpu' ? 'on your GPU (WebGL2, 32-bit float textures)' : 'on your CPU') + '. Courant number c·Δt/Δx ≤ 0.69 &lt; 1/√2, about ' + Math.round(eng.ppw) + ' grid points per dominant wavelength.</p>' +
@@ -322,7 +321,6 @@
     pop.querySelectorAll('[data-pre]').forEach(function (b) { b.onclick = function () { choosePreset(b.dataset.pre); }; });
     if ((el = $('pReroll'))) el.onclick = function () { seed = 2 + Math.floor(Math.random() * 1e6); choosePreset('layered'); };
     pop.querySelectorAll('input[name="pbc"]').forEach(function (r) { r.onchange = function () { setBC(r.value); autoFree = false; }; });
-    if ((el = $('pReveal'))) el.onchange = function () { setReveal(this.checked); };
     if ((el = $('pPause'))) el.onclick = function () { paused = !paused; this.textContent = paused ? 'Resume' : 'Pause'; };
     if ((el = $('pClear'))) el.onclick = clearWaves;
   }
@@ -384,7 +382,7 @@
       else { W = r.width; H = r.height; ov.width = Math.round(W * dpr); ov.height = Math.round(H * dpr); }
     }, 200);
   });
-  document.addEventListener('themechange', function (e) { pal = WE.PAL[e.detail === 'light' ? 'light' : 'dark']; eng.setDisplay(pal, reveal); });
+  document.addEventListener('themechange', function (e) { pal = WE.PAL[e.detail === 'light' ? 'light' : 'dark']; eng.setDisplay(pal, true); });
 
   build(); start();
   if (!reduce) setTimeout(function () { quake(Math.round(nx * 0.64), Math.round(ny * 0.36), 'auto', 2.9); lastAutoT = performance.now(); }, 450);
