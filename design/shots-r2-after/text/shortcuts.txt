@@ -1,0 +1,5 @@
+No shortcuts overlay exists; "?" shows a 5-s toast (#toast):
+1–6 experiments · Q S F E C T tools · Space pause · Shift-click: M 7
+
+Rail footer (.rail-foot):
+Keys: 1–6 experiments · Space pause · ? all shortcuts

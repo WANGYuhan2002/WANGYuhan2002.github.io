@@ -1,0 +1,94 @@
+## #status
+CPU · 400 × 205 · acoustic
+
+## #hud
+Noise all around
+4× time-lapse
+t = 128 s
+
+## #legend
+pressure
+−
++
+velocity
+1.5
+3.5 km/s
+noise source
+
+## #dataTitle
+Noise at A and B → their cross-correlation
+
+## #ctaBtn
+text: Restart the stack
+hidden: false
+disabled: false
+
+## #insp (all details open, line clamp removed)
+EXPERIMENT 5 OF 6
+
+Ambient noise
+
+Two stations, nothing but random noise, and patience: cross-correlating their recordings turns the noise into the wave that travels between them.
+
+✓
+SET UP
+
+Place two stations
+
+Drag A and B. Their distance sets the travel time tAB that should appear in the correlation.
+
+✓
+OBSERVE
+
+Switch on the noise
+
+Weak sources pop off at random places and times in a ring around the stations, like distant ocean waves or traffic.
+
+Off
+All around
+One side only
+✓
+PROCESS
+
+Let the stack converge
+
+Every 3 s the two records are cross-correlated, and the result is added to the stack. The lower panel shows, row by row, how far the stack stands above its own noise: watch two bright lines appear.
+
+40 windows (120 s of noise) · SNR 4.6
+
+4
+INTERPRET
+
+Read the correlation
+
+Peaks at ±tAB: positive lag is the wave from A to B, negative lag the wave from B to A. Put the noise on one side only and one of the two disappears: the noise must come from the direction of the station line.
+
+INTERFEROMETRY
+
+2.53 km/s
+velocity between A and B from the peak lag · true 2.50 km/s
+
+Windows stacked
+40 (120 s of noise)
+Predicted tAB
+0.96 s
+Measured lag
++0.95 s · −0.95 s
+Signal-to-noise ratio
+4.6
+What’s going on
+
+Noise interferometry. If noise sources surround two receivers evenly, the long-time cross-correlation of their records, CAB(τ) = ⟨pA(t)·pB(t + τ)⟩, converges to the Green’s function between them (filtered by the noise spectrum): a wave as if A were a source and B a receiver, plus its time-reversed twin.
+
+Stationary phase. Only noise sources roughly in line with A and B contribute coherently; the rest averages out. That is why one-sided noise gives a one-sided correlation. Seismologists use this to image the crust from ocean-generated noise, without any earthquakes.
+
+Here: about 40 noise sources per second at random places in a ring around the two stations (or only on its left side), Ricker wavelets with random signs and amplitudes. Their peak frequencies vary by ±30 % to widen the noise band, and the clock runs four times faster than in the other experiments. Each 3-s window is correlated for lags of ±3 s and normalised by the energy of both records before stacking.
+
+Equation. The 2-D constant-density acoustic wave equation ∂²p/∂t² = c(x, z)² ∇²p for the pressure p. Only P waves exist here; S and surface waves need the elastic solver of experiment 6.
+
+Numerics. Second-order finite differences (leapfrog in time, 5-point Laplacian) on a 400 × 205 grid, computed live on your CPU (typed arrays). Courant number c·Δt/Δx ≤ 0.69 < 1/√2 and 13 grid points per dominant wavelength at v = 1. Sources are Ricker wavelets with a peak frequency of 7.6 Hz.
+
+Units. The model is 10 km wide; v = 1 means 2.5 km/s, and a wave at v = 1 crosses the width in 4 s.
+
+← Tomography
+Next: Elastic waves →

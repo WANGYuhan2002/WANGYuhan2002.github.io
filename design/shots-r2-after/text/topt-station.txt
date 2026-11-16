@@ -1,0 +1,6 @@
+STATIONS
+×
+
+Click to add a station (up to 12). Drag any station to move it; double-click one to remove it.
+
+Back to one station

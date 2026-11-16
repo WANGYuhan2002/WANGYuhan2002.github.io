@@ -1,0 +1,81 @@
+## #status
+CPU · 400 × 205 · acoustic
+
+## #hud
+t = 5.7 s
+
+## #legend
+pressure
+−
++
+velocity
+1.5
+3.5 km/s
+fibre · dot = 1 km
+
+## #dataTitle
+DAS · axial strain rate · 154 channels over 8.0 km · gauge 0.25 km · last 6 s
+
+## #ctaBtn
+text: Repeat the last quake
+hidden: false
+disabled: false
+
+## #insp (all details open, line clamp removed)
+EXPERIMENT 2 OF 6
+
+Arrays & DAS
+
+Record the same wavefield in two ways: with a line of seismometers, or with a fibre-optic cable that turns every few metres of glass into a strain sensor.
+
+✓
+SET UP
+
+Choose a sensor
+
+Seismometers
+DAS fibre
+✓
+SET UP
+
+Lay the cable
+
+Draw the cable with the fibre tool (D), or pick a layout:
+
+Along the surface
+Down a borehole
+L-shaped
+A loop
+Gauge length
+0.21 km
+✓
+OBSERVE
+
+Make an earthquake
+
+Click on the wavefield (Q).
+
+Repeat the last quake
+4
+INTERPRET
+
+Compare the two records
+
+Fire the same quake for both sensors. Each arrival is a band across the record. Time runs across and distance runs down, so the tilt of a band is the apparent velocity along the array: an upright band reaches every sensor almost at once (fast, or arriving broadside), a band that leans over is slow. The fibre only feels strain along the cable: a wave that hits it broadside leaves almost no trace.
+
+What’s going on
+
+Seismometers record the pressure p at a point. A line of them is a record section: distance on one axis, time on the other.
+
+DAS (distributed acoustic sensing) sends laser pulses down an optical fibre and measures the Rayleigh back-scatter from tiny flaws in the glass. Changes in the phase of the back-scattered light give the axial strain rate of the cable averaged over a gauge length G, every few metres along tens of kilometres of fibre.
+
+Here: the cable is sampled every grid cell. In an acoustic medium (ρ = 1) the tangential particle velocity follows ∂vt/∂t = −∂p/∂s along the cable, and the strain rate is ε̇ = [vt(s + G/2) − vt(s − G/2)] / G. For a plane P wave arriving at angle θ to the cable, ε̇ ∝ cos²θ: maximal along the cable, zero broadside.
+
+Equation. The 2-D constant-density acoustic wave equation ∂²p/∂t² = c(x, z)² ∇²p for the pressure p. Only P waves exist here; S and surface waves need the elastic solver of experiment 6.
+
+Numerics. Second-order finite differences (leapfrog in time, 5-point Laplacian) on a 400 × 205 grid, computed live on your CPU (typed arrays). Courant number c·Δt/Δx ≤ 0.69 < 1/√2 and 13 grid points per dominant wavelength at v = 1. Sources are Ricker wavelets with a peak frequency of 7.6 Hz.
+
+Units. The model is 10 km wide; v = 1 means 2.5 km/s, and a wave at v = 1 crosses the width in 4 s.
+
+← Playground
+Next: Time reversal →

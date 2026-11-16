@@ -1,0 +1,10 @@
+LOW-VELOCITY BODY
+
+×
+
+Drag to paint. Inside the brush the velocity becomes 1 − strength (background = 1), with a soft edge.
+
+Radius
+16 cells
+Strength
+−20 %

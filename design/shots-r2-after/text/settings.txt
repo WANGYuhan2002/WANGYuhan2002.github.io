@@ -1,0 +1,23 @@
+SETTINGS
+
+Solver
+
+GPU · WebGL2
+CPU
+Same finite-difference scheme on both; the GPU version runs a finer grid. Current grid: 400 × 205 cells, 200 steps/s.
+
+Grid
+
+Standard
+Fine
+
+Speed
+
+0.5×
+1×
+2×
+
+Senses
+
+Sound: a geophone rumble that follows the main receiver
+Vibrate on arrivals
