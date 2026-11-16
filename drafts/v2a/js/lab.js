@@ -521,7 +521,8 @@
     if (dcv.width !== Math.round(w * d) || dcv.height !== Math.round(h * d)) { dcv.width = Math.round(w * d); dcv.height = Math.round(h * d); }
     dctx.setTransform(d, 0, 0, d, 0, 0); dctx.clearRect(0, 0, w, h);
     L.sec = null;
-    var ch = L.CH[S.ch]; if (ch.data) ch.data(dctx, w, h);
+    var ch = L.CH[S.ch];
+    if (ch.data) try { ch.data(dctx, w, h); } catch (e) { if (!drawData.err) { drawData.err = 1; console.error(e); } }   /* a figure bug must not stop the simulation */
   }
   L.setData = function (title, ctl) { $('dataTitle').innerHTML = title; if (ctl != null) $('dataCtl').innerHTML = ctl; };
 

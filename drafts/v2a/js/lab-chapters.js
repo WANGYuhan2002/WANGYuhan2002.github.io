@@ -767,7 +767,7 @@
     span: function () { var m = 0.05; for (var j = 0; j < this.truth.length; j++) m = Math.max(m, Math.abs(this.truth[j] - 1)); return Math.ceil(m * 20) / 20; },
     cell: function (x, y) { var b = this.box, i = Math.floor((x - b[0]) / this.cw), k = Math.floor((y - b[1]) / this.chh); if (i < 0 || k < 0 || i >= this.gx || k >= this.gz) return -1; return k * this.gx + i; },
     startSurvey: function () {
-      this.gridSetup(); this.rays = []; this.inv = null; this.shot = 0; this.phase = 'survey'; this.st.did.survey = false;
+      this.gridSetup(); this.rays = []; this.inv = null; this.invStraight = null; this.shot = 0; this.phase = 'survey'; this.st.did.survey = false;
       this.nextShot(); L.refresh();
     },
     nextShot: function () {
@@ -936,7 +936,7 @@
       return 'Blurry: with straight rays and few crossing directions part of the model stays unresolved, and it is smeared along the dominant ray direction.';
     },
     head: function () { L.setData('Travel-time tomography · <b>' + this.S.length + '</b> shots × <b>' + this.R.length + '</b> receivers · ' + (this.st.rays === 'bent' ? 'bent' : 'straight') + ' rays', ''); },
-    reset: function () { this.phase = 'idle'; this.rays = []; this.inv = null; this.gridSetup(); },
+    reset: function () { this.phase = 'idle'; this.rays = []; this.inv = null; this.invStraight = null; this.gridSetup(); },
     cta: function () { var ph = this.phase; return { label: ph === 'survey' ? 'Surveying…' : (ph === 'done' ? 'Run the survey again' : 'Fire ' + this.S.length + ' shots'), act: 'survey', disabled: ph === 'survey' }; },
     input: function (id, v) {
       if (id !== 'smooth') return;
@@ -1005,6 +1005,7 @@
       var ty = y0 + mh + 34, px0 = x0 + 44, px1 = x0 + wR, py0 = ty + 16, py1 = h - 18;
       L.panelLabel(ctx, 'Travel-time residuals against distance · before (colour) and after (grey) the inversion', x0, ty, null, wR);
       var R0 = this.invStraight && this.invStraight.res0, R1 = inv && inv.res1, rays = this.rays;
+      if (R0 && R0.length > rays.length) R0 = null;                              /* residuals of an earlier survey */
       if (!R0 || !R0.length || py1 - py0 < 30) { if (py1 - py0 >= 20) L.placeholder(ctx, (px0 + px1) / 2, (py0 + py1) / 2, 'run the survey: every pick becomes a dot here'); }
       else {
         var mxp = 0, mxn = 0, dmax = 0;
