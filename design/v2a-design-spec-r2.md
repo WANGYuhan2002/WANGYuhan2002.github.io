@@ -106,21 +106,20 @@ L.fontS = function (ctx, px, w) { ctx.font = (w || 400) + ' ' + px + 'px "Inter"
 
 ```css
 .stage{grid-template-rows:auto minmax(0,1fr) auto clamp(212px,33vh,320px)}   /* 旧：auto minmax(0,1fr) clamp(200px,32vh,310px) */
-.fkey{display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:20px; margin:-4px 0 -2px; padding:0 4px; min-width:0}
-.legend{justify-content:flex-start; max-width:none; flex:0 1 auto; gap:14px}     /* 旧：flex-end; max-width:48% */
-.facts{display:flex; flex:0 1 auto; gap:14px; min-width:0; overflow:hidden; white-space:nowrap; font:500 11.5px var(--mono); color:var(--muted)}
-.facts span{flex:none}
+.fkey{display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:20px; margin:-4px 0 -2px; padding:0 4px; min-width:0; overflow:hidden}
+.legend{flex:none; justify-content:flex-start; max-width:none; overflow:visible; gap:14px}     /* 旧：flex-end; max-width:48%; overflow:hidden */
+.facts{display:flex; flex:none; gap:14px; white-space:nowrap; font:500 11.5px var(--mono); color:var(--muted)}
 .cta{margin-left:auto}
 ```
 
 - 删除 `@media (min-width:900px) and (max-width:1439px)` 里的 `.legend{max-width:40%}`；`900–1199px` 里的 `.legend{display:none}` 改为 `.facts{display:none}`。
-- `LJ`：`fitLegend()` 改为对整条 `.fkey` 生效：先全部显示；当 `fkey.scrollWidth > fkey.clientWidth` 时，从 `#facts` 的最后一项开始逐项隐藏，`#facts` 隐藏完再从 `#legend` 的最后一项隐藏（第一项永远保留）。
-- `LJ` 新增 `facts()`，在 `L.build()` 末尾、`L.setBC()` 之后、以及 `onAct` 处理 `fmul` 之后调用。内容四项，按这个顺序（越靠后越先被隐藏）：
+- `LJ`：`fitLegend()` 改为对整条 `.fkey` 生效。两个子块都不收缩，所以要自己量：先把 `#legend` 与 `#facts` 的子项全部显示；只要 `legend.offsetWidth + facts.offsetWidth + 16 > fkey.clientWidth`，就隐藏 `#facts` 里最后一个还显示着的子项；`#facts` 全部隐藏后仍放不下，再从 `#legend` 的最后一项开始隐藏（第一项永远保留）。在 `L.updateLegend()`、`facts()` 与窗口 `resize` 之后各调用一次。
+- `LJ` 新增 `facts()`，在 `L.build()` 末尾、`L.setBC()` 之后、以及 `onAct` 处理 `fmul` 之后调用。内容最多四项，按这个顺序（越靠后越先被隐藏）：
 
 | 项 | 文本 | `title` |
 |---|---|---|
 | 尺寸 | `10 × 5.5 km`（`L.KM` × `L.fmt(L.km(L.ny), 1)`） | `Size of the model` |
-| 边界 | `absorb` → `edges absorb`；`free` → `free surface on top`；`box` → `reflecting box` | `Boundary condition` |
+| 边界 | `free` → `free surface on top`；`box` → `reflecting box`；`absorb` 时不输出这一项（和 5.1 一致：只有会反射的边界才标出来） | `Boundary condition` |
 | 背景速度 | 声波 `v₀ 2.5 km/s`；弹性 `V<sub>P</sub> 2.5 · V<sub>S</sub> 1.44 km/s` | `Background velocity (v = 1)` |
 | 震源 | `f₀ 7.6 Hz · λ 0.33 km`（`f = L.eng.fHz * S.fmul`，`λ = 2.5 / f` km） | `Peak frequency of the source wavelet and its wavelength at the background velocity` |
 
@@ -132,24 +131,27 @@ L.fontS = function (ctx, px, w) { ctx.font = (w || 400) + ' ' + px + 'px "Inter"
 <div class="data-h">
   <h2 id="dataTitle"></h2>
   <div class="data-r">
-    <span class="lkey" id="dataKey" hidden><i class="obs"></i>observed<i class="pre"></i>predicted</span>
     <div class="kpis" id="dataKpi"></div>
     <div class="data-ctl" id="dataCtl"></div>
   </div>
-  <p class="data-cap" id="dataCap"></p>
+  <div class="data-c">
+    <p class="data-cap" id="dataCap"></p>
+    <span class="lkey" id="dataKey" hidden><i class="obs"></i>observed<i class="pre"></i>predicted</span>
+  </div>
 </div>
 ```
 
 ```css
 .data-h{display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; column-gap:12px; row-gap:2px; padding:8px 14px 4px; min-height:0}
 .data-r{display:flex; align-items:center; gap:10px}
-.data-cap{grid-column:1 / -1; margin:0; font:400 12px/1.4 var(--sans); color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.data-c{grid-column:1 / -1; display:flex; align-items:baseline; gap:12px; min-width:0}
+.data-cap{flex:1 1 auto; min-width:0; margin:0; font:400 12px/1.4 var(--sans); color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .kpis{display:flex; gap:6px}
 .kpi{display:inline-flex; align-items:baseline; gap:6px; padding:3px 9px; border-radius:var(--r-md); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent-line); font:400 12px/1.5 var(--sans); color:var(--ink2); white-space:nowrap}
 .kpi b{font:500 13px var(--mono); color:var(--cyan)}
 .kpi.dim{background:var(--panel); box-shadow:inset 0 0 0 1px var(--line)}
 .kpi.dim b{color:var(--ink)}
-.lkey{display:inline-flex; align-items:center; gap:6px; font:400 11.5px var(--sans); color:var(--muted); white-space:nowrap}
+.lkey{flex:none; display:inline-flex; align-items:center; gap:6px; font:400 11.5px var(--sans); color:var(--muted); white-space:nowrap}
 .lkey[hidden]{display:none}
 .lkey i{display:inline-block; width:16px; height:0; border-top:1.5px solid var(--ink2)}
 .lkey i.pre{border-top:1.5px dashed var(--cyan); margin-left:6px}
@@ -157,14 +159,15 @@ L.fontS = function (ctx, px, w) { ctx.font = (w || 400) + ' ' + px + 'px "Inter"
 
 `LJ`：章节对象新增三个可选成员 `cap()`（返回 HTML，内容全部是本规格给出的固定文案）、`kpi()`（返回 HTML）、`lineKey`（布尔）。在 `hud()` 里每帧取值，和上一次不同才写 DOM（照 `lastHud` 的写法）：`#dataCap` 与 `#dataKpi` 用 `innerHTML`，并把 `#dataCap` 的 `textContent` 写进它的 `title`（被省略号截断时悬停可读全文）；`#dataKey.hidden = !ch.lineKey`。文案见 6.1 与 6.2。
 
+第一行只放标题、关键数字和控件；“实线 = 实测、虚线 = 预测”的线型图例放在第二行右端，和那句“怎么读”是一回事。这样 1440px 宽时六个实验的标题都不会被省略号截断。
+
 ### 4.3 说明栏的步骤：加“角色”与连线，公式单独成块
 
-`LJ` 的 `L.refresh()`：步骤对象新增可选字段 `k`（`'setup' | 'observe' | 'process' | 'interpret' | 'explore'`）和 `eq`（HTML）。标题行改为 `<p class="st-t"><span>标题</span><i class="st-k">Set up</i></p>`；`eq` 渲染为 `<div class="eq">…</div>`，放在 `.st-d` 之后、`.st-c` 之前。显示名：`Set up`、`Observe`、`Process`、`Interpret`、`Explore`。各步的 `k` 见 6.4。
+`LJ` 的 `L.refresh()`：步骤对象新增可选字段 `k`（`'setup' | 'observe' | 'process' | 'interpret' | 'explore'`）和 `eq`（HTML）。在标题 `<p class="st-t">` 之前加一行 `<i class="st-k">Set up</i>`（角色写在标题上方，不和标题抢同一行的宽度，标题不会因此多折一行）；`eq` 渲染为 `<div class="eq">…</div>`，放在 `.st-d` 之后、`.st-c` 之前。显示名：`Set up`、`Observe`、`Process`、`Interpret`、`Explore`。各步的 `k` 见 6.4。
 
 ```css
 .st{position:relative}
-.st-t{display:flex; align-items:baseline; justify-content:space-between; gap:8px}
-.st-k{flex:none; font:500 10.5px var(--mono); font-style:normal; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+.st-k{display:block; margin:0 0 1px; font:500 10.5px/1.3 var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
 .st.now .st-k{color:var(--cyan)}
 .st:not(:last-child)::after{content:""; position:absolute; left:22.5px; top:38px; bottom:-14px; width:1px; background:var(--line2); pointer-events:none}
 .st.done:not(:last-child)::after{background:var(--accent-line)}
@@ -184,7 +187,7 @@ L.fontS = function (ctx, px, w) { ctx.font = (w || 400) + ' ' + px + 'px "Inter"
 
 - **比例尺**（所有章节）：`pxkm = L.W / L.KM`；`km = pxkm >= 70 ? 1 : 2`；左下角 `x = 14, y = L.H − 14`。折线 `(x, y−5) → (x, y) → (x + km·pxkm, y) → (x + km·pxkm, y−5)`，先 `pal.halo` 3.5px 描边，再 `rgba(ink,.9)` 1.5px。右侧 6px 处写 `1 km` / `2 km`，用“台站码”字体角色。
 - **反射边界**：`var B = L.BC[L.bc] || L.bc`；凡 `B.top === false`（或 bottom / left / right）的边，沿该边内侧 1px 处画一条 2px `rgba(ink,.5)` 的线。吸收边不画。（自由表面和反射箱由此可见。）
-- **震源标记留到记录滚出窗口**：现在星形 2.5 s 后淡出，而数据图里的发震时刻线要 6 s 才滚出。淡出之后、且 `L.eng.n − m.n < L.TR` 期间，在原处画一颗空心星：半径 5.5，`pal.halo` 3px 描边垫底，`rgba(neg,.6)` 1.2px 描边，不填充。`L.star` 增加一个 `hollow` 参数实现。`ch.noMarks` 的章节照旧不画。
+- **震源标记留到记录滚出窗口**：现在星形 2.5 s 后淡出，而数据图里的发震时刻线要 6 s 才滚出。淡出之后、且 `L.eng.n − m.n < L.TR` 期间，在原处画一颗空心星：半径 6，`pal.halo` 3.5px 描边垫底，`rgba(neg,.85)` 1.5px 描边，不填充。`L.star` 增加一个 `hollow` 参数实现。`ch.noMarks` 的章节照旧不画。
 - **`L.label(ctx, s, x, y, align, col, mono)`**：新增第 7 个参数；`mono` 为真用“台站码”角色，否则用“文字标签”角色。`stations()` 里传 `true`，其余调用不传。
 - **Playground 的台站全部标注**：`LC` 的 `stations(ctx, pts, o)` 里，标注条件加上 `o.labels === 'all'`；Playground 的 `overlay` 调用改为 `stations(ctx, this.rec.pts, { labels: 'all' })`。
 
@@ -194,9 +197,9 @@ L.fontS = function (ctx, px, w) { ctx.font = (w || 400) + ' ' + px + 'px "Inter"
 
 | 选项 | 含义 | 画法 |
 |---|---|---|
-| `lane` | 顶部标注带高度；传了 `marks` 或 `pred` 时默认 14，否则 0 | 道区从 `Y + lane` 开始；发震时刻的星和文字只画在标注带里，不再被第一道穿过 |
+| `lane` | 顶部标注带高度；传了 `marks` 或 `pred` 时默认 14，否则 0 | 道区从 `Y + lane` 开始；发震时刻的星和文字只画在标注带里。标注带里的星和文字在所有道画完之后再画，文字下垫一块 `rgba(pn,.85)`：波峰可以伸进标注带，但盖不住文字 |
 | `marks`（已有） | 发震时刻 | 每个标记：1px 实线 `rgba(origin,.5)`，从 `Y + lane − 2` 到 `Y + h`；顶上 `L.star(ctx, xm, Y + 7, 4.5, pal.neg, a)`，最新一个 `a = .95`，旧的 `.5`；最新一个右侧 `xm + 9, Y + 2` 写 `origin time`（标注角色，`rgba(origin,.95)`）；若右侧放不下（`xm + 80 > X + left + ww`）改为右对齐写在 `xm − 9` |
-| `pred(tr)` | 返回第 `tr` 道的预测到时（与 `L.eng.n` 同一时钟的步数）或 `null` | 多道：每道一根虚线短竖，高 `min(sp, 14)`，以该道基线为中心，`rgba(pos,.9)`；单道：整高虚线，并在标注带里写 `predicted arrival`（`rgba(pos,.95)`，放不下时同样翻到左侧） |
+| `pred(tr)` | 返回第 `tr` 道的预测到时（与 `L.eng.n` 同一时钟的步数）或 `null` | 多道：把各道的预测到时按显示顺序连成一条虚线折线（节点在各道的基线上），在所有道之后画，`rgba(pos,.9)`。这就是走时曲线，道与道之间的空隙里始终看得见。单道：从 `Y + lane − 2` 到 `Y + h` 的整高虚线，并在标注带里、线的右侧 4px 处写 `predicted arrival`（`rgba(pos,.95)`，放不下时同样翻到左侧） |
 | `right` + `rowText(tr)` | 右侧留 `right` px，逐道写一段文字 | 数字角色，右对齐于 `X + w`；`sp < 11` 时隔行写 |
 | `order`（已有） | 道的排列顺序 | 不变 |
 | `hi` | 高亮的道号 | 该道描边 `rgba(pos,1)`，线宽多道 1.4 / 单道 1.6；台站码用 `pal.sub` |
@@ -207,6 +210,7 @@ L.fontS = function (ctx, px, w) { ctx.font = (w || 400) + ' ' + px + 'px "Inter"
 - 道区底边画一条 1px `pal.axis` 的轴线；`L.timeAxis` 的短刻度从 6px 改为 4px。
 - 滚动图的右边缘是“现在”：`L.timeAxis` 在传了 `gridTop` 时，在 `X + w` 处从 `gridTop` 到 `Y` 画一条 1px `rgba(pos,.45)` 的竖线。
 - 单道时，在最新采样点画一个半径 3 的实心圆 `rgba(pos,1)`（记录笔的笔尖）。
+- 本轮新增的各张小图都不单独放坐标轴标题（会和最后一个刻度数字相撞）：单位写在最后一个刻度数字上（`8 km`、`+3 s`、`40 windows`），量的名字写进小图标题。
 
 返回值改为 `{ x, w, y: Y + lane, h: h − lane, sp }`。
 
@@ -223,13 +227,13 @@ L.fontS = function (ctx, px, w) { ctx.font = (w || 400) + ' ' + px + 'px "Inter"
 地震计：
 
 - `pred` 同 5.3。线阵时 `right: 46`，`rowText` = 沿阵列到第一个台的距离（km，一位小数）；环阵不传。`link: true`。
-- **视速度量角器**（仅线阵，新函数 `L.slopeFan(ctx, x, y, pxPerSec, pxPerKm)`）：三条从同一顶点向右下张开的参考线，分别对应 1.5、2.5、3.5 km/s。竖直跨度 `Vy = 36`；每条线的水平跨度 = `Vy / pxPerKm / v · pxPerSec`；线宽 1，`pal.label`；线尾用数字角色写 `1.5`、`2.5`、`3.5 km/s`；顶点上方用坐标轴标题角色写 `apparent velocity`。顶点放在 `(g.x + 10, g.y + g.h − Vy − 18)`。先在量角器外接矩形（四周各扩 6px）下垫一块 `rgba(pn,.82)`、圆角 6 的底。若 1.5 km/s 那条线的水平跨度 > `0.35 · g.w`，把 `Vy` 减到 20 再算；仍超出就不画。`pxPerSec = g.w / 6`；`pxPerKm = g.sp / 台间距(km)`。
+- **视速度量角器**（仅线阵，新函数 `L.slopeFan(ctx, x, y, pxPerSec, pxPerKm)`）：三条从同一顶点 `(x, y)` 向右下的参考线，分别对应 1.5、2.5、3.5 km/s，**水平跨度相同、下降高度不同**。`Hx = 44 · pxPerSec / (3.5 · pxPerKm)`；速度为 `v` 的那条线的终点是 `(x + Hx, y + v · Hx / pxPerSec · pxPerKm)`，所以 3.5 km/s 那条正好下降 44px：越快越陡，和“越竖越快”的读法一致。线宽 1，`pal.label`。三条线的终点右侧 4px 处用数字角色写 `1.5`、`2.5`、`3.5 km/s`（竖直方向各差约 12px，不会相叠）；顶点上方 6px 处用坐标轴标题角色写 `apparent velocity`。先在外接矩形（含文字，四周各扩 6px）下垫一块 `rgba(pn,.82)`、圆角 6 的底。顶点放在 `(g.x + 12, g.y + g.h − 62)`，底块不得盖住底边轴线。`Hx > 0.3 · g.w` 时把 44 换成 30 重算；`Hx < 24` 时不画。`pxPerSec = g.w / 6`；`pxPerKm = g.sp / 台间距(km)`。
 
 DAS：
 
-- 顶部留 14px 标注带（瀑布图从 `y = 18` 开始），发震时刻用“实线 + 星”。
+- 顶部留 14px 标注带（瀑布图从 `y = 18` 开始），发震时刻用“实线 + 星 + `origin time`”。瀑布图右边缘直接画一条 1px `rgba(pos,.45)` 的“现在”竖线（这里不给 `L.timeAxis` 传 `gridTop`，免得网格线压在图像上）。
 - 纵轴：每 1 km 一个 4px 刻度，每 2 km 写数字（`0`、`2`、`4`…，数字角色）；旋转标题由 `along cable` 改为 `distance along the cable (km)`（坐标轴标题角色）。波场上光缆每公里一个点，和这里的刻度一一对应。
-- 预测到时：对每个通道 `c`（光缆点 `das.pts[das.ch[c]]`）算预测到时，连成一条虚线折线，`rgba(pos,.75)`，只画落在窗口内的部分。
+- 预测到时：对每个通道 `c`（光缆点 `das.pts[das.ch[c]]`）算预测到时，连成一条虚线折线，只画落在窗口内的部分。条带本身就是青色和珊瑚色，所以这条预测线改用 `rgba(ink,.9)`（仍是虚线 `[4,3]`、线宽 1），压在条带上也分得清。
 - 同样画视速度量角器，`pxPerKm = H / L.km(das.np − 1)`。
 
 两种传感器都 `lineKey: true`。第 4 步的文案改正见 6.5。
@@ -244,11 +248,11 @@ DAS：
 
 数据面板（`data()`，`w ≥ 640`）：
 
-- 录制 / 已录制：整宽的记录图；底部刻度每 0.5 s 一个，数字 `0`、`0.5`、`1.0`…，右端写 `recording time (s)`（坐标轴标题角色，右对齐）。
+- 录制 / 已录制：整宽的记录图；底部刻度每 0.5 s 一个，数字 `0`、`0.5`、`1.0`…，最后一个数字带单位（`1.5 s`）；轴下居中的那句改用坐标轴标题角色，写 `recording time`。回放与完成阶段的左栏画同样的刻度，居中那句写 `recording time, played right to left`。
 - 回放 / 完成：三栏。
   - 左栏宽 `wl = round(w · (this.img ? 0.56 : 0.68))`，画记录与回放指针（现状）。
-  - 中栏：标题 `Pressure² at the source`；预测聚焦时刻的竖线改为虚线 `[4,3]` `rgba(pos,.9)`，下方文字 `predicted focus`；曲线仍用 `pal.hot` 实线。有 `this.img` 时中栏宽 `round(w · 0.20)`，否则占满余下宽度。
-  - 右栏（仅有 `this.img` 时）：**焦斑放大图**。`finish()` 里多存一块裁剪：`R = max(6, round(1.5 · lam))`，`this.img.crop` = 以焦点为中心 `(2R+1)²` 格的 `mx / best`（越界填 0），`this.img.R = R`。画法：正方形边长 `S = min(w − 14 − xi, H − 14)`，`xi` = 中栏右边 + 16，`S < 90` 时不画；每格颜色 = `pal.pn` 向 `pal.hot` 按 `t = pow(max(0, (a − .05)/.95), .75)` 混合；外框 `pal.tick`。标题 `Focal spot · ×N`，`N` = 放大倍数取整。中心画 `✕`（焦点），真实震源按偏移画 6px 虚线圆。左下角叠两根横条，都从 `xi + 8` 起：上面一根长度 = x 方向半高宽，`rgba(ink,.95)` 2px 带端帽，右侧写 `FWHM 0.42 λ`；下面一根长度 = λ/2，`pal.label` 2px 带端帽，右侧写 `λ/2 limit`。两根横条一长一短，焦斑有没有做到衍射极限一眼可比。
+  - 中栏：标题 `Pressure² at the source`；预测聚焦时刻的竖线改为虚线 `[4,3]` `rgba(pos,.9)`，下方文字 `predicted focus`（标注角色，`rgba(pos,.95)`，以虚线为中心，超出绘图区时贴边）；曲线仍用 `pal.hot` 实线。有 `this.img` 时中栏宽 `round(w · 0.20)`，否则占满余下宽度。
+  - 右栏（仅有 `this.img` 时）：**焦斑放大图**。`finish()` 里多存一块裁剪：`R = max(5, round(lam))`（焦点四周各一个波长），`this.img.crop` = 以焦点为中心 `(2R+1)²` 格的 `mx / best`（越界填 0），`this.img.R = R`。画法：正方形左上角 `(xi, 18)`，边长 `S = min(w − 14 − xi, H − 14)`，`xi` = 中栏右边 + 16，`S < 90` 时不画；每格颜色 = `pal.pn` 向 `pal.hot` 按 `t = pow(max(0, (a − .05)/.95), .75)` 混合；外框 `pal.tick`。标题 `Focal spot · ×N`，`N = round((S / (2R + 1)) / (L.W / L.nx))`，即相对波场上一格的屏幕大小放大了几倍。中心画 `✕`（焦点），真实震源按偏移画 6px 虚线圆。左下角叠两根横条，都从 `xi + 8` 起，分别位于正方形底边上方 24px 与 10px：上面一根长度 = x 方向半高宽，`rgba(ink,.95)` 2px 带端帽，右侧写 `FWHM 0.42 λ`；下面一根长度 = λ/2，`pal.label` 2px 带端帽，右侧写 `λ/2 limit`。两根横条一长一短，焦斑有没有做到衍射极限一眼可比。
 - `lineKey`：回放与完成阶段为真。`kpi()`、`cap()`、结果卡见第 6 节。
 
 ### 5.6 Tomography（`LC`，`id: 'tomo'`）
@@ -256,11 +260,11 @@ DAS：
 `solve()` 的返回值多带两个数组（只读已有变量）：
 
 ```js
-var tau = x[nC] * tscale, res0 = new Float32Array(nr), res1 = new Float32Array(nr);
-for (k = 0; k < nr; k++) { res0[k] = (b[k] - tau) / L.rate * 1000; res1[k] = (b[k] - Ax[k]) / L.rate * 1000; }   // ms
+var res0 = new Float32Array(nr), res1 = new Float32Array(nr);
+for (k = 0; k < nr; k++) { res0[k] = b[k] / L.rate * 1000; res1[k] = (b[k] - Ax[k]) / L.rate * 1000; }   // ms
 ```
 
-`res0` = 相对均匀模型的走时残差（已扣掉反演得到的统一时移），`res1` = 反演后的残差。画图时“反演前”取 `this.invStraight.res0`，“反演后”取 `this.inv.res1`，距离取 `this.rays[k].d`。
+`res0` = 相对起始模型的走时残差，和结果卡里的 `rmsPre` 同一口径（散点图与那个数字说的是同一批数）；`res1` = 反演后的残差，和 `rmsPost` 同一口径。画图时“反演前”取 `this.invStraight.res0`，“反演后”取 `this.inv.res1`，距离取 `this.rays[k].d`。
 
 `data()` 版面（`w ≥ 640`；记画布高 `h`）：
 
@@ -269,8 +273,8 @@ for (k = 0; k < nr; k++) { res0[k] = (b[k] - tau) / L.rate * 1000; res1[k] = (b[
   - 三张图：`mw = min((wR − 24) / 3, (h − 140) · gx / gz)`，`mh = mw · gz / gx`，间距 12，标题行 `y = 2`，图顶 `y0 = 18`。标题：`True model`、`Recovered · bent rays`（或 `straight rays`）、`Ray coverage`。
   - 色标一（横跨前两张图，宽 `2·mw + 12`，高 6，位于图底 + 8）：下方左 `−30 %`、中 `velocity anomaly · 0 = 2.5 km/s`、右 `+30 %`。
   - 色标二（第三张图正下方，宽 `mw`）：`pal.pn` 到“`pal.pn` 向 `pal.pos` 混 50 %”的渐变；左 `few rays`，右 `many`。
-  - **走时残差图**（新）：标题 `Travel-time residuals · before (colour) and after (grey) the inversion`，位于图底 + 34；绘图区 `x` 从 `x0 + 44` 到 `x0 + wR`，`y` 从标题下 16 到 `h − 18`。
-    - 横轴：炮检距，0 到 `ceil(最大炮检距 km)`，每 2 km 一个刻度和数字，右端写 `distance (km)`。
+  - **走时残差图**（新）：标题 `Travel-time residuals against distance · before (colour) and after (grey) the inversion`，位于图底 + 34；绘图区 `x` 从 `x0 + 44` 到 `x0 + wR`，`y` 从标题下 16 到 `h − 18`。
+    - 横轴：炮检距，0 到 `ceil(最大炮检距 km)`，每 2 km 一个刻度和数字，最后一个数字带单位（`8 km`）。
     - 纵轴：`±Rm`，`Rm = max(50, ceil(max|res0| / 50) · 50)` ms；零线 `pal.axis`，`±Rm/2` 处 `pal.grid`；左侧数字 `+Rm ms`、`0`、`−Rm`。
     - 点：每条射线一个。反演前：半径 1.5，`res0 > 0`（到得晚，路径偏慢）用 `rgba(slow,.85)`，`res0 < 0` 用 `rgba(fast,.85)`；反演后：半径 1.2，`rgba(ink,.5)`，画在上层。
     - 没有反演结果时，绘图区中央写 `run the survey: every pick becomes a dot here`（占位提示角色）。
@@ -290,18 +294,19 @@ for (k = 0; k < nr; k++) { res0[k] = (b[k] - tau) / L.rate * 1000; res1[k] = (b[
 
 - 左栏（宽 `lw = round(w · 0.3)`）上下两块：
   - 上：标题 `Raw noise at A and B · last 6 s`；两道，道区高 `Hraw = round((h − 60) · 0.45)`，下接时间轴。
-  - 下：标题 `Signal-to-noise ratio of the stack`（位于上块时间轴下 6px）。横轴 0 到 `Nmax = max(20, ceil(nWin / 20) · 20)`，右端写 `windows stacked`；纵轴 0 到 `max(4, ceil(max SNR))`，左侧写两端数字。实线：`snrH`，`pal.trace` 1.5px，末点画半径 3 的 `rgba(pos,1)` 实心圆。虚线：`a·√N`，`a = Σ(sᵢ·√i) / Σ i`，`rgba(pos,.9)`，曲线末端旁写 `∝ √N`。坐标轴 `pal.axis`。
-- 右栏结构不变，改四处：
-  - 标题 `Cross-correlation C_AB(τ) · stack of 40 windows`，其中 `AB` 画成下标（基线下移 3px，字号 8.5）。
+  - 下：标题 `Signal-to-noise ratio of the stack against windows stacked`（位于上块时间轴下 6px）。绘图区：`x` 从 `14 + 22` 到 `14 + lw`，`y` 从标题下 16 到 `h − 20`。横轴 0 到 `Nmax = max(20, ceil(nWin / 20) · 20)`，刻度数字 `0`、`Nmax/2`、`Nmax`；纵轴 0 到 `max(4, ceil(max SNR))`，左侧写两端数字。实线：`snrH`，`pal.trace` 1.5px，末点画半径 3 的 `rgba(pos,1)` 实心圆。虚线：`a·√N`，`a = Σ(sᵢ·√i) / Σ i`，`rgba(pos,.9)`；在 `N = 0.6 · Nmax` 处、虚线上方 8px 写 `∝ √N`（标注角色，`rgba(pos,.95)`）。坐标轴 `pal.axis`。
+- 右栏结构不变，改五处：
+  - 标题 `Cross-correlation C_AB(τ) against lag τ · stack of 40 windows`，其中 `AB` 画成下标（基线下移 3px，字号 8.5）。
+  - 叠加曲线的纵向幅度从 `H1/2 − 4` 改为 `H1/2 − 16`，图框内上方留出 16px 给文字和三角。
   - `±t_AB` 两条预测线改为虚线 `[4,3]` `rgba(pos,.9)`；文字 `−t_AB · B → A` 与 `+t_AB · A → B` 用标注角色、`rgba(pos,.95)`，下标同上。
   - `vEst()` 不为空时，在测得的峰顶上方 6px 画一个尖朝下的实心三角（边长 6，`rgba(ink,.95)`）：实测的峰和预测的虚线是否重合，一眼可见。
-  - 横轴每 1 s 一个刻度和数字（`−3`…`0`…`+3`），右端写 `lag τ (s)`；删掉底部那句 `lag τ · rows: stack envelope / RMS after each window, newest last`。下方“浮现图”左上角内侧加一行小字 `stack after each window · newest at the bottom`（坐标轴标题角色，垫一块 `rgba(pn,.8)`）。
+  - 横轴每 1 s 一个刻度和数字（`−3`…`0`…`+2`、`+3 s`，单位写在最后一个上）；删掉底部那句 `lag τ · rows: stack envelope / RMS after each window, newest last`。下方“浮现图”左上角内侧加一行小字 `stack after each window · newest at the bottom`（坐标轴标题角色，垫一块 `rgba(pn,.8)`）。
 - `lineKey: true`。第 3 步里的 `<p class="live" id="nLive">` 保留。新增结果卡（见 6.3），每个窗口更新一次。
 
 ### 5.8 Elastic waves（`LC`，`id: 'elastic'`）
 
 - 道区起点从 `x = 28` 改为 `x = 44`（代码里 `28` → `44`，`Wt − 14` → `Wt − 30`）。行标签：`Z` / `X` 用小图标题角色，各自下方 12px 处用坐标轴标题角色写 `up` / `right`。
-- 顶部 14px 标注带：发震时刻用“实线 + 星 + `origin time`”；`predicted P`、`predicted S` 改为虚线 `[4,3]`，文字用标注角色；文字若会越过道区右边界，改为右对齐写在线的左侧。
+- 顶部 14px 标注带：发震时刻用“实线 + 星 + `origin time`”；`predicted P`、`predicted S` 改为虚线 `[4,3]`，文字用标注角色，写在线的右侧 4px 处；文字若会越过道区右边界，改为右对齐写在线的左侧 4px 处。
 - **S − P 括线**：`predicted P` 与 `predicted S` 两条线都在窗口内时，在两行道之间（`y = 4 + lane + (H − lane)/2`）画一条从 `xP` 到 `xS` 的水平线，1px `pal.sub`，两端 6px 端帽；正上方居中写 `S − P = 1.06 s`（标注角色，`pal.sub`，垫 `rgba(pn,.85)`）。
 - 质点运动图标题 `Particle motion · last 1.2 s`；轴标 `X →`、`Z ↑` 改用坐标轴标题角色。
 - `lineKey: true`。第 2 步的读数改写见 6.3。
@@ -330,28 +335,30 @@ for (k = 0; k < nr; k++) { res0[k] = (b[k] - tau) / L.rate * 1000; res1[k] = (b[
 | 章节 · 状态 | 文本 |
 |---|---|
 | play · 还没有地震 | `Time runs left to right and ends at “now”. Click the wavefield to make a quake.` |
-| play · 1 个台 | `Time runs left to right and ends at “now”. ★ is the quake’s origin time; the dashed line is its arrival predicted along a straight ray.`（其中 `★` 用 `L.glyph('star')` 的珊瑚色星代替文字符号） |
-| play · 多个台 | `One row per station, nearest to the last quake on top. Dashed marks: the arrival predicted along a straight ray.` |
-| arrays · 地震计 · 线阵 | `One row per station along the array. An upright band reaches all stations at once (fast); a band that leans over is slow.` |
+| play · 1 个台 | `Time ends at “now” on the right. ★ is the quake’s origin time; the wave should arrive at the dashed line.`（其中 `★` 用 `L.glyph('star')` 的珊瑚色星代替文字符号） |
+| play · 多个台 | `One row per station, nearest to the quake on top. The dashed curve is where the wave should arrive.` |
+| arrays · 地震计 · 线阵 | `One row per station along the array. An upright band is fast (all stations at once); a leaning band is slow.` |
 | arrays · 地震计 · 环阵 | `One row per station around the ring. The wave reaches the nearest stations first.` |
-| arrays · DAS | `Rows: position along the cable; colour: strain rate. Waves running along the fibre show up; broadside waves almost vanish.` |
+| arrays · DAS | `Rows are positions along the cable, colour is strain rate. Broadside waves leave almost no trace.` |
 | tr · idle | `Fire a source inside the mirror: each row will be one sensor’s recording.` |
 | tr · record / recorded | `One row per sensor. Sensors far from the source record the pulse later.` |
-| tr · reverse / done | `Left: the recordings, played backwards. Middle: pressure² at the source, which should peak at the dashed line. Right: the focal spot.` |
-| tomo · idle | `Left: seismograms of one shot with their first-arrival picks. Right: the model to recover, the result and the ray coverage.` |
-| tomo · survey / done | `Picks that come early (blue) crossed fast rock, late ones (pink) slow rock. The inversion turns these residuals into the map.` |
+| tr · reverse / done | `Recordings played backwards · pressure² at the source, peaking on the dashed line · the focal spot, magnified.` |
+| tomo · idle | `Left: one shot’s seismograms and first-arrival picks. Right: the true model, the result and the ray coverage.` |
+| tomo · survey / done | `Early picks (blue dots) crossed fast rock, late picks (pink) slow rock: the inversion maps these residuals.` |
 | noise · 还没有窗口 | `Left: raw noise at A and B. Right: their cross-correlation, stacked window by window.` |
-| noise · 已有窗口 | `Peaks grow at lag ±t<sub>AB</sub>, the travel time between A and B. Positive lag: waves running A → B; negative: B → A.` |
-| elastic | `Z and X ground velocity at the station; dashed lines are the predicted P and S arrivals. Right: the path the ground traces.` |
+| noise · 已有窗口 | `Peaks grow at lag ±t<sub>AB</sub>, the A–B travel time. Positive lag: waves going A → B; negative lag: B → A.` |
+| elastic | `Z and X ground velocity with the predicted P and S arrivals. Right: the path the ground traces.` |
+
+每句不超过约 105 个字符：1440px 宽时和右端的线型图例能排在同一行而不被截断。
 
 ### 6.2 标题右侧的关键数字（`kpi()`）
 
 | 章节 · 条件 | HTML |
 |---|---|
-| tr · 有 `img` | `<span class="kpi"><b>0.41 λ</b>focal spot</span><span class="kpi dim"><b>0.5 λ</b>diffraction limit</span>`（第一个数 = x、z 半高宽的平均） |
-| tomo · 有 `inv` | `<span class="kpi"><b>r = 0.96</b>match with the truth</span><span class="kpi dim"><b>255 → 42 ms</b>misfit</span>` |
-| noise · `nWin > 0` | `<span class="kpi dim"><b>SNR 5.5</b>40 windows</span>`；`vEst()` 不为空时前面再加 `<span class="kpi"><b>2.52 km/s</b>from the peak lag</span>` |
-| elastic · 有 `last` | `<span class="kpi dim"><b>1.06 s</b>S − P, predicted</span><span class="kpi"><b>3.6 km</b>distance</span>` |
+| tr · 有 `img` | `<span class="kpi"><b>0.41 λ</b>focal spot</span><span class="kpi dim"><b>0.5 λ</b>limit</span>`（第一个数 = x、z 半高宽的平均） |
+| tomo · 有 `inv` | `<span class="kpi"><b>r = 0.96</b>vs truth</span><span class="kpi dim"><b>255 → 42 ms</b>misfit</span>` |
+| noise · `nWin > 0` | `<span class="kpi dim"><b>SNR 5.5</b>40 windows</span>`；`vEst()` 不为空时前面再加 `<span class="kpi"><b>2.52 km/s</b>from the lag</span>` |
+| elastic · 有 `last` | `<span class="kpi dim"><b>1.06 s</b>S − P</span><span class="kpi"><b>3.6 km</b>distance</span>` |
 | play、arrays | 不显示 |
 
 ### 6.3 结果卡：先给一个大数字
@@ -363,10 +370,10 @@ for (k = 0; k < nr; k++) { res0[k] = (b[k] - tau) / L.rate * 1000; res1[k] = (b[
 ```
 
 ```css
-.res-big{display:flex; align-items:baseline; gap:10px; margin:0 0 10px}
-.res-big b{flex:none; font:700 28px/1 var(--display); letter-spacing:-.02em; color:var(--ink)}
-.res-big span{font:400 12px/1.35 var(--sans); color:var(--ink2)}
-.kv dd{font:500 13px var(--mono)}                 /* 旧：600 */
+.res-big{margin:0 0 10px}
+.res-big b{display:block; font:700 28px/1 var(--display); letter-spacing:-.02em; color:var(--ink)}
+.res-big span{display:block; margin-top:5px; font:400 12px/1.35 var(--sans); color:var(--ink2)}     /* 说明写在大数字下面一行，不并排 */
+.kv dd{font:500 13px var(--mono); white-space:nowrap}                 /* 旧：600，且会折行 */
 .bar2{display:grid; grid-template-columns:1fr auto; align-items:center; gap:4px 10px; margin:10px 0 2px; font:400 12px var(--sans); color:var(--muted)}
 .bar2 i{display:block; height:6px; border-radius:3px; background:var(--line2); width:var(--w)}
 .bar2 i.on{background:var(--cyan)}
@@ -398,13 +405,13 @@ for (k = 0; k < nr; k++) { res0[k] = (b[k] - tau) / L.rate * 1000; res1[k] = (b[
 | 位置 | 旧 | 新 |
 |---|---|---|
 | arrays 第 4 步 `d` | `Each arrival is a band across the record; its slope is the apparent slowness 1/v<sub>app</sub>, so steep bands are slow waves.` | `Each arrival is a band across the record. Time runs across and distance runs down, so the tilt of a band is the apparent velocity along the array: an upright band reaches every sensor almost at once (fast, or arriving broadside), a band that leans over is slow.` |
-| elastic 第 2 步 | 公式写在 `d` 里（会被折叠截断） | `d` 改为 `<b>P</b> arrives first, <b>S</b> later, and the gap grows with distance: the oldest trick for locating earthquakes.`；公式移到 `eq`：`d ≈ Δt<sub>S−P</sub> · V<sub>P</sub>V<sub>S</sub> / (V<sub>P</sub> − V<sub>S</sub>)` |
+| elastic 第 2 步 | 公式写在 `d` 里（会被折叠截断） | `d` 改为 `<b>P</b> arrives first, <b>S</b> later; the gap grows with distance.`（两行以内，折叠时不被截断）；公式移到 `eq`：`d ≈ Δt<sub>S−P</sub> · V<sub>P</sub>V<sub>S</sub> / (V<sub>P</sub> − V<sub>S</sub>)` |
 | arrays 标题 | `… · pressure · last 6 s` | `… · pressure p(t) · last 6 s` |
 | tr 标题 | `… · pressure` | `… · pressure p(t)` |
 | 所有数据图 | `origin` | `origin time` |
 | tr 小图标题 | `p² AT THE TRUE SOURCE`；`expected focus` | `Pressure² at the source`；`predicted focus` |
 | tomo 小图标题 | `SHOT 12 · GATHER AND PICKS`；`TRUE MODEL`；`RECOVERED · BENT RAYS`；`RAY COVERAGE`；`velocity vs. v = 1` | `Shot 12 · seismograms and picks`；`True model`；`Recovered · bent rays`；`Ray coverage`；`velocity anomaly · 0 = 2.5 km/s` |
-| noise 小图标题 | `RAW NOISE · LAST 6 S`；`CORRELATION STACK C_AB(τ) · 40 WINDOWS` | `Raw noise at A and B · last 6 s`；`Cross-correlation C_AB(τ) · stack of 40 windows` |
+| noise 小图标题 | `RAW NOISE · LAST 6 S`；`CORRELATION STACK C_AB(τ) · 40 WINDOWS` | `Raw noise at A and B · last 6 s`；`Cross-correlation C_AB(τ) against lag τ · stack of 40 windows` |
 | elastic 小图标题 | `PARTICLE MOTION · LAST 1.2 S` | `Particle motion · last 1.2 s` |
 | 图例（声波） | `● p > 0`、`● p < 0`、`slow ▬ fast` | `pressure ● − ● +`、`velocity 1.5 ▬ 3.5 km/s`（见下） |
 
@@ -423,7 +430,8 @@ L.legendVel = function (name) {
 .legend .lg{gap:5px}
 .legend em{font-style:normal; color:var(--muted)}
 .legend b{font:500 11.5px var(--mono); color:var(--ink2)}
-.vkey i{display:block; width:56px; height:10px; border-radius:3px; flex:none; border:1px solid var(--line2); background:linear-gradient(90deg,var(--vs),var(--field) 50%,var(--vf))}
+.vkey i{display:block; width:64px; height:12px; border-radius:3px; flex:none; border:1px solid var(--line2);
+  background:linear-gradient(90deg,transparent calc(50% - .5px),var(--line2) 0,var(--line2) calc(50% + .5px),transparent 0),linear-gradient(90deg,var(--vs),var(--field) 50%,var(--vf))}   /* 中间一条细线 = 背景速度 2.5 km/s */
 .legend svg{width:12px; height:12px; flex:none}
 ```
 
@@ -455,15 +463,15 @@ L.legendVel = function (name) {
 
 ## 8. 验收要点（实现后回传截图，我按这些看）
 
-1. 任一章节，波场左下角有比例尺；波场正下方一行是图例与 `10 × 5.5 km · … · v₀ 2.5 km/s · f₀ … Hz`；速度图例是 `1.5 ▬ 3.5 km/s`，色标颜色与波场上的淡彩相同。
+1. 任一章节，波场左下角有比例尺；波场正下方一行是图例与 `10 × 5.5 km · v₀ 2.5 km/s · f₀ … Hz · λ … km`，没有被切掉一半的项；速度图例是 `1.5 ▬ 3.5 km/s`，色标颜色与波场上的淡彩相同。任一实验的数据图标题都没有省略号（1440px 宽）。
 2. 任一张数据图里，虚线只出现在“预测”上；发震时刻是实线加星，文字不被任何一道穿过。
 3. 层析完成后，不滚动就能在数据图标题右侧看到 `r = …` 与 `… → … ms`；面板下半是残差散点图，反演后的灰点明显比彩色点更贴近零线。
 4. 时间反演完成后，焦斑上没有文字压着；数据图右侧有焦斑放大图和两根对比横条；环外没有大片米色雾。
-5. Playground 放 6 个台并发一次震：波场上 6 个台都有台站码；记录图按距离从近到远排列，右侧有每道的 km 数，预测到时的虚线短竖连成一条随距离变晚的线。
+5. Playground 放 6 个台并发一次震：波场上 6 个台都有台站码；记录图按距离从近到远排列，右侧有每道的 km 数，一条虚线走时曲线穿过各道、随距离变晚。
 6. Arrays 第 4 步不再出现 “steep bands are slow waves”；线阵记录图左下有 1.5 / 2.5 / 3.5 km/s 的量角器。
 7. 噪声叠到 40 个窗口：左下有 SNR 随窗口数增长的曲线和 `∝ √N` 虚线；SNR ≥ 4 后标题右侧出现 `… km/s`，与真值相差在百分之几以内。
 8. 弹性波：两条预测线之间有 `S − P = … s` 的括线；`predicted S` 的文字不压到右侧小图。
-9. 说明栏每一步右上角有角色小标，步骤序号之间有连线；弹性波第 2 步的公式完整可见。
+9. 说明栏每一步标题上方有角色小标，步骤序号之间有连线；弹性波第 2 步的公式完整可见。
 10. 画布上没有全大写的小图标题；结果卡的数字不再发糊（等宽字 500）。
 11. 亮色主题下以上各项同样成立。
 
@@ -488,7 +496,7 @@ L.legendVel = function (name) {
 | P0-9 | `E` `CA.render` 的 `max` 分支与 `FS.show` 第三分支；`LC` tr 的 `overlay`、`legend()` | 5.5：线性 p²；标签加引线移开 |
 | P0-10 | `LC` tomo 的 `solve()`、`data()` | 5.6：返回 `res0` / `res1`；新版面与走时残差图 |
 | P0-11 | `LH` 新增 `.res-big`、`.bar2`；`LC` tr / tomo 的 `results()`，elastic 的 `liveSP()` | 6.3 的大数字与对比条；结果卡首次出现时滚入视野 |
-| P0-12 | `LH` `.st-t` / `.st-k` / `.st::after` / `.eq` / `code`；`LJ` `L.refresh()`；`LC` 各章 `steps()` | 4.3 与 6.4：步骤角色、连线、公式块 |
+| P0-12 | `LH` `.st-k` / `.st::after` / `.eq` / `code`；`LJ` `L.refresh()`；`LC` 各章 `steps()` | 4.3 与 6.4：步骤角色、连线、公式块 |
 | P0-13 | `LC` noise 的 `resetCC()`、`window()`、新增 `peak()` / `vEst()`、`data()`、新增 `results()` | 5.7 与 6.3：SNR 曲线、实测峰、速度估计、结果卡 |
 | P0-14 | `LC` elastic 的 `data()` | 5.8：行标签、标注带、S − P 括线、标题 |
 
