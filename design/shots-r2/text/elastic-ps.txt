@@ -1,0 +1,82 @@
+## #status
+CPU · 304 × 167 · elastic P-SV
+
+## #hud
+t = 5.0 s
+
+## #legend
+P · |∇·v|
+S · |∇×v|
+slow
+fast
+
+## #dataTitle
+Station YW01 on the surface · ground velocity · Z (up) and X (right) · last 6 s
+
+## #ctaBtn
+text: 
+hidden: true
+disabled: false
+
+## #insp (all details open, line clamp removed)
+EXPERIMENT 6 OF 6
+
+Elastic waves
+
+Rock is solid, so it carries two kinds of body waves, P and S, and, along the free surface, the slow and strong Rayleigh wave.
+
+✓
+
+Click just below the surface
+
+Look for the slow, strong wave hugging the top edge: a Rayleigh wave. The ground under the station moves in ellipses (particle-motion plot, bottom right).
+
+✓
+
+Click deep below the station
+
+P arrives first, S later. The S − P time grows with distance: d ≈ ΔtS−P · VPVS / (VP − VS), the oldest trick for locating earthquakes.
+
+Distance to YW01
+4.1 km
+Predicted S − P
+1.19 s
+Mean VP on the path
+2.50 km/s
+Δt · VP / (√3 − 1)
+4.1 km
+3
+
+Change the source
+
+An explosion radiates P only. A shear dislocation (a small fault) radiates mostly S, in four lobes. A vertical force is a hammer blow, the classic Lamb problem.
+
+Explosion
+Shear
+Vertical force
+4
+
+Try a layered crust
+
+At every interface part of the P energy converts into S, and back: the extra arrivals in the seismogram.
+
+Half-space
+
+Cross-sections · top edge = the surface
+
+Folded & faulted layers
+Sedimentary basin
+Subduction zone
+Salt dome
+What’s going on
+
+Equations. Momentum balance and Hooke’s law for an isotropic solid, as a first-order system: ρ ∂v/∂t = ∇·σ, ∂σ/∂t = λ (∇·v) I + μ (∇v + ∇vᵀ), in the vertical plane (P-SV). ρ = 1 and λ = μ, so VS = VP/√3 everywhere.
+
+Numerics. Velocity–stress finite differences on a staggered grid (Virieux 1986), 2nd order, on 304 × 167 cells on the CPU (a coarser grid; switch to the GPU solver in Settings for a finer one). Peak frequency 2.7 Hz, 28 grid points per P wavelength at v = 1.
+
+Free surface. The top edge is traction-free: σzz = 0 on it and σxz is mirrored with opposite sign above it (stress imaging). The other edges absorb.
+
+Colours. Cyan is the divergence ∇·v (volume change: P waves), amber the curl ∇×v (rotation: S waves). The seismograms show the ground velocity at the surface: Z positive up, X positive to the right.
+
+← Ambient noise
+Back to the homepage →

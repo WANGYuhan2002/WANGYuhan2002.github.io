@@ -1,0 +1,88 @@
+## #status
+CPU · 400 × 220 · acoustic
+
+## #hud
+t = 4.0 s
+
+## #legend
+p > 0
+p < 0
+slow
+fast
+
+## #dataTitle
+Station YW01 · pressure p(t) · last 6 s
+
+## #ctaBtn
+text: 
+hidden: true
+disabled: false
+
+## #insp (all details open, line clamp removed)
+EXPERIMENT 1 OF 6
+
+Playground
+
+Build a medium, then shake it. Every click is an acoustic source, every edit changes how the waves travel, and the stations you place record what arrives.
+
+1
+
+Pick a starting model
+
+A map view, or a geological cross-section whose top edge is the Earth’s surface.
+
+Map view
+
+Random blobs
+Uniform
+
+Cross-sections · top edge = the surface
+
+Folded & faulted layers
+Sedimentary basin
+Subduction zone
+Salt dome
+2
+
+Shape the medium
+
+With the tools above the field: paint slow (S) or fast (F) bodies, erase (E), or drop point scatterers (C). Click a tool again for its options.
+
+Sprinkle 30 scatterers
+Undo all edits
+3
+
+Place your stations
+
+With the station tool (T), click to add up to 12 stations; drag any station to move it, double-click to remove it. With more than one, the panel below becomes a record section.
+
+Back to one station
+✓
+
+Make an earthquake
+
+Click anywhere with the earthquake tool (Q): an acoustic point source, a Ricker pulse of pressure. Its options set the magnitude and the peak frequency.
+
+5
+
+Change the boundaries
+
+Absorbing on all sides
+a damping layer: waves leave the screen
+Free surface on top
+p = 0 at the top edge: reflects with reversed polarity
+Reflecting box
+p = 0 on all edges, no damping layer
+What’s going on
+
+Equation. The 2-D constant-density acoustic wave equation ∂²p/∂t² = c(x, z)² ∇²p for the pressure p. Only P waves exist here; S and surface waves need the elastic solver of experiment 6.
+
+Numerics. Second-order finite differences (leapfrog in time, 5-point Laplacian) on a 400 × 220 grid, computed live on your CPU (typed arrays). Courant number c·Δt/Δx ≤ 0.69 < 1/√2 and 13 grid points per dominant wavelength at v = 1. Sources are Ricker wavelets with a peak frequency of 7.6 Hz.
+
+Units. The model is 10 km wide; v = 1 means 2.5 km/s, and a wave at v = 1 crosses the width in 4 s.
+
+Boundaries. The outermost grid line holds p = 0. Absorbing edges add a layer in which the equation gains a damping term σ·∂p/∂t that ramps up quadratically, so outgoing waves fade instead of bouncing back (measured reflection 0.3 % at normal and 0.7 % at 45° incidence). A free surface keeps p = 0 without the layer: waves reflect with reversed polarity. A reflecting box removes the layer everywhere.
+
+Receivers sample p(t) at their positions every time step (bilinear interpolation). Not physical: magnitudes only scale the source amplitude.
+
+Next: Arrays & DAS →

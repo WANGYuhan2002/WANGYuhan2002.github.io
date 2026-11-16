@@ -1,0 +1,86 @@
+## #status
+CPU · 400 × 220 · acoustic
+
+## #hud
+Shot 5 / 12
+fast-forward
+
+## #legend
+p > 0
+p < 0
+slow
+fast
+★ shot
+▼ receiver
+— ray
+
+## #dataTitle
+Travel-time tomography · 12 shots × 48 receivers · bent rays
+
+## #ctaBtn
+text: Surveying…
+hidden: false
+disabled: true
+
+## #insp (all details open, line clamp removed)
+EXPERIMENT 4 OF 6
+
+Tomography
+
+Shoot a survey through a velocity model, recover the model from nothing but first-arrival travel times, and compare it with the truth.
+
+✓
+
+Pick the true model
+
+The survey will try to recover it; it stays visible under the waves. Or paint your own with the slow and fast brushes.
+
+Random blobs
+Checker­board
+Paint your own
+2
+
+Run the survey
+
+12 shots fired one after another, 48 receivers all around: rays cross in every direction.
+
+Surround
+Cross-well
+Surveying…
+
+Shot 5 of 12 · 118 travel times picked
+
+3
+
+Invert the travel times
+
+First arrivals are picked automatically, then a damped, smoothed least-squares problem (CGLS) finds the slowness in 18 × 8 cells that best explains them. Bent rays re-bend every ray through the current model, three times.
+
+Straight rays
+Bent rays
+Smoothing
+50 %
+4
+
+Compare with the truth
+
+The panel below shows the true model, the recovered model and the ray coverage. Try the checkerboard: it shows where the survey can resolve detail, and where the rays smear it.
+
+What’s going on
+
+Forward problem. A travel time is the integral of slowness s = 1/v along the ray: t = ∫ s dl. With straight rays and the model split into cells, t = Σ Lj·sj, a linear system G·s = t with one row per source–receiver pair.
+
+Inverse problem. There are more unknowns than independent data, so the solution is regularised: minimise ‖G·δs + τ − δt‖² + λd²‖δs‖² + λs²‖∇δs‖² by conjugate gradients (CGLS). τ is one constant time shift: it absorbs the bias of the automatic picker, which times the peak of the first pulse.
+
+Bent rays. First arrivals take the fastest path, which bends around slow regions. In bent-ray mode the straight-ray model is the starting point; every ray is then bent towards the path of least travel time through the current model (pseudo-bending, Um & Thurber 1987), and the model is updated again: three linearised iterations.
+
+Picking. For each trace the first-arrival window is predicted from the distance and the range of velocities. The pick is the first peak of the envelope (|p| averaged over one period) that reaches 15 % of the window maximum, refined to sub-sample precision by a parabola. Strong later arrivals focused by slow regions are skipped that way.
+
+Equation. The 2-D constant-density acoustic wave equation ∂²p/∂t² = c(x, z)² ∇²p for the pressure p. Only P waves exist here; S and surface waves need the elastic solver of experiment 6.
+
+Numerics. Second-order finite differences (leapfrog in time, 5-point Laplacian) on a 400 × 220 grid, computed live on your CPU (typed arrays). Courant number c·Δt/Δx ≤ 0.69 < 1/√2 and 13 grid points per dominant wavelength at v = 1. Sources are Ricker wavelets with a peak frequency of 7.6 Hz.
+
+Units. The model is 10 km wide; v = 1 means 2.5 km/s, and a wave at v = 1 crosses the width in 4 s.
+
+← Time reversal
+Next: Ambient noise →

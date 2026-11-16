@@ -1,0 +1,7 @@
+POINT SCATTERERS
+×
+
+Click or drag to drop point scatterers: small inclusions at 35 % of the background velocity. Each one re-radiates the passing wave; many of them build up a coda.
+
+Sprinkle 30
+Clear all
