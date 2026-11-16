@@ -1,0 +1,19 @@
+WHAT IS THIS WAVEFIELD?
+
+×
+
+Equation. The 2-D constant-density acoustic wave equation ∂²p/∂t² = c(x, z)² ∇²p. p is pressure, so only P waves exist here: no S or surface waves (those are in the Wave Lab's elastic experiment). Cyan is compression (p > 0), coral is rarefaction (p < 0).
+
+Velocity model. Always drawn under the waves: berry pink is slower than the background velocity (v < 1), cobalt blue is faster, and thin lines mark sharp interfaces. Recovering this structure from recorded waves is what seismic tomography does.
+
+Source. Each click adds an acoustic point source to the pressure field: a Ricker wavelet (the second derivative of a Gaussian) with a peak frequency of 9.1 Hz, spread over a 5 × 5-cell Gaussian footprint. The magnitude only scales its amplitude.
+
+Receivers. Each station samples p(t) at its position every time step (bilinear interpolation); the strip below shows the last 6 s. Place stations one by one, or as a line or ring array.
+
+Numerics. Second-order finite differences (leapfrog in time, 5-point Laplacian) on a 480 × 300 grid, computed live on your GPU (WebGL2, 32-bit float textures). Courant number c·Δt/Δx ≤ 0.69 < 1/√2, about 13 grid points per dominant wavelength.
+
+Boundaries. The outermost grid line holds p = 0 (Dirichlet). Absorbing edges add a 36-cell layer in which the equation gains a damping term σ(x)·∂p/∂t that ramps up quadratically, so outgoing waves fade instead of bouncing back (measured reflection: 0.3 % at normal, 0.7 % at 45° incidence). A free surface removes the layer on top: pressure vanishes there and waves reflect with reversed polarity, which is why "Along the top edge" puts receivers 6 cells below it. A reflecting box removes the layer everywhere. A weak uniform attenuation e−0.5 t lets the field calm down.
+
+Not physical: magnitudes only scale the source amplitude, and coordinates are a cosmetic mapping of the screen onto Switzerland.
+
+Six bigger experiments on the same solver: the Wave Lab →

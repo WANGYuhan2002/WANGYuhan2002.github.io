@@ -1,0 +1,7 @@
+ERASE STRUCTURE
+×
+
+Drag to restore the background velocity (v = 1).
+
+Radius
+r = 0.29 km

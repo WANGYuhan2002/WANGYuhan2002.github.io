@@ -1,0 +1,29 @@
+MODEL & BOUNDARIES
+
+×
+
+Map view · starting model (resets painted bodies)
+
+Random blobs
+Uniform
+
+Cross-sections · the top edge is the Earth's surface
+
+Folded & faulted layers
+Sedimentary basin
+Subduction zone
+Salt dome
+New random layering
+
+Boundaries
+
+Absorbing on all sides
+a damping layer: waves leave the screen
+Free surface on top
+p = 0 at the top edge: reflects with reversed polarity
+Reflecting box
+p = 0 on all edges, no damping layer
+Pause
+Clear waves
+
+More models, arrays, fibre-optic cables, time reversal, tomography and elastic waves: the Wave Lab →
