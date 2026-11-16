@@ -11,7 +11,8 @@
   function $(id) { return document.getElementById(id); }
   var root = document.documentElement, view = $('view'), glc = $('glc'), cpuc = $('cpuc'), ovc = $('ovc'), octx = ovc.getContext('2d');
   var dcv = $('datac'), dctx = dcv.getContext('2d'), insp = $('insp'), toolsEl = $('tools'), topt = $('topt');
-  var hudEl = $('hud'), progEl = $('prog'), toastEl = $('toast'), legendEl = $('legend');
+  var hudEl = $('hud'), progEl = $('prog'), toastEl = $('toast'), legendEl = $('legend'), factsEl = $('facts'), fkeyEl = $('fkey');
+  var capEl = $('dataCap'), kpiEl = $('dataKpi'), keyEl = $('dataKey');
   var setPop = $('setPop'), sharePop = $('sharePop'), exportMenu = $('exportMenu'), exportBtn = $('exportBtn'), setBtn = $('setBtn');
   function mm(q) { return !!(window.matchMedia && matchMedia(q).matches); }
   var reduceMotion = mm('(prefers-reduced-motion: reduce)'), coarse = mm('(pointer: coarse)');
@@ -55,10 +56,10 @@
     L.nx = L.eng.nx; L.ny = L.eng.ny; L.rate = L.eng.rate; L.TR = Math.round(L.rate * 6); L.res = Math.max(1, L.nx / 480);
     L.model = new WM.Model(L.nx, L.ny);
     L.eng.setDisplay(L.pal, S.reveal);
-    L.marks = []; acc = 0; L.peakSnd = 0;
+    L.marks = []; acc = 0; L.peakSnd = 0; L.hiD = -1; L.hiV = -1; L.hi = -1;
     sizeOverlay();
     ch.enter();
-    status();
+    status(); L.facts();
   };
   L.sx = function (x) { return (x + 0.5) / L.nx * L.W; };
   L.sy = function (y) { return (y + 0.5) / L.ny * L.H; };
@@ -71,13 +72,13 @@
   L.fmt = function (v, d) { return (Math.round(v * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d); };
   L.setModel = function (rect) { L.eng.setModel(L.model, rect); };
   L.BC = { absorb: { top: true, bottom: true, left: true, right: true }, free: { top: false, bottom: true, left: true, right: true }, box: { top: false, bottom: false, left: false, right: false } };
-  L.setBC = function (bc, alpha) { L.bc = bc; L.eng.setBoundary(L.BC[bc] || bc, alpha == null ? 0.5 : alpha); };
+  L.setBC = function (bc, alpha) { L.bc = bc; L.eng.setBoundary(L.BC[bc] || bc, alpha == null ? 0.5 : alpha); L.facts(); };
   L.magAmp = function (M) { return Math.pow(10, 0.35 * (M - 3)); };
   L.quake = function (x, y, o) {
     o = o || {};
     var M = o.mag != null ? o.mag : (S.magRandom ? +(2.2 + Math.random() * 2.4).toFixed(1) : S.mag);
     var s = L.eng.addSource({ x: x, y: y, amp: L.magAmp(M) * (o.ampMul || 1), kind: o.kind || 0, fmul: o.fmul || S.fmul });
-    L.marks.push({ n: L.eng.n, x: s.x, y: s.y, M: M, t: performance.now() }); if (L.marks.length > 12) L.marks.shift();
+    L.marks.push({ n: L.eng.n, x: s.x, y: s.y, M: M, t: performance.now(), fm: o.fmul || S.fmul }); if (L.marks.length > 12) L.marks.shift();
     if (S.sound && o.sound !== false) thump(Math.min(1, 0.3 + 0.17 * (M - 2)));
     return s;
   };
@@ -167,13 +168,17 @@
   L.btn = function (act, label, cls, dis, val) { return '<button class="pbtn' + (cls ? ' ' + cls : '') + '" type="button" data-act="' + act + '"' + (val != null ? ' data-val="' + val + '"' : '') + (dis ? ' disabled' : '') + '>' + label + '</button>'; };
   L.text = function (id, s) { var el = $(id); if (el && el.textContent !== s) el.textContent = s; };
   L.html = function (id, s) { var el = $(id); if (el && el.innerHTML !== s) el.innerHTML = s; };
+  var ROLE = { setup: 'Set up', observe: 'Observe', process: 'Process', interpret: 'Interpret', explore: 'Explore' };
+  /* bring a chapter's result card into view the first time it appears (the chapter calls this once per run) */
+  L.scrollRes = function () { var r = insp.querySelector('.res'); if (r && r.scrollIntoView) r.scrollIntoView({ block: 'nearest', behavior: L.reduceMotion ? 'auto' : 'smooth' }); };
   L.refresh = function () {
     var ch = L.CH[S.ch], i = L.ORDER.indexOf(ch.id), st = ch.steps ? ch.steps() : [], now = -1, k, top = insp.scrollTop;
     for (k = 0; k < st.length; k++) if (!st[k].done) { now = k; break; }
     var h = '<p class="ch-k">Experiment ' + (i + 1) + ' of ' + L.ORDER.length + '</p><h1>' + ch.title + '</h1><p class="goal">' + ch.goal + '</p><ol class="steps">';
     st.forEach(function (s, k) {
-      h += '<li class="st' + (s.done ? ' done' : '') + (k === now ? ' now' : '') + '"><span class="st-n" aria-hidden="true">' + (s.done ? '✓' : (k + 1)) + '</span><div><p class="st-t">' + s.t + '</p>' +
-        (s.d ? '<p class="st-d">' + s.d + '</p>' : '') + (s.c ? '<div class="st-c">' + s.c + '</div>' : '') + '</div></li>';
+      h += '<li class="st' + (s.done ? ' done' : '') + (k === now ? ' now' : '') + '"><span class="st-n" aria-hidden="true">' + (s.done ? '✓' : (k + 1)) + '</span><div>' +
+        (s.k ? '<i class="st-k">' + ROLE[s.k] + '</i>' : '') + '<p class="st-t">' + s.t + '</p>' +
+        (s.d ? '<p class="st-d">' + s.d + '</p>' : '') + (s.eq ? '<div class="eq">' + s.eq + '</div>' : '') + (s.c ? '<div class="st-c">' + s.c + '</div>' : '') + '</div></li>';
     });
     h += '</ol>' + (ch.results ? ch.results() : '');
     h += '<details class="explain" id="explain"' + (S.explain ? ' open' : '') + '><summary>What’s going on</summary>' + (ch.explain ? ch.explain() : '') + '</details>';
@@ -188,7 +193,7 @@
     var b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
     var a = b.dataset.act, v = b.dataset.val, ch = L.CH[S.ch];
     if (a === 'closeTopt') { closeTopt(); return; }
-    if (a === 'fmul') { S.fmul = +v; openTopt('quake'); return; }
+    if (a === 'fmul') { S.fmul = +v; openTopt('quake'); L.facts(); return; }
     if (a === 'sprinkle') { sprinkle(30); if (ch.onEdit) ch.onEdit(); return; }
     if (a === 'clearScat') { L.model.clearScatter(); L.setModel(); if (ch.onEdit) ch.onEdit(); return; }
     if (settingsAct(a, v)) return;
@@ -272,6 +277,19 @@
   view.addEventListener('dblclick', function (e) { var ch = L.CH[S.ch], h = hitHandle(e); if (h && ch.removeHandle) ch.removeHandle(h.id); });
   view.addEventListener('pointerleave', function () { L.cursor = null; });
   L.dragging = function () { return drag; };
+  /* hover link between a trace in the data panel and its station on the field (pointer devices only; clicks and drags unchanged) */
+  L.hiD = -1; L.hiV = -1; L.hi = -1;
+  function setHi() { L.hi = L.hiD >= 0 ? L.hiD : L.hiV; }
+  if (!coarse) {
+    dcv.addEventListener('pointermove', function (e) {
+      var v = -1;
+      if (L.sec) { var r = dcv.getBoundingClientRect(), row = Math.floor((e.clientY - r.top - L.sec.y) / L.sec.sp); if (row >= 0 && row < L.sec.nn) v = L.sec.idx ? L.sec.idx[row] : row; }
+      if (v !== L.hiD) { L.hiD = v; setHi(); }
+    });
+    dcv.addEventListener('pointerleave', function () { L.hiD = -1; setHi(); });
+    view.addEventListener('pointermove', function (e) { if (drag) return; var h = hitHandle(e), v = h ? h.id : -1; if (v !== L.hiV) { L.hiV = v; setHi(); } });
+    view.addEventListener('pointerleave', function () { L.hiV = -1; setHi(); });
+  }
 
   /* ---------------- overlay ---------------- */
   function sizeOverlay() { var d = Math.min(2, window.devicePixelRatio || 1); L.dpr = d; ovc.width = Math.round(L.W * d); ovc.height = Math.round(L.H * d); }
@@ -282,27 +300,54 @@
     ctx.beginPath(); ctx.moveTo(x - s, y - s * 1.7); ctx.lineTo(x + s, y - s * 1.7); ctx.lineTo(x, y); ctx.closePath();
     halo(ctx, alpha); ctx.fillStyle = L.rgba(col || L.pal.ink, alpha); ctx.fill();
   };
-  L.label = function (ctx, s, x, y, align, col) {
-    ctx.font = '600 10.5px "JetBrains Mono", monospace'; ctx.textAlign = align || 'center'; ctx.textBaseline = 'alphabetic';
+  /* text on the field: station codes in the mono role (mono = true), everything else in the label role (Inter 600) */
+  L.label = function (ctx, s, x, y, align, col, mono) {
+    ctx.font = mono ? '500 10.5px "JetBrains Mono", monospace' : '600 11px "Inter", system-ui, sans-serif'; ctx.textAlign = align || 'center'; ctx.textBaseline = 'alphabetic';
     ctx.lineJoin = 'round'; ctx.miterLimit = 2; ctx.lineWidth = 3; ctx.strokeStyle = L.pal.halo; ctx.strokeText(s, x, y);
     ctx.fillStyle = col || L.rgba(L.pal.ink, 0.96); ctx.fillText(s, x, y);
   };
-  L.star = function (ctx, x, y, r, col, alpha) {
+  L.star = function (ctx, x, y, r, col, alpha, hollow) {
     ctx.beginPath();
     for (var k = 0; k < 10; k++) { var a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * 0.45 : r; ctx.lineTo(x + rr * Math.cos(a), y + rr * Math.sin(a)); }
-    ctx.closePath(); halo(ctx, alpha); ctx.fillStyle = L.rgba(col, alpha); ctx.fill();
+    ctx.closePath();
+    if (hollow) { ctx.lineJoin = 'round'; ctx.lineWidth = 3.5; ctx.strokeStyle = L.pal.halo; ctx.stroke(); ctx.lineWidth = 1.5; ctx.strokeStyle = L.rgba(col, alpha); ctx.stroke(); return; }
+    halo(ctx, alpha); ctx.fillStyle = L.rgba(col, alpha); ctx.fill();
   };
+  /* scale bar, bottom left of the field */
+  function scaleBar(ctx) {
+    var pxkm = L.W / L.KM, km = pxkm >= 70 ? 1 : 2, x = 14, y = L.H - 14, x2 = x + km * pxkm;
+    ctx.beginPath(); ctx.moveTo(x, y - 5); ctx.lineTo(x, y); ctx.lineTo(x2, y); ctx.lineTo(x2, y - 5);
+    ctx.lineJoin = 'miter'; ctx.lineCap = 'butt'; ctx.lineWidth = 3.5; ctx.strokeStyle = L.pal.halo; ctx.stroke();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = L.rgba(L.pal.ink, 0.9); ctx.stroke();
+    ctx.font = '500 10.5px "JetBrains Mono", monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round'; ctx.miterLimit = 2; ctx.lineWidth = 3; ctx.strokeStyle = L.pal.halo; ctx.strokeText(km + ' km', x2 + 6, y - 2);
+    ctx.fillStyle = L.rgba(L.pal.ink, 0.96); ctx.fillText(km + ' km', x2 + 6, y - 2);
+  }
+  /* reflecting edges (free surface, box) are drawn; absorbing ones are not */
+  function edges(ctx) {
+    var B = L.BC[L.bc] || L.bc; if (!B || typeof B !== 'object') return;
+    ctx.lineWidth = 2; ctx.strokeStyle = L.rgba(L.pal.ink, 0.5); ctx.beginPath();
+    if (B.top === false) { ctx.moveTo(0, 2); ctx.lineTo(L.W, 2); }
+    if (B.bottom === false) { ctx.moveTo(0, L.H - 2); ctx.lineTo(L.W, L.H - 2); }
+    if (B.left === false) { ctx.moveTo(2, 0); ctx.lineTo(2, L.H); }
+    if (B.right === false) { ctx.moveTo(L.W - 2, 0); ctx.lineTo(L.W - 2, L.H); }
+    ctx.stroke();
+  }
   function drawOverlay() {
     var ch = L.CH[S.ch], k, pal = L.pal, now = performance.now();
     octx.setTransform(L.dpr, 0, 0, L.dpr, 0, 0); octx.clearRect(0, 0, L.W, L.H);
     var sc = L.model.scat, rs = Math.max(2.2, 1.6 * L.res / L.nx * L.W);
     for (k = 0; k < sc.length; k++) { octx.beginPath(); octx.arc(L.sx(sc[k][0]), L.sy(sc[k][1]), rs, 0, 6.2832); octx.fillStyle = L.rgba(pal.ink, 0.9); octx.fill(); octx.lineWidth = 1; octx.strokeStyle = L.rgba(pal.edge || pal.ink, 0.6); octx.stroke(); }
+    edges(octx);
     if (!ch.noMarks) for (k = 0; k < L.marks.length; k++) {
-      var m = L.marks[k], age = (now - m.t) / 2500; if (age >= 1) continue;
+      var m = L.marks[k], age = (now - m.t) / 2500;
+      if (age >= 1) { if (L.eng.n - m.n < L.TR) L.star(octx, L.sx(m.x), L.sy(m.y), 6, pal.neg, 0.85, true); continue; }   /* hollow while its record is still on the panel */
       if (age < 0.5 && !L.reduceMotion) { octx.beginPath(); octx.arc(L.sx(m.x), L.sy(m.y), 7 + 30 * age, 0, 6.2832); octx.lineWidth = 1.2; octx.strokeStyle = L.rgba(pal.neg, 0.55 * (1 - age)); octx.stroke(); }
+      if (L.eng.n - m.n < L.TR && age > 0.6) L.star(octx, L.sx(m.x), L.sy(m.y), 6, pal.neg, 0.85 * Math.min(1, (age - 0.6) / 0.4), true);
       L.star(octx, L.sx(m.x), L.sy(m.y), 7, pal.neg, 0.9 * (1 - age));
     }
     if (ch.overlay) ch.overlay(octx);
+    scaleBar(octx);
     var t = S.tool;
     if (L.cursor && !coarse && (t === 'slow' || t === 'fast' || t === 'erase') && (ch.tools || []).indexOf(t) >= 0) {
       octx.beginPath(); octx.arc(L.sx(L.cursor[0]), L.sy(L.cursor[1]), S.brushR * L.res / L.nx * L.W, 0, 6.2832);
@@ -311,19 +356,49 @@
   }
 
   /* ---------------- data panel helpers ---------------- */
+  /* canvas text roles: numbers, ticks and codes in JetBrains Mono (never above 500); words in Inter */
   L.font = function (ctx, px, w) { ctx.font = (w || 500) + ' ' + px + 'px "JetBrains Mono", monospace'; };
-  L.panelLabel = function (ctx, s, x, y, col) { L.font(ctx, 10, 600); ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillStyle = col || L.pal.label; ctx.fillText(s, x, y); };
-  /* time axis of a rolling window: a grid line every second through the trace area (from gridTop), short ticks, labels relative to now */
+  L.fontS = function (ctx, px, w) { ctx.font = (w || 400) + ' ' + px + 'px "Inter", system-ui, sans-serif'; };
+  L.axisTitle = function (ctx) { L.fontS(ctx, 10.5, 400); ctx.fillStyle = L.pal.label; };      /* axis titles, placeholder hints */
+  L.annot = function (ctx, col) { L.fontS(ctx, 10.5, 500); ctx.fillStyle = col; };             /* annotations: origin time, predictions */
+  L.num = function (ctx) { L.font(ctx, 10); ctx.fillStyle = L.pal.label; };                  /* numbers, ticks, station codes */
+  /* title of a small plot (sentence case); with maxW, trailing ' · …' segments are dropped until it fits */
+  L.panelLabel = function (ctx, s, x, y, col, maxW) {
+    L.fontS(ctx, 11, 600); ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillStyle = col || L.pal.sub;
+    while (maxW != null && ctx.measureText(s).width > maxW && s.lastIndexOf(' · ') > 0) s = s.slice(0, s.lastIndexOf(' · '));
+    ctx.fillText(s, x, y); return ctx.measureText(s).width;
+  };
+  /* text with subscripts: parts = [[text, isSub], …] in the current role (setFont(isSub) sets the font) */
+  L.subText = function (ctx, parts, x, y, align, setFont) {
+    var w = 0, k, ws = [];
+    for (k = 0; k < parts.length; k++) { setFont(parts[k][1]); ws.push(ctx.measureText(parts[k][0]).width); w += ws[k]; }
+    var x0 = align === 'right' ? x - w : (align === 'center' ? x - w / 2 : x), sa = ctx.textAlign;
+    ctx.textAlign = 'left';
+    for (k = 0; k < parts.length; k++) { setFont(parts[k][1]); ctx.fillText(parts[k][0], x0, y + (parts[k][1] ? 3 : 0)); x0 += ws[k]; }
+    ctx.textAlign = sa; return w;
+  };
+  /* an annotation in the lane above the traces, on a panel-coloured backing; flips to the left of its line near the right edge */
+  L.laneText = function (ctx, s, xm, y, right, col, off, flipAt) {
+    L.annot(ctx, col); ctx.textBaseline = 'top'; off = off == null ? 9 : off;
+    var w = ctx.measureText(s).width, flip = flipAt != null ? xm + flipAt > right : xm + off + w > right, x0 = flip ? xm - off - w : xm + off;
+    ctx.fillStyle = L.rgba(L.pal.pn, 0.85); ctx.fillRect(x0 - 2, y - 1, w + 4, 14);
+    L.annot(ctx, col); ctx.textAlign = 'left'; ctx.fillText(s, x0, y);
+    return { x: x0, w: w };
+  };
+  L.placeholder = function (ctx, x, y, s) { L.axisTitle(ctx); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(s, x, y); };
+  /* time axis of a rolling window: a grid line every second through the trace area (from gridTop) and the "now" line at the right
+     edge, 4-px ticks, labels relative to now */
   L.timeAxis = function (ctx, X, Y, w, h, len, nowStep, gridTop) {
-    var pal = L.pal, sec = Math.round(L.rate), st, xt;
+    var pal = L.pal, sec = Math.round(L.rate), st, xt, tl = Math.min(h, 4);
     ctx.lineWidth = 1;
     if (gridTop != null) {
       ctx.strokeStyle = pal.grid; ctx.beginPath();
       for (st = nowStep - (nowStep % sec); st > nowStep - len; st -= sec) { xt = X + w - (nowStep - st) / len * w; ctx.moveTo(xt + 0.5, gridTop); ctx.lineTo(xt + 0.5, Y); }
       ctx.stroke();
+      ctx.strokeStyle = L.rgba(pal.pos, 0.45); ctx.beginPath(); ctx.moveTo(X + w - 0.5, gridTop); ctx.lineTo(X + w - 0.5, Y); ctx.stroke();
     }
     ctx.strokeStyle = pal.tick; ctx.beginPath();
-    for (st = nowStep - (nowStep % sec); st > nowStep - len; st -= sec) { xt = X + w - (nowStep - st) / len * w; ctx.moveTo(xt + 0.5, Y); ctx.lineTo(xt + 0.5, Y + h); }
+    for (st = nowStep - (nowStep % sec); st > nowStep - len; st -= sec) { xt = X + w - (nowStep - st) / len * w; ctx.moveTo(xt + 0.5, Y); ctx.lineTo(xt + 0.5, Y + tl); }
     ctx.stroke();
     L.font(ctx, 10); ctx.textBaseline = 'bottom';
     var secs = Math.floor(len / L.rate);
@@ -332,32 +407,38 @@
       ctx.fillText(s === 0 ? 'now' : '−' + s + ' s', xs - (s === 0 ? 1 : 0), Y + h + 11);
     }
   };
-  /* record section: wiggles with variable-area fill, one common gain (relative amplitudes kept) or AGC */
+  /* record section: wiggles with variable-area fill, one common gain (relative amplitudes kept) or AGC.
+     Options (all optional): lane (annotation band on top, 14 px with marks or pred), marks (origin times: faint solid line + star +
+     "origin time"), pred(tr) (predicted arrival step of trace tr: a dashed travel-time curve, or a dashed line for one trace),
+     right + rowText(tr) (text per row on the right), order, hi (highlighted trace), link (geometry for the hover link), agc, gain */
   var cs = null;
   L.drawSection = function (ctx, X, Y, w, h, rec, o) {
     o = o || {};
-    var pal = L.pal, n = rec.n, len = rec.len, comp = o.comp || 0, many = n > 1, m = 0, k, s, v;
+    var pal = L.pal, n = rec.n, len = rec.len, comp = o.comp || 0, many = n > 1, m = 0, k, s, v, q;
     var idx = o.order || null, nn = idx ? idx.length : n;
+    var lane = o.lane != null ? o.lane : (o.marks || o.pred ? 14 : 0), YT = Y + lane, hT = h - lane;
     for (s = 0; s < nn; s++) { var a = (comp ? rec.x : rec.z)[idx ? idx[s] : s]; for (k = 0; k < len; k++) { v = a[k] < 0 ? -a[k] : a[k]; if (v > m) m = v; } }
     rec.peak = Math.max(o.floor || 0.02, m, rec.peak * 0.995);
-    var left = o.left != null ? o.left : (many ? 42 : 0), ww = w - left, sp = h / nn;
-    var amp = (many ? 0.95 * sp : h / 2 - 3) / rec.peak * (o.gain || 1), clip = many ? 1.4 * sp : h / 2 - 1;
-    var stride = Math.max(1, Math.floor(len / Math.max(1, ww * 1.5))), half = Math.round(L.rate * 0.25), floor = 0.02 * rec.peak, lvl = many ? 0.45 * sp : 0.35 * h;
-    if (o.marks) {
-      L.font(ctx, 10); ctx.textBaseline = 'top'; ctx.lineWidth = 1;
-      for (var q = 0; q < o.marks.length; q++) {
-        var age = o.now - o.marks[q].n; if (age < 0 || age > len) continue;
-        var xm = X + left + ww - age / len * ww;
-        ctx.strokeStyle = 'rgba(' + pal.origin + ',.8)'; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(xm + 0.5, Y); ctx.lineTo(xm + 0.5, Y + h); ctx.stroke(); ctx.setLineDash([]);
-        if (q === o.marks.length - 1) { ctx.fillStyle = 'rgba(' + pal.origin + ',.95)'; ctx.textAlign = 'left'; ctx.fillText(o.markLabel || 'origin', xm + 4, Y + 1); }
-      }
+    var left = o.left != null ? o.left : (many ? 42 : 0), right = o.right || 0, ww = w - left - right, sp = hT / nn;
+    var amp = (many ? 0.95 * sp : hT / 2 - 3) / rec.peak * (o.gain || 1), clip = many ? 1.4 * sp : hT / 2 - 1;
+    var stride = Math.max(1, Math.floor(len / Math.max(1, ww * 1.5))), half = Math.round(L.rate * 0.25), floor = 0.02 * rec.peak, lvl = many ? 0.45 * sp : 0.35 * hT;
+    var xOf = function (age) { return X + left + ww - age / len * ww; };
+    ctx.lineWidth = 1; ctx.strokeStyle = pal.axis; ctx.beginPath(); ctx.moveTo(X + left, Y + h - 0.5); ctx.lineTo(X + left + ww, Y + h - 0.5); ctx.stroke();
+    var mk = [];                                                             /* origin times: a faint solid line now, the star and label last */
+    if (o.marks) for (q = 0; q < o.marks.length; q++) {
+      var age = o.now - o.marks[q].n; if (age < 0 || age > len) continue;
+      var xm = Math.round(xOf(age)) + 0.5; mk.push([xm, q === o.marks.length - 1]);
+      ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(' + pal.origin + ',.5)'; ctx.beginPath(); ctx.moveTo(xm, YT - 2); ctx.lineTo(xm, Y + h); ctx.stroke();
     }
     if (o.agc && (!cs || cs.length !== len + 1)) cs = new Float64Array(len + 1);
+    var base = [];
     for (s = 0; s < nn; s++) {
-      var tr = idx ? idx[s] : s, y0 = many ? Y + sp * (s + 0.5) : Y + h / 2, x2, y2;
+      var tr = idx ? idx[s] : s, y0 = many ? YT + sp * (s + 0.5) : YT + hT / 2, x2, y2, hiT = many && o.hi != null && o.hi >= 0 && tr === o.hi;
+      base.push([tr, y0]);
       if (o.agc) { for (k = 0; k < len; k++) { var ov = rec.get(tr, k, comp); cs[k + 1] = cs[k] + ov * ov; } }
       var gain = function (k) { if (!o.agc) return amp; var lo = Math.max(0, k - half), hi = Math.min(len, k + half), r = Math.sqrt((cs[hi] - cs[lo]) / (hi - lo)); return lvl / Math.max(r, floor); };
-      if (many && o.codes !== false && (sp >= 11 || s % 2 === 0)) { L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(rec.pts[tr].code || '', X, y0); }
+      if (many && o.codes !== false && (sp >= 11 || s % 2 === 0 || hiT)) { L.font(ctx, 10); ctx.fillStyle = hiT ? pal.sub : pal.label; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(rec.pts[tr].code || '', X, y0); }
+      if (many && o.rowText && (sp >= 11 || s % 2 === 0)) { L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText(o.rowText(tr), X + w, y0); }
       if (!many) { ctx.strokeStyle = pal.grid; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(X + left, Math.round(y0) + 0.5); ctx.lineTo(X + left + ww, Math.round(y0) + 0.5); ctx.stroke(); }
       if (o.fill !== false) {                                                /* variable-area fill of the positive half, also for a single trace */
         ctx.beginPath(); ctx.moveTo(X + left, y0);
@@ -365,11 +446,33 @@
         ctx.lineTo(X + left + ww, y0); ctx.closePath(); ctx.fillStyle = o.fillStyle || pal.fill;
         if (!many) ctx.globalAlpha = 0.7; ctx.fill(); ctx.globalAlpha = 1;
       }
-      ctx.strokeStyle = o.stroke || pal.trace; ctx.lineWidth = many ? 1 : 1.6; ctx.lineJoin = 'round'; ctx.beginPath();
+      ctx.strokeStyle = hiT ? L.rgba(pal.pos, 1) : (o.stroke || pal.trace); ctx.lineWidth = hiT ? 1.4 : (many ? 1 : 1.6); ctx.lineJoin = 'round'; ctx.beginPath();
       for (k = 0; k < len; k += stride) { v = rec.get(tr, k, comp) * gain(k); x2 = X + left + k / (len - 1) * ww; y2 = y0 - Math.max(-clip, Math.min(clip, v)); if (k) ctx.lineTo(x2, y2); else ctx.moveTo(x2, y2); }
       ctx.stroke();
+      if (!many && o.pen !== false) {                                        /* the pen: the newest sample */
+        var vl = rec.get(tr, len - 1, comp) * gain(len - 1);
+        ctx.beginPath(); ctx.arc(X + left + ww, y0 - Math.max(-clip, Math.min(clip, vl)), 3, 0, 6.2832); ctx.fillStyle = L.rgba(pal.pos, 1); ctx.fill();
+      }
     }
-    return { x: X + left, w: ww, y: Y, h: h };                                /* the trace area, for the time axis */
+    if (o.pred) {                                                            /* predicted arrivals: dashed, in the P colour, drawn over the traces */
+      ctx.setLineDash([4, 3]); ctx.lineWidth = 1; ctx.strokeStyle = L.rgba(pal.pos, 0.9);
+      if (many) {
+        ctx.beginPath(); var pen = false;
+        base.forEach(function (b) { var pn = o.pred(b[0]); if (pn == null || o.now - pn < 0 || o.now - pn > len) { pen = false; return; } var xp = xOf(o.now - pn); if (pen) ctx.lineTo(xp, b[1]); else ctx.moveTo(xp, b[1]); pen = true; });
+        ctx.stroke(); ctx.setLineDash([]);
+      } else {
+        var pn1 = o.pred(base[0][0]);
+        if (pn1 != null && o.now - pn1 >= 0 && o.now - pn1 <= len) {
+          var xp1 = Math.round(xOf(o.now - pn1)) + 0.5;
+          ctx.beginPath(); ctx.moveTo(xp1, YT - 2); ctx.lineTo(xp1, Y + h); ctx.stroke(); ctx.setLineDash([]);
+          L.laneText(ctx, 'predicted arrival', xp1, Y + 2, X + left + ww, L.rgba(pal.pos, 0.95), 4);
+        }
+        ctx.setLineDash([]);
+      }
+    }
+    mk.forEach(function (q2) { L.star(ctx, q2[0], Y + 7, 4.5, pal.neg, q2[1] ? 0.95 : 0.5); if (q2[1]) L.laneText(ctx, 'origin time', q2[0], Y + 2, X + left + ww, 'rgba(' + pal.origin + ',.95)', 9, 80); });
+    if (o.link) L.sec = { y: YT, sp: sp, nn: nn, idx: idx };
+    return { x: X + left, w: ww, y: YT, h: hT, sp: sp };                     /* the trace area, for the time axis */
   };
   /* diverging colour for signed values in −1…1 (the wavefield's own pos/neg colours over the panel background) */
   L.div = function (v) {
@@ -381,18 +484,43 @@
     var pal = L.pal, b = pal.pn || pal.bg, c = dv < 0 ? pal.slow : pal.fast, a = Math.min(1, Math.abs(dv) / (span || 0.25)); a = Math.pow(a, 0.85) * 0.92;
     return [b[0] + (c[0] - b[0]) * a, b[1] + (c[1] - b[1]) * a, b[2] + (c[2] - b[2]) * a];
   };
-  L.colorbar = function (ctx, x, y, w, h, fn, lo, hi, title) {
+  /* colour bar: end numbers in the number role (words = true: in the axis-title role), the centre title in the axis-title role */
+  L.colorbar = function (ctx, x, y, w, h, fn, lo, hi, title, words) {
     for (var i = 0; i < w; i++) { var c = fn(-1 + 2 * i / (w - 1)); ctx.fillStyle = 'rgb(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ')'; ctx.fillRect(x + i, y, 1.5, h); }
     ctx.lineWidth = 1; ctx.strokeStyle = L.pal.tick; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-    L.font(ctx, 10); ctx.fillStyle = L.pal.label; ctx.textBaseline = 'top';
-    ctx.textAlign = 'left'; ctx.fillText(lo, x, y + h + 3); ctx.textAlign = 'right'; ctx.fillText(hi, x + w, y + h + 3);
-    if (title) { ctx.textAlign = 'center'; ctx.fillText(title, x + w / 2, y + h + 3); }
+    if (words) L.axisTitle(ctx); else L.num(ctx);
+    ctx.textBaseline = 'top'; ctx.textAlign = 'left'; ctx.fillText(lo, x, y + h + 3); ctx.textAlign = 'right'; ctx.fillText(hi, x + w, y + h + 3);
+    if (title) { L.axisTitle(ctx); ctx.textAlign = 'center'; ctx.fillText(title, x + w / 2, y + h + 3); }
+  };
+  /* apparent-velocity protractor: three lines with the same horizontal run Hx; the faster the velocity, the steeper (more upright) the line.
+     Returns its box, or null when it would be too small. bottom = the axis line it must not cover */
+  L.slopeFan = function (ctx, x, y, pxPerSec, pxPerKm, maxW, bottom) {
+    var D = 44, Hx = D * pxPerSec / (3.5 * pxPerKm);
+    if (Hx > maxW) { D = 30; Hx = D * pxPerSec / (3.5 * pxPerKm); }
+    if (!(Hx >= 24)) return null;
+    var pal = L.pal, V = [1.5, 2.5, 3.5], labs = ['1.5', '2.5', '3.5 km/s'], k, drop = function (v) { return v * Hx / pxPerSec * pxPerKm; };
+    L.num(ctx); var lw = labs.map(function (t) { return ctx.measureText(t).width; });
+    L.axisTitle(ctx); var tw = ctx.measureText('apparent velocity').width;
+    var bx1 = Math.max(x + tw, x + Hx + 4 + Math.max.apply(null, lw)), by0 = y - 6 - 11, by1 = y + drop(3.5) + 6;
+    var r0 = { x0: x - 6, y0: by0 - 6, x1: bx1 + 6, y1: by1 + 6 };
+    ctx.fillStyle = L.rgba(pal.pn, 0.92); ctx.beginPath();
+    var bh = Math.min(r0.y1, bottom != null ? bottom - 1 : 1e9) - r0.y0;
+    if (ctx.roundRect) ctx.roundRect(r0.x0 + 0.5, r0.y0 + 0.5, r0.x1 - r0.x0, bh, 6); else ctx.rect(r0.x0 + 0.5, r0.y0 + 0.5, r0.x1 - r0.x0, bh);
+    ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.stroke();
+    ctx.lineWidth = 1; ctx.strokeStyle = pal.label; ctx.beginPath();
+    for (k = 0; k < 3; k++) { ctx.moveTo(x, y); ctx.lineTo(x + Hx, y + drop(V[k])); }
+    ctx.stroke();
+    L.num(ctx); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    for (k = 0; k < 3; k++) ctx.fillText(labs[k], x + Hx + 4, y + drop(V[k]));
+    L.axisTitle(ctx); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText('apparent velocity', x, y - 6);
+    return r0;
   };
   function drawData() {
     var w = dcv.clientWidth, h = dcv.clientHeight, d = Math.min(2, window.devicePixelRatio || 1);
     if (!w || !h) return;
     if (dcv.width !== Math.round(w * d) || dcv.height !== Math.round(h * d)) { dcv.width = Math.round(w * d); dcv.height = Math.round(h * d); }
     dctx.setTransform(d, 0, 0, d, 0, 0); dctx.clearRect(0, 0, w, h);
+    L.sec = null;
     var ch = L.CH[S.ch]; if (ch.data) ch.data(dctx, w, h);
   }
   L.setData = function (title, ctl) { $('dataTitle').innerHTML = title; if (ctl != null) $('dataCtl').innerHTML = ctl; };
@@ -420,19 +548,51 @@
     else { if (cb.hidden) cb.hidden = false; if (cb.textContent !== c.label) cb.textContent = c.label; cb.disabled = !!c.disabled; cb.dataset.act = c.act; cb.dataset.val = c.val == null ? '' : c.val; }
     var p = ch.progress ? ch.progress() : null;
     progEl.style.width = p == null ? '0' : (Math.max(0, Math.min(1, p)) * 100).toFixed(1) + '%';
+    var cap = ch.cap ? ch.cap() : '', kp = ch.kpi ? ch.kpi() : '';               /* the data panel's "how to read" and its key numbers */
+    if (cap !== lastCap) { capEl.innerHTML = cap; capEl.title = capEl.textContent; lastCap = cap; }
+    if (kp !== lastKpi) {
+      kpiEl.innerHTML = kp; lastKpi = kp;
+      var nk = kpiEl.children.length;
+      if (nk !== lastKpiN) { if (nk && !reduceMotion) { kpiEl.classList.remove('in'); void kpiEl.offsetWidth; kpiEl.classList.add('in'); } lastKpiN = nk; }   /* flash only when a number appears */
+    }
+    var lk = !!(typeof ch.lineKey === 'function' ? ch.lineKey() : ch.lineKey); if (keyEl.hidden === lk) keyEl.hidden = !lk;
   }
+  var lastCap = null, lastKpi = null, lastKpiN = 0;
+  kpiEl.addEventListener('animationend', function () { kpiEl.classList.remove('in'); });
+  /* legend: the quantity first, then its colours; marks drawn as the same glyphs as on the canvas */
   L.legendAcoustic = function () {
-    return '<span><i class="sw" style="background:var(--cyan)"></i>p &gt; 0</span><span><i class="sw" style="background:var(--coral)"></i>p &lt; 0</span>' + L.legendVel();
+    return '<span class="lg"><em>pressure</em><i class="sw" style="background:var(--coral)"></i>−<i class="sw" style="background:var(--cyan)"></i>+</span>' + L.legendVel();
   };
-  L.legendVel = function () { return '<span class="vramp" title="Velocity model under the waves: slower than v = 1 to faster">slow<i></i>fast</span>'; };
-  L.updateLegend = function () { var ch = L.CH[S.ch]; legendEl.innerHTML = ch.legend ? ch.legend() : L.legendAcoustic(); fitLegend(); };
-  /* the legend stays on one line: drop trailing items (the least important ones) while it does not fit */
-  function fitLegend() {
-    var it = legendEl.children, n = it.length, k, tot = 0, cw = legendEl.clientWidth, gap = parseFloat(getComputedStyle(legendEl).columnGap) || 0;
-    for (k = 0; k < n; k++) it[k].style.display = '';
-    if (!cw) return;
-    for (k = 0; k < n; k++) tot += it[k].offsetWidth + (k ? gap : 0);
-    for (k = n - 1; k > 0 && tot > cw + 0.5; k--) { tot -= it[k].offsetWidth + gap; it[k].style.display = 'none'; }
+  L.legendVel = function (name) {
+    return '<span class="lg vkey" title="Velocity model under the waves. The colour saturates 40 % below and above the background velocity of 2.5 km/s."><em>' + (name || 'velocity') + '</em><b>1.5</b><i></i><b>3.5 km/s</b></span>';
+  };
+  var GLYPH = { star: '<path d="M6 .8l1.5 3.3 3.6.4-2.7 2.4.8 3.5L6 8.6 2.8 10.4l.8-3.5L.9 4.5l3.6-.4z" fill="var(--coral)"/>',
+    tri: '<path d="M1.5 2.5h9L6 10z" fill="currentColor"/>', sensor: '<path d="M1.5 2.5h9L6 10z" fill="var(--cyan)"/>',
+    ray: '<path d="M1 9.5 11 2.5" stroke="currentColor" stroke-width="1" opacity=".6"/>',
+    ring: '<circle cx="6" cy="6" r="4.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2 1.6"/>',
+    cross: '<path d="M2.5 2.5l7 7M9.5 2.5l-7 7" fill="none" stroke="currentColor" stroke-width="1.5"/>',
+    noise: '<circle cx="6" cy="6" r="3.6" fill="none" stroke="currentColor" stroke-width="1" opacity=".6"/>',
+    fibre: '<path d="M1 6h10" stroke="var(--cyan)" stroke-width="2"/><circle cx="6" cy="6" r="1.6" fill="currentColor"/>' };
+  L.glyph = function (name) { return '<svg viewBox="0 0 12 12" aria-hidden="true">' + (GLYPH[name] || '') + '</svg>'; };
+  L.updateLegend = function () { var ch = L.CH[S.ch]; legendEl.innerHTML = ch.legend ? ch.legend() : L.legendAcoustic(); fitKey(); };
+  /* facts of the model under the field: size · boundary (only when it reflects) · background velocity · source frequency and wavelength */
+  L.facts = function () {
+    if (!L.eng) return;
+    var ch = L.CH[S.ch], id = ch.id, el = ch.physics === 'elastic', f = (id === 'play' || id === 'arrays' || id === 'elastic') ? L.eng.fHz * S.fmul : L.eng.fHz;
+    var B = { free: 'free surface on top', box: 'reflecting box' }[L.bc];
+    factsEl.innerHTML = '<span title="Size of the model">' + L.KM + ' × ' + L.fmt(L.km(L.ny), 1) + ' km</span>' + (B ? '<span title="Boundary condition">' + B + '</span>' : '') +
+      '<span title="Background velocity (v = 1)">' + (el ? 'V<sub>P</sub> 2.5 · V<sub>S</sub> 1.44 km/s' : 'v₀ 2.5 km/s') + '</span>' +
+      '<span title="Peak frequency of the source wavelet and its wavelength at the background velocity">f₀ ' + (id === 'noise' ? '≈ ' : '') + L.fmt(f, 1) + ' Hz · λ' + (el ? '<sub>P</sub>' : '') + ' ' + L.fmt(2.5 / f, 2) + ' km</span>';
+    fitKey();
+  };
+  /* the figure key stays on one line: hide whole trailing facts first, then trailing legend items (the first one always stays) */
+  function fitKey() {
+    var lg = legendEl, fa = factsEl, k;
+    [].forEach.call(lg.children, function (e) { e.style.display = ''; }); [].forEach.call(fa.children, function (e) { e.style.display = ''; });
+    if (!fkeyEl.clientWidth) return;
+    var over = function () { return lg.offsetWidth + fa.offsetWidth + 16 > fkeyEl.clientWidth; };
+    for (k = fa.children.length - 1; k >= 0 && over(); k--) fa.children[k].style.display = 'none';
+    for (k = lg.children.length - 1; k > 0 && over(); k--) lg.children[k].style.display = 'none';
   }
   var tt = 0;
   L.toast = function (s, ms) { toastEl.textContent = s; toastEl.classList.add('on'); clearTimeout(tt); tt = setTimeout(function () { toastEl.classList.remove('on'); }, ms || 2600); };
@@ -553,17 +713,19 @@
   function download(blob, name) { var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
   function exportPNG() {
     var ch = L.CH[S.ch]; renderField();                                     /* draw now: the WebGL buffer is only valid within this task */
-    var w = L.W, h = L.H, dh = dcv.clientHeight, cap = 46, sc = 2, c = document.createElement('canvas'), x = c.getContext('2d');
-    c.width = Math.round(w * sc); c.height = Math.round((h + dh + 30 + cap) * sc); x.scale(sc, sc);
+    var w = L.W, h = L.H, dh = dcv.clientHeight, head = 44, cap = 46, sc = 2, c = document.createElement('canvas'), x = c.getContext('2d');
+    c.width = Math.round(w * sc); c.height = Math.round((h + dh + head + cap) * sc); x.scale(sc, sc);
     var css = getComputedStyle(root);
-    x.fillStyle = css.getPropertyValue('--bg').trim() || '#070a12'; x.fillRect(0, 0, w, h + dh + 30 + cap);
+    x.fillStyle = css.getPropertyValue('--bg').trim() || '#070a12'; x.fillRect(0, 0, w, h + dh + head + cap);
     x.imageSmoothingEnabled = true; x.drawImage(L.eng.canvas, 0, 0, w, h); x.drawImage(ovc, 0, 0, w, h);
-    x.fillStyle = css.getPropertyValue('--bg2').trim() || '#0b1019'; x.fillRect(0, h, w, dh + 30);
-    x.fillStyle = css.getPropertyValue('--ink2').trim(); x.font = '500 10px "JetBrains Mono", monospace'; x.textBaseline = 'top'; x.textAlign = 'left';
-    x.fillText($('dataTitle').textContent.toUpperCase(), 16, h + 10); x.drawImage(dcv, 0, h + 30, w, dh);
-    x.fillStyle = css.getPropertyValue('--ink').trim(); x.font = '700 15px "Space Grotesk", sans-serif'; x.fillText('Wave Lab · ' + ch.title, 16, h + dh + 40);
+    x.fillStyle = css.getPropertyValue('--bg2').trim() || '#0b1019'; x.fillRect(0, h, w, dh + head);
+    x.fillStyle = css.getPropertyValue('--ink2').trim(); x.font = '600 12px "Inter", sans-serif'; x.textBaseline = 'top'; x.textAlign = 'left';
+    x.fillText($('dataTitle').textContent, 16, h + 9);
+    x.fillStyle = css.getPropertyValue('--muted').trim(); x.font = '400 11px "Inter", sans-serif'; x.fillText(capEl.textContent, 16, h + 26);
+    x.drawImage(dcv, 0, h + head, w, dh);
+    x.fillStyle = css.getPropertyValue('--ink').trim(); x.font = '700 15px "Space Grotesk", sans-serif'; x.fillText('Wave Lab · ' + ch.title, 16, h + dh + head + 10);
     x.fillStyle = css.getPropertyValue('--muted').trim(); x.font = '400 10px "JetBrains Mono", monospace';
-    x.fillText(new Date().toISOString().slice(0, 16).replace('T', ' ') + ' · ' + (L.eng.backend === 'gpu' ? 'GPU' : 'CPU') + ' ' + L.nx + ' × ' + L.ny + ' · t = ' + L.fmt(L.eng.n / L.rate, 2) + ' s · wangyuhan2002.github.io', 16, h + dh + 60);
+    x.fillText(new Date().toISOString().slice(0, 16).replace('T', ' ') + ' · ' + (L.eng.backend === 'gpu' ? 'GPU' : 'CPU') + ' ' + L.nx + ' × ' + L.ny + ' · t = ' + L.fmt(L.eng.n / L.rate, 2) + ' s · ' + [].map.call(factsEl.children, function (e) { return e.textContent; }).join(' · ') + ' · wangyuhan2002.github.io', 16, h + dh + head + 30);
     c.toBlob(function (b) { if (b) { download(b, 'wave-lab_' + ch.id + '_' + stamp8() + '.png'); L.toast('Snapshot saved'); } }, 'image/png');
   }
   function exportCSV() {
@@ -671,7 +833,7 @@
       var r = view.getBoundingClientRect();
       if (Math.abs(r.width - lastW) > 60 || Math.abs(r.height - lastH) > 120) { lastW = r.width; lastH = r.height; saveCh(); L.build(); L.refresh(); }
       else { L.W = r.width; L.H = r.height; sizeOverlay(); }
-      fitLegend();
+      fitKey();
     }, 250);
   });
   L.start = function () {

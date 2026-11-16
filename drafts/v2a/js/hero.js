@@ -153,7 +153,7 @@
     var sc = model.scat, rs = Math.max(2.4, 1.6 * res / nx * W), k;
     for (k = 0; k < sc.length; k++) { octx.beginPath(); octx.arc(sx(sc[k][0]), sy(sc[k][1]), rs, 0, 6.2832); octx.fillStyle = rgba(pal.ink, 0.9); octx.fill(); octx.lineWidth = 1; octx.strokeStyle = rgba(pal.edge || pal.ink, 0.6); octx.stroke(); }
     var many = stations.length > 1, arrays = netKind === 'line' || netKind === 'ring', s0 = many ? 5 : 6.5;
-    octx.font = '600 10.5px "JetBrains Mono", monospace'; octx.textAlign = 'center'; octx.lineJoin = 'round'; octx.miterLimit = 2;
+    octx.font = '500 10.5px "JetBrains Mono", monospace'; octx.textAlign = 'center'; octx.lineJoin = 'round'; octx.miterLimit = 2;
     for (k = 0; k < stations.length; k++) {
       var st = stations[k], X = sx(st.x), Y = Math.max(13, sy(st.y)), active = drag && drag.kind === 'station' && drag.k === k;
       tri(X, Y, active ? s0 * 1.3 : s0, active ? 1 : 0.96, active ? pal.pos : null);
@@ -186,27 +186,27 @@
     for (s = 0; s < n; s++) { var bf = stations[s].buf; for (k = 0; k < TR; k++) { var a = bf[k] < 0 ? -bf[k] : bf[k]; if (a > m) m = a; } }
     peak = Math.max(0.08, m, peak * 0.995);
     var ks = traceStep(), rows = Math.ceil(n / ks);                                /* traces drawn: every ks-th station */
-    var left = many ? 42 : 0, top = many ? 4 : 2, bot = many ? 4 : 2, ww = w - left, sp = (h - top - bot) / rows;
-    var amp = (many ? 0.95 * sp : (h / 2 - 4)) / peak, clip = many ? 1.4 * sp : h / 2 - 2, sec = Math.round(rate), st, xt;
+    var lane = 14, left = many ? 42 : 0, top = lane + (many ? 2 : 0), bot = many ? 4 : 2, ww = w - left - (many ? 0 : 4), sp = (h - top - bot) / rows;   /* lane: origin-time band on top; room for the pen */
+    var yc = top + (h - top - bot) / 2, amp = (many ? 0.95 * sp : ((h - top - bot) / 2 - 3)) / peak, clip = many ? 1.4 * sp : yc - 2, sec = Math.round(rate), st, xt;
     tctx.lineWidth = 1; tctx.strokeStyle = pal.grid; tctx.beginPath();            /* a grid line every second, and short ticks at the bottom */
-    for (st = step - (step % sec); st > step - TR; st -= sec) { xt = Math.round(left + ww - (step - st) / TR * ww) + 0.5; tctx.moveTo(xt, 0); tctx.lineTo(xt, h - 5); }
+    for (st = step - (step % sec); st > step - TR; st -= sec) { xt = Math.round(left + ww - (step - st) / TR * ww) + 0.5; tctx.moveTo(xt, lane); tctx.lineTo(xt, h - 5); }
     tctx.stroke(); tctx.strokeStyle = pal.tick; tctx.beginPath();
     for (st = step - (step % sec); st > step - TR; st -= sec) { xt = Math.round(left + ww - (step - st) / TR * ww) + 0.5; tctx.moveTo(xt, h - 5); tctx.lineTo(xt, h); }
     tctx.stroke();
-    if (!many) { tctx.strokeStyle = pal.grid; tctx.beginPath(); tctx.moveTo(0, Math.round(h / 2) + 0.5); tctx.lineTo(w, Math.round(h / 2) + 0.5); tctx.stroke(); }
-    tctx.font = '500 10px "JetBrains Mono", monospace'; tctx.textBaseline = 'top';
+    if (!many) { tctx.strokeStyle = pal.grid; tctx.beginPath(); tctx.moveTo(0, Math.round(yc) + 0.5); tctx.lineTo(w, Math.round(yc) + 0.5); tctx.stroke(); }
+    var mk = [];                                                                   /* origin times: a faint solid line now, the star and label after the traces */
     for (var qq = 0; qq < marks.length; qq++) {
-      var age = step - marks[qq]; if (age > TR) continue; var xm = left + ww - age / TR * ww;
-      tctx.strokeStyle = 'rgba(' + pal.origin + ',.8)'; tctx.setLineDash([2, 3]); tctx.beginPath(); tctx.moveTo(xm, 1); tctx.lineTo(xm, h - 1); tctx.stroke(); tctx.setLineDash([]);
-      if (qq === marks.length - 1) { tctx.fillStyle = 'rgba(' + pal.origin + ',.95)'; tctx.textAlign = 'left'; tctx.fillText('origin', xm + 4, 1); }
+      var age = step - marks[qq]; if (age > TR || age < 0) continue; var xm = Math.round(left + ww - age / TR * ww) + 0.5;
+      tctx.lineWidth = 1; tctx.strokeStyle = 'rgba(' + pal.origin + ',.5)'; tctx.beginPath(); tctx.moveTo(xm, lane - 2); tctx.lineTo(xm, h); tctx.stroke();
+      mk.push([xm, qq === marks.length - 1]);
     }
     var stride = Math.max(1, Math.floor(TR / Math.max(1, ww)));
-    var half = Math.round(rate * 0.25), floor = 0.02 * peak, lvl = many ? 0.45 * sp : 0.35 * h;
+    var half = Math.round(rate * 0.25), floor = 0.02 * peak, lvl = many ? 0.45 * sp : 0.35 * (h - top - bot), v, gain;
     if (agc && (!cs || cs.length !== TR + 1)) cs = new Float64Array(TR + 1);
     for (s = 0; s < n; s += ks) {
-      var row = s / ks, y0 = many ? top + sp * (row + 0.5) : h / 2, buf = stations[s].buf, x2, y2, v;
+      var row = s / ks, y0 = many ? top + sp * (row + 0.5) : yc, buf = stations[s].buf, x2, y2;
       if (agc) { for (k = 0; k < TR; k++) { var o = buf[(head + k) % TR]; cs[k + 1] = cs[k] + o * o; } }
-      var gain = function (k) { if (!agc) return amp; var lo = Math.max(0, k - half), hi = Math.min(TR, k + half), r = Math.sqrt((cs[hi] - cs[lo]) / (hi - lo)); return lvl / Math.max(r, floor); };
+      gain = function (k) { if (!agc) return amp; var lo = Math.max(0, k - half), hi = Math.min(TR, k + half), r = Math.sqrt((cs[hi] - cs[lo]) / (hi - lo)); return lvl / Math.max(r, floor); };
       if (many && (sp >= 11 || row % 2 === 0)) { tctx.font = '500 10px "JetBrains Mono", monospace'; tctx.fillStyle = pal.label; tctx.textAlign = 'left'; tctx.textBaseline = 'middle'; tctx.fillText(stations[s].code, 0, y0); tctx.textBaseline = 'top'; }
       tctx.beginPath(); tctx.moveTo(left, y0);                                     /* variable-area fill of the positive half, also for one trace */
       for (k = 0; k < TR; k += stride) { v = buf[(head + k) % TR] * gain(k); x2 = left + k / (TR - 1) * ww; tctx.lineTo(x2, y0 - Math.max(0, Math.min(clip, v))); }
@@ -215,6 +215,25 @@
       for (k = 0; k < TR; k += stride) { v = buf[(head + k) % TR] * gain(k); x2 = left + k / (TR - 1) * ww; y2 = y0 - Math.max(-clip, Math.min(clip, v)); if (k) tctx.lineTo(x2, y2); else tctx.moveTo(x2, y2); }
       tctx.stroke();
     }
+    if (!many) {                                                                   /* the pen of the recorder: the newest sample */
+      v = stations[0].buf[(head + TR - 1) % TR] * gain(TR - 1);
+      tctx.beginPath(); tctx.arc(left + ww, yc - Math.max(-clip, Math.min(clip, v)), 3, 0, 6.2832); tctx.fillStyle = rgba(pal.pos, 1); tctx.fill();
+    }
+    mk.forEach(function (q) {
+      tstar(q[0], 7, 4.5, q[1] ? 0.95 : 0.5);
+      if (!q[1]) return;
+      tctx.font = '500 10.5px "Inter", system-ui, sans-serif'; tctx.textBaseline = 'top'; tctx.textAlign = 'left';
+      var s = 'origin time', tw = tctx.measureText(s).width, x0 = q[0] + 80 > left + ww ? q[0] - 9 - tw : q[0] + 9;
+      tctx.fillStyle = rgba(pal.pn, 0.85); tctx.fillRect(x0 - 2, 1, tw + 4, 14);
+      tctx.fillStyle = 'rgba(' + pal.origin + ',.95)'; tctx.fillText(s, x0, 2);
+    });
+  }
+  /* the source star of the record strip: a crisp halo outline under the fill */
+  function tstar(x, y, r, alpha) {
+    tctx.beginPath();
+    for (var k = 0; k < 10; k++) { var a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * 0.45 : r; tctx.lineTo(x + rr * Math.cos(a), y + rr * Math.sin(a)); }
+    tctx.closePath(); tctx.lineJoin = 'round'; tctx.lineWidth = 1.5; tctx.strokeStyle = pal.halo; tctx.globalAlpha = alpha; tctx.stroke(); tctx.globalAlpha = 1;
+    tctx.fillStyle = rgba(pal.neg, alpha); tctx.fill();
   }
 
   /* ---------------- pointer interaction ---------------- */
@@ -297,7 +316,7 @@
       '<p class="pop-more">More models, arrays, fibre-optic cables, time reversal, tomography and elastic waves: <a href="lab/">the Wave Lab →</a></p>';
     else if (name === 'info') h += '<div class="pop-info">' +
       '<p><b>Equation.</b> The 2-D constant-density acoustic wave equation <code>∂²p/∂t² = c(x, z)² ∇²p</code>. p is pressure, so only P waves exist here: no S or surface waves (those are in the Wave Lab\'s elastic experiment). Cyan is compression (p &gt; 0), coral is rarefaction (p &lt; 0).</p>' +
-      '<p><b>Velocity model.</b> Always drawn under the waves: red is slower than the background velocity (v &lt; 1), blue is faster, and thin lines mark sharp interfaces. Recovering this structure from recorded waves is what <b>seismic tomography</b> does.</p>' +
+      '<p><b>Velocity model.</b> Always drawn under the waves: berry pink is slower than the background velocity (v &lt; 1), cobalt blue is faster, and thin lines mark sharp interfaces. Recovering this structure from recorded waves is what <b>seismic tomography</b> does.</p>' +
       '<p><b>Source.</b> Each click adds an acoustic point source to the pressure field: a Ricker wavelet (the second derivative of a Gaussian) with a peak frequency of ' + eng.fHz.toFixed(1) + ' Hz, spread over a 5 × 5-cell Gaussian footprint. The magnitude only scales its amplitude.</p>' +
       '<p><b>Receivers.</b> Each station samples p(t) at its position every time step (bilinear interpolation); the strip below shows the last 6 s. Place stations one by one, or as a line or ring array.</p>' +
       '<p><b>Numerics.</b> Second-order finite differences (leapfrog in time, 5-point Laplacian) on a ' + nx + ' × ' + ny + ' grid, computed live ' + (eng.backend === 'gpu' ? 'on your GPU (WebGL2, 32-bit float textures)' : 'on your CPU') + '. Courant number c·Δt/Δx ≤ 0.69 &lt; 1/√2, about ' + Math.round(eng.ppw) + ' grid points per dominant wavelength.</p>' +
