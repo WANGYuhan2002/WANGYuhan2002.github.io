@@ -385,6 +385,17 @@
     L.annot(ctx, col); ctx.textAlign = 'left'; ctx.fillText(s, x0, y);
     return { x: x0, w: w };
   };
+  /* several labels in one lane, laid out from the right: each sits right of its line when it ends before the next label
+     (or the right edge), otherwise left of its line. items: [{ x, s, col, off }] */
+  L.laneLabels = function (ctx, items, y, right) {
+    var lim = right;
+    items.slice().sort(function (a, b) { return b.x - a.x; }).forEach(function (it) {
+      var off = it.off == null ? 9 : it.off; L.annot(ctx, it.col);
+      var w = ctx.measureText(it.s).width, r = it.x + off + w <= lim;
+      L.laneText(ctx, it.s, it.x, y, r ? Infinity : -Infinity, it.col, off);
+      lim = Math.min(lim, (r ? it.x + off : it.x - off - w) - 6);
+    });
+  };
   L.placeholder = function (ctx, x, y, s) { L.axisTitle(ctx); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(s, x, y); };
   /* time axis of a rolling window: a grid line every second through the trace area (from gridTop) and the "now" line at the right
      edge, 4-px ticks, labels relative to now */
@@ -465,12 +476,14 @@
         if (pn1 != null && o.now - pn1 >= 0 && o.now - pn1 <= len) {
           var xp1 = Math.round(xOf(o.now - pn1)) + 0.5;
           ctx.beginPath(); ctx.moveTo(xp1, YT - 2); ctx.lineTo(xp1, Y + h); ctx.stroke(); ctx.setLineDash([]);
-          L.laneText(ctx, 'predicted arrival', xp1, Y + 2, X + left + ww, L.rgba(pal.pos, 0.95), 4);
+          var predLab = { x: xp1, s: 'predicted arrival', col: L.rgba(pal.pos, 0.95), off: 4 };
         }
         ctx.setLineDash([]);
       }
     }
-    mk.forEach(function (q2) { L.star(ctx, q2[0], Y + 7, 4.5, pal.neg, q2[1] ? 0.95 : 0.5); if (q2[1]) L.laneText(ctx, 'origin time', q2[0], Y + 2, X + left + ww, 'rgba(' + pal.origin + ',.95)', 9, 80); });
+    var labs = predLab ? [predLab] : [];
+    mk.forEach(function (q2) { L.star(ctx, q2[0], Y + 7, 4.5, pal.neg, q2[1] ? 0.95 : 0.5); if (q2[1]) labs.push({ x: q2[0], s: 'origin time', col: 'rgba(' + pal.origin + ',.95)', off: 9 }); });
+    L.laneLabels(ctx, labs, Y + 2, X + left + ww);
     if (o.link) L.sec = { y: YT, sp: sp, nn: nn, idx: idx };
     return { x: X + left, w: ww, y: YT, h: hT, sp: sp };                     /* the trace area, for the time axis */
   };

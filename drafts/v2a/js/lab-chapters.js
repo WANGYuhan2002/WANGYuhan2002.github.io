@@ -176,7 +176,8 @@
         o.pred = function (tr) { return predArrival(m, rec.pts[tr]); };
         if (n > 1) { o.order = d.map(function (_, i) { return i; }).sort(function (a, b) { return d[a] - d[b]; }); o.right = 46; o.rowText = function (tr) { return L.fmt(L.km(d[tr]), 1) + ' km'; }; }
       }
-      var wS = n === 1 && w >= 640 ? 180 : 0;                                  /* one station: its amplitude spectrum on the right */
+      L.fontS(ctx, 11, 600);                                                   /* one station: its amplitude spectrum on the right, wide enough for its title */
+      var wS = n === 1 && w >= 640 ? Math.max(180, Math.ceil(ctx.measureText('Amplitude spectrum against frequency').width) + 2) : 0;
       var g = L.drawSection(ctx, 14, 4, w - 28 - (wS ? wS + 24 : 0), h - 24, rec, o);
       L.timeAxis(ctx, g.x, h - 20, g.w, 4, rec.len, L.eng.n, g.y);
       if (wS) spectrum(ctx, w - 14 - wS, 4, wS, h - 38, rec, L.eng.fHz * (m ? m.fm || 1 : S.fmul));
@@ -1402,10 +1403,12 @@
           L.annot(ctx, pal.sub); var tw = ctx.measureText(t).width, tx = Math.max(XT, Math.min(right - tw, (X.P + X.S) / 2 - tw / 2));
           ctx.fillStyle = L.rgba(pal.pn || pal.bg, 0.85); ctx.fillRect(tx - 3, yb - 16, tw + 6, 13); L.annot(ctx, pal.sub); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText(t, tx, yb - 3);
         }
-        /* lane labels, each kept clear of the next line */
-        if (X.origin != null) { L.star(ctx, X.origin, 4 + 7, 4.5, pal.neg, 0.95); L.laneText(ctx, 'origin time', X.origin, 6, Math.min(right, X.P != null ? X.P - 2 : right), 'rgba(' + pal.origin + ',.95)', 9, 80); }
-        if (X.P != null) L.laneText(ctx, 'predicted P', X.P, 6, Math.min(right, X.S != null ? X.S - 2 : right), L.rgba(pal.pos, 0.95), 4);
-        if (X.S != null) L.laneText(ctx, 'predicted S', X.S, 6, right, L.rgba(pal.sw, 0.95), 4);
+        /* lane labels: right of their line where they fit, otherwise left of it, never on top of each other */
+        var labs = [];
+        if (X.origin != null) { L.star(ctx, X.origin, 4 + 7, 4.5, pal.neg, 0.95); labs.push({ x: X.origin, s: 'origin time', col: 'rgba(' + pal.origin + ',.95)', off: 9 }); }
+        if (X.P != null) labs.push({ x: X.P, s: 'predicted P', col: L.rgba(pal.pos, 0.95), off: 4 });
+        if (X.S != null) labs.push({ x: X.S, s: 'predicted S', col: L.rgba(pal.sw, 0.95), off: 4 });
+        L.laneLabels(ctx, labs, 6, right);
       }
       L.timeAxis(ctx, XT, h - 20, WT, 4, rec.len, L.eng.n, 4 + lane);
       if (!hw) return;
