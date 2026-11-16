@@ -86,7 +86,7 @@ L.fontS = function (ctx, px, w) { ctx.font = (w || 400) + ' ' + px + 'px "Inter"
 | 含义 | 画法 |
 |---|---|
 | 记录、拾取、测得的峰 | 实线；实心符号 |
-| 模型预测（到时、聚焦时刻、±t_AB、√N 曲线、f₀） | 虚线 `setLineDash([4,3])`，线宽 1，震相色（P = `pal.pos`，S = `pal.sw`） |
+| 模型预测（到时、聚焦时刻、±t_AB、√N 曲线、f₀） | 虚线 `setLineDash([4,3])`，线宽 1，震相色（P = `pal.pos`，S = `pal.sw`）。唯一的例外：画在彩色图像上的预测线（DAS 瀑布图）用 `rgba(ink,.9)`，见 5.4 |
 | 震源 / 发震时刻 | 珊瑚色 `pal.neg`：波场上是实心星，数据图上是同一颗星 + 1px 实线 `rgba(origin,.5)` |
 | 坐标轴 | 1px `pal.axis`；刻度 4px；网格 `pal.grid` |
 
@@ -392,7 +392,7 @@ for (k = 0; k < nr; k++) { res0[k] = b[k] / L.rate * 1000; res1[k] = (b[k] - Ax[
 |---|---|---|---|
 | tr | x、z 半高宽的平均，`0.41 λ` | `focal spot width, FWHM of p² · theory for a perfect ring: 0.36 λ` | 原有四行 `kv` 不变；结论句按 6.5 改 |
 | tomo | `r = 0.96` | `correlation between the recovered and the true model` | `kv` 之前加一组对比条：`<div class="bar2"><i style="--w:100%"></i><em>255 ms · uniform start</em><i class="on" style="--w:16%"></i><em>42 ms · recovered</em></div>`，第二条宽度 = `rmsPost / rmsPre`；`kv` 里删去两行残差和 `Correlation with the truth`（它已经是大数字），只留 `Picked rays` 与 `Straight rays alone` 两行；结论句不变 |
-| noise（新卡，`<div class="res" id="nRes">`，标题 `Interferometry`） | `vEst()` 不为空：`2.52 km/s`；否则 `SNR 2.1` | 前者：`velocity between A and B from the peak lag · true 2.50 km/s`；后者：`not above the noise yet: keep stacking` | `kv`：`Windows stacked` `40 (120 s of noise)`；`Predicted t_AB` `0.96 s`；`Measured lag`（有值时）`+0.95 s · −0.96 s`；`Signal-to-noise ratio` `5.5` |
+| noise（新卡，`<div class="res" id="nRes">`，标题 `Interferometry`） | `vEst()` 不为空：`2.52 km/s`；否则 `SNR 2.1` | 前者：`velocity between A and B from the peak lag · true 2.50 km/s`；后者：`not above the noise yet: keep stacking` | `kv`：`Windows stacked` `40 (120 s of noise)`；`Predicted t<sub>AB</sub>` `0.96 s`；`Measured lag`（有值时）`+0.95 s · −0.96 s`；`Signal-to-noise ratio` `5.5` |
 | elastic（第 2 步的 `#spLive`，不是 `.res`） | `3.6 km` | `distance from the predicted S − P time · check that P and S arrive on the dashed lines` | `kv` 改为三行：`S − P time, predicted` `1.06 s`；`× V_P / (√3 − 1)` `3.42 km/s`；`Mean V_P on the path` `2.50 km/s` |
 
 结果卡第一次出现时（时间反演 `finish()` 之后、层析勘测完成并反演之后），在 `L.refresh()` 之后调用一次 `insp.querySelector('.res').scrollIntoView({ block: 'nearest', behavior: L.reduceMotion ? 'auto' : 'smooth' })`。同一次运行只滚一次。
@@ -489,7 +489,7 @@ L.legendVel = function (name) {
 
 ## 9. 可执行改动清单
 
-实现顺序建议：先做 P0-1 至 P0-4（地基），再按章节做其余各条。每条做完都应不影响现有回归测试。
+实现顺序建议：先做 P0-1 至 P0-4（地基），再按章节做其余各条。每条做完都应不影响现有回归测试。样张的 `design/mocks/r2-mock.js` 与 `r2-mock.css` 里有各张图和各段样式的一份参考写法，可以对照着看；两者不一致时以本规格为准。
 
 ### P0（14 条）
 
@@ -530,7 +530,7 @@ L.legendVel = function (name) {
 | P2-1 | `LH` 手机端媒体查询 | 第 7 节 |
 | P2-2 | `LH` `.kpi` | 第 7 节的 `kpi-in` 动效 |
 | P2-3 | `LJ` `exportPNG()` | 导出的 PNG 里，数据图标题改用 Inter 600 12px 原大小写，其下加一行 `#dataCap` 的文字（Inter 400 11px，`--muted`），底部信息行末尾加上 `#facts` 的文本 |
-| P2-4 | `LC` play 的 `data()`（仅单台、`w ≥ 640`） | 右侧 180px 加一张 `Amplitude spectrum` 小图：对 6 s 记录加 Hann 窗，在 0 到 3·f₀ 之间取 48 个频点做 DFT，每 15 帧算一次；实线 `pal.trace` 加 `pal.fill` 面积；在 f₀ 处画一条预测虚线 `rgba(pos,.9)`，下方写 `f₀`；横轴写 `0`、`3 f₀`，右端写 `frequency` |
+| P2-4 | `LC` play 的 `data()`（仅单台、`w ≥ 640`） | 右侧 180px 加一张 `Amplitude spectrum` 小图：对 6 s 记录加 Hann 窗，在 0 到 3·f₀ 之间取 48 个频点做 DFT，每 15 帧算一次；实线 `pal.trace` 加 `pal.fill` 面积；在 f₀ 处画一条预测虚线 `rgba(pos,.9)`；横轴刻度数字 `0`、`f₀`、`3 f₀`；小图标题写全 `Amplitude spectrum against frequency`（不另放轴标题，见 5.2） |
 | P2-5 | `LC` elastic 的 `data()` | 质点运动图下方加一行读数：取最近 1.2 s 的 (X, Z)，协方差矩阵两个特征值 `l1 ≥ l2`，`1 − l2/l1 ≥ 0.9` 写 `linear · body wave (P or S)`；否则按带符号面积 `Σ(xᵢ·zᵢ₊₁ − xᵢ₊₁·zᵢ)` 的正负和震源在台站哪一侧，写 `elliptical · retrograde (Rayleigh)` 或 `elliptical · prograde`；振幅低于峰值 6 % 时不写 |
 
 实现后请用 `design/shots-r2.js` 同参数重拍到 `design/shots-r2-after/`，并回传：`play-section`、`arrays-seis`、`arrays-das`、`tr-focus`、`tomo-done`、`noise-late`、`elastic-ps` 的暗 / 亮整页图与数据面板 2 倍图。
