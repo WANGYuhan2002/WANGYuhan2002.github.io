@@ -16,10 +16,10 @@ A curated set: every picture of `design/shots-r2/` (the state before), the pictu
 - `arrays-seis-dark.png` — 16-station surface line array (default); click centre, +3.5 s sim | hud: t = 4.7 s | cta: Repeat the last quake | t=4.73 s
 - `arrays-seis-light-data@2x.png` — data panel @2x: 16-station surface line array (default); click centre, +3.5 s sim | hud: t = 4.6 s | cta: Repeat the last quake | t=4.62 s
 - `arrays-seis-light.png` — 16-station surface line array (default); click centre, +3.5 s sim | hud: t = 4.7 s | cta: Repeat the last quake | t=4.67 s
-- `elastic-ps-dark-data@2x.png` — data panel @2x: deep source below the station (75% y); tp 1.97 s, ts 3.08 s, captured at +3.50 s | hud: t = 4.8 s | cta: (hidden) | t=4.85 s
-- `elastic-ps-dark.png` — deep source below the station (75% y); tp 1.97 s, ts 3.08 s, captured at +3.49 s | hud: t = 4.7 s | cta: (hidden) | t=4.66 s
-- `elastic-ps-light-data@2x.png` — data panel @2x: deep source below the station (75% y); tp 1.97 s, ts 3.08 s, captured at +3.50 s | hud: t = 4.8 s | cta: (hidden) | t=4.78 s
-- `elastic-ps-light.png` — deep source below the station (75% y); tp 1.97 s, ts 3.08 s, captured at +3.49 s | hud: t = 5.0 s | cta: (hidden) | t=5.03 s
+- `elastic-ps-dark-data@2x.png` — data panel @2x: deep source below the station (75% y); tp 1.97 s, ts 3.08 s, captured at +3.50 s | hud: t = 4.8 s | cta: (hidden) | t=4.83 s
+- `elastic-ps-dark.png` — deep source below the station (75% y); tp 1.97 s, ts 3.08 s, captured at +3.49 s | hud: t = 5.1 s | cta: (hidden) | t=5.13 s
+- `elastic-ps-light-data@2x.png` — data panel @2x: deep source below the station (75% y); tp 1.97 s, ts 3.08 s, captured at +3.50 s | hud: t = 4.8 s | cta: (hidden) | t=4.85 s
+- `elastic-ps-light.png` — deep source below the station (75% y); tp 1.97 s, ts 3.08 s, captured at +3.50 s | hud: t = 5.1 s | cta: (hidden) | t=5.07 s
 - `elastic-rayleigh-dark-data@2x.png` — data panel @2x: click at 47.2% x / 3% y; source at cell 143,3 (snapped to depth 3), distance 2.5 km; +3.0 s sim (auto shallow shot at enter also present) | hud: t = 4.3 s | cta: (hidden) | t=4.28 s
 - `elastic-rayleigh-dark.png` — click at 47.2% x / 3% y; source at cell 143,3 (snapped to depth 3), distance 2.5 km; +3.0 s sim (auto shallow shot at enter also present) | hud: t = 4.3 s | cta: (hidden) | t=4.26 s
 - `home-arrival-dark.png` — home, click hero 62%/30% (element hit: canvas#fieldgl), +3.2 s real; solver gpu 544x340
@@ -77,15 +77,15 @@ A curated set: every picture of `design/shots-r2/` (the state before), the pictu
 - `text/tr-recorded.txt` — text dump of tr-recorded (dark)
 - `tomo-checker-dark-data@2x.png` — data panel @2x: checkerboard survey complete (checker truth, bent rays, 382 picks, r = 0.78) | hud: 382 rays | cta: Run the survey again | t=56.63 s
 - `tomo-checker-dark.png` — checkerboard survey complete (checker truth, bent rays, 382 picks, r = 0.78) | hud: 382 rays | cta: Run the survey again | t=56.58 s
-- `tomo-done-dark-data@2x.png` — data panel @2x: survey + inversion complete (bent rays, 382 picks, r = 0.96) | hud: 382 rays | cta: Run the survey again | t=56.05 s
-- `tomo-done-dark.png` — survey + inversion complete (bent rays, 382 picks, r = 0.96) | hud: 382 rays | cta: Run the survey again | t=55.9 s
-- `tomo-done-light-data@2x.png` — data panel @2x: survey + inversion complete (bent rays, 382 picks, r = 0.96) | hud: 382 rays | cta: Run the survey again | t=56.09 s
-- `tomo-done-light.png` — survey + inversion complete (bent rays, 382 picks, r = 0.96) | hud: 382 rays | cta: Run the survey again | t=56.09 s
-- `tr-focus-dark-data@2x.png` — data panel @2x: playback done, focusing image shown (err 0.00 λ, FWHM x 0.42 λ, z 0.40 λ) | hud: Focusing image | cta: ◀◀ Time-reverse | t=5.71 s
-- `tr-focus-dark-view@2x.png` — wave view @2x: playback done, focusing image shown (err 0.00 λ, FWHM x 0.42 λ, z 0.40 λ) | hud: Focusing image | cta: ◀◀ Time-reverse | t=5.71 s
-- `tr-focus-dark.png` — playback done, focusing image shown (err 0.00 λ, FWHM x 0.42 λ, z 0.40 λ) | hud: Focusing image | cta: ◀◀ Time-reverse | t=5.8 s
-- `tr-focus-light-data@2x.png` — data panel @2x: playback done, focusing image shown (err 0.00 λ, FWHM x 0.42 λ, z 0.40 λ) | hud: Focusing image | cta: ◀◀ Time-reverse | t=5.62 s
-- `tr-focus-light.png` — playback done, focusing image shown (err 0.00 λ, FWHM x 0.42 λ, z 0.40 λ) | hud: Focusing image | cta: ◀◀ Time-reverse | t=5.74 s
+- `tomo-done-dark-data@2x.png` — data panel @2x: survey + inversion complete (bent rays, 382 picks, r = 0.96) | hud: 382 rays | cta: Run the survey again | t=56.09 s
+- `tomo-done-dark.png` — survey + inversion complete (bent rays, 382 picks, r = 0.96) | hud: 382 rays | cta: Run the survey again | t=55.96 s
+- `tomo-done-light-data@2x.png` — data panel @2x: survey + inversion complete (bent rays, 382 picks, r = 0.96) | hud: 382 rays | cta: Run the survey again | t=55.98 s
+- `tomo-done-light.png` — survey + inversion complete (bent rays, 382 picks, r = 0.96) | hud: 382 rays | cta: Run the survey again | t=56.15 s
+- `tr-focus-dark-data@2x.png` — data panel @2x: playback done, focusing image shown (err 0.00 λ, FWHM x 0.42 λ, z 0.40 λ) | hud: Focusing image | cta: ◀◀ Time-reverse | t=5.76 s
+- `tr-focus-dark-view@2x.png` — wave view @2x: playback done, focusing image shown (err 0.00 λ, FWHM x 0.42 λ, z 0.40 λ) | hud: Focusing image | cta: ◀◀ Time-reverse | t=5.76 s
+- `tr-focus-dark.png` — playback done, focusing image shown (err 0.00 λ, FWHM x 0.42 λ, z 0.40 λ) | hud: Focusing image | cta: ◀◀ Time-reverse | t=5.98 s
+- `tr-focus-light-data@2x.png` — data panel @2x: playback done, focusing image shown (err 0.00 λ, FWHM x 0.42 λ, z 0.40 λ) | hud: Focusing image | cta: ◀◀ Time-reverse | t=5.73 s
+- `tr-focus-light.png` — playback done, focusing image shown (err 0.00 λ, FWHM x 0.42 λ, z 0.40 λ) | hud: Focusing image | cta: ◀◀ Time-reverse | t=5.85 s
 
 ## Scenario notes / failures
 

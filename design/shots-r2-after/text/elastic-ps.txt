@@ -2,7 +2,7 @@
 CPU · 304 × 156 · elastic P-SV
 
 ## #hud
-t = 4.8 s
+t = 5.3 s
 
 ## #legend
 P wave · |∇·v|

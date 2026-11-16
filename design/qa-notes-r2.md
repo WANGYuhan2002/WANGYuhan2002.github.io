@@ -109,3 +109,31 @@
 - **Q3 · 时间反演 `true source` 标签。**
   - 现状：标签在左上 25px。震源靠近圆环时会压到环上的传感器三角（`tr-focus` 里可见），有光晕，仍可读。
   - 问题：靠近环时要不要改放右上？
+
+---
+
+## 设计 QA 结论与修改（提交 `1507386`）
+
+- **结论**：§8 的 11 条全部通过，五处偏离全部确认。下面 6 条照你的原文实现，按你的意思不再复审。
+- **修改**：
+  1. **Q1，选 (b)**：焦斑放大图上面那根横条改用 x、z 两向平均，长度是 `(wx + wy) / 2`，文字写 `FWHM 0.41 λ`，与标题区、结果卡一致。
+  2. **Q2，选 (a)**：只有同时满足下面两条时才写顺 / 逆进：
+     - 最后一次震源是浅源，即 `r.y <= 0.07 · L.ny`；
+     - `age` 落在 `[tR, tR + 1.2]` 里，其中 `tR = n0s + tpOnly · √3 / 0.9194`。
+     - 其余情况：直线度 ≥ 0.9 写 `linear · body wave (P or S)`，否则只写 `elliptical`。
+     - 补充说明：即使在这个窗口里，直线度 ≥ 0.9 时也写 `linear`，以免给直线运动标上 elliptical。
+  3. **Q3**：两个标签放在朝向波场中心的一侧，`dir = X < L.sx(L.nx / 2) ? 1 : −1`；引线、文字位置和对齐方式照你的原文。线阵镜和空腔用同一规则。
+  4. **层析残差图**：
+     - 绘图区顶边离标题 16 → 20 px；
+     - 两端取 50 的整数倍：默认模型的下端从 `−175` 变为 `−200`。
+  5. **结果卡**：`.res-big` 加 `padding-bottom:10px` 和 1px 细线，`margin` 改为 `0 0 12px`。
+  6. **手机**：`.data{height:auto}`，`#datac{flex:none; height:200px}`。`lab-phone-tomo` 里三张图下面的色标和刻度字已完整显示。
+- **重拍**：`tr-focus-*`、`tomo-done-*`、`elastic-ps-*` 和两张手机图。你点名的 `tr-focus-dark`、`elastic-ps-dark-data@2x`、`lab-phone-tomo` 都在里面。
+- **复核**：
+  - 偏振新规则：
+    - 浅源在台站左侧时，依次读到 `linear` → `elliptical` → 进窗后 `elliptical · retrograde (Rayleigh)` → 出窗后 `elliptical` → `linear`；
+    - 浅源在右侧时，依次读到 `linear` → `retrograde` → `elliptical`；
+    - 正下方深源只读到 `linear`；
+    - `elastic-ps` 现在写 `elliptical`。
+  - 页面报错：主页 + 6 个实验 × 暗 / 亮 × CPU / GPU，0 报错。
+- **知悉**：`home-arrival-*` 里没有发震标记，原因是无头 GPU 跑不动，看门狗重建了网格，已知且无需处理。
