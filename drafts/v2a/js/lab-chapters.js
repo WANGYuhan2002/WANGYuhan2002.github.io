@@ -603,7 +603,7 @@
       return L.legendAcoustic() + '<span>' + L.glyph('sensor') + 'mirror sensors</span>';
     },
     overlay: function (ctx) {
-      var pal = L.pal;
+      var pal = L.pal, sx0 = this.src ? L.sx(this.src[0]) : (this.img ? L.sx(this.img.x) : 0), dir = sx0 < L.sx(L.nx / 2) ? 1 : -1;   /* labels face the centre */
       stations(ctx, this.pts, { labels: false, alpha: 0.9, col: pal.pos });
       if (this.st.mirror === 'ring') { ctx.setLineDash([3, 4]); ctx.strokeStyle = L.rgba(pal.pos, 0.35); ctx.beginPath(); ctx.arc(L.sx(L.nx / 2), L.sy(L.ny / 2), this.R / L.nx * L.W, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]); }
       if (this.src && this.phase !== 'idle') {
@@ -611,15 +611,15 @@
         if (this.phase === 'record' && this.k < this.n0 * 2) L.star(ctx, X, Y, 8, pal.neg, 0.95);
         ctx.beginPath(); ctx.arc(X, Y, 9, 0, 6.2832); ctx.lineWidth = 1.5; ctx.strokeStyle = L.rgba(pal.ink, 0.85); ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]);
         if (this.phase === 'done') {                                           /* labels on leader lines, off the focal spot */
-          ctx.lineWidth = 1; ctx.strokeStyle = L.rgba(pal.ink, 0.6); ctx.beginPath(); ctx.moveTo(X - 7, Y - 7); ctx.lineTo(X - 22, Y - 22); ctx.stroke();
-          L.label(ctx, 'true source', X - 25, Y - 24, 'right');
+          ctx.lineWidth = 1; ctx.strokeStyle = L.rgba(pal.ink, 0.6); ctx.beginPath(); ctx.moveTo(X + 7 * dir, Y - 7); ctx.lineTo(X + 22 * dir, Y - 22); ctx.stroke();
+          L.label(ctx, 'true source', X + 25 * dir, Y - 24, dir > 0 ? 'left' : 'right');
         } else if (this.phase !== 'reverse') L.label(ctx, 'true source', X, Y - 14);
       }
       if (this.img && this.phase === 'done') {
         var fx = L.sx(this.img.x), fy = L.sy(this.img.y);
         ctx.strokeStyle = L.rgba(pal.ink, 0.95); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(fx - 6, fy - 6); ctx.lineTo(fx + 6, fy + 6); ctx.moveTo(fx + 6, fy - 6); ctx.lineTo(fx - 6, fy + 6); ctx.stroke();
-        ctx.lineWidth = 1; ctx.strokeStyle = L.rgba(pal.ink, 0.6); ctx.beginPath(); ctx.moveTo(fx + 7, fy + 7); ctx.lineTo(fx + 22, fy + 22); ctx.stroke();
-        L.label(ctx, 'focus', fx + 25, fy + 30, 'left');
+        ctx.lineWidth = 1; ctx.strokeStyle = L.rgba(pal.ink, 0.6); ctx.beginPath(); ctx.moveTo(fx + 7 * dir, fy + 7); ctx.lineTo(fx + 22 * dir, fy + 22); ctx.stroke();
+        L.label(ctx, 'focus', fx + 25 * dir, fy + 30, dir > 0 ? 'left' : 'right');
       }
     },
     lineKey: function () { return this.phase === 'reverse' || this.phase === 'done'; },
@@ -699,7 +699,7 @@
         ctx.lineWidth = 2; ctx.strokeStyle = col; ctx.beginPath(); ctx.moveTo(xi + 8, y); ctx.lineTo(xi + 8 + len, y); ctx.moveTo(xi + 8, y - 3); ctx.lineTo(xi + 8, y + 3); ctx.moveTo(xi + 8 + len, y - 3); ctx.lineTo(xi + 8 + len, y + 3); ctx.stroke();
         L.font(ctx, 10); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 3; ctx.strokeStyle = L.rgba(b, 0.85); ctx.strokeText(txt, xi + 14 + len, y); ctx.fillStyle = col; ctx.fillText(txt, xi + 14 + len, y);
       };
-      bar(y0 + S - 24, r.wx * cpx, L.rgba(pal.ink, 0.95), 'FWHM ' + L.fmt(r.wx / r.lam, 2) + ' λ');
+      bar(y0 + S - 24, (r.wx + r.wy) / 2 * cpx, L.rgba(pal.ink, 0.95), 'FWHM ' + L.fmt((r.wx + r.wy) / 2 / r.lam, 2) + ' λ');   /* mean of x and z, as in the header */
       bar(y0 + S - 10, 0.36 * r.lam * cpx, pal.label, 'theory 0.36 λ');
     },
     csv: function () {
@@ -1003,7 +1003,7 @@
       if (narrow) return;
       L.colorbar(ctx, x0 + 2 * (mw + 12), y0 + mh + 8, mw, 6, function (t) { return cov((t + 1) / 2); }, 'few rays', 'many', null, true);
       /* travel-time residuals against source–receiver distance: before (colour) and after (grey) the inversion */
-      var ty = y0 + mh + 34, px0 = x0 + 44, px1 = x0 + wR, py0 = ty + 16, py1 = h - 18;
+      var ty = y0 + mh + 34, px0 = x0 + 44, px1 = x0 + wR, py0 = ty + 20, py1 = h - 18;
       L.panelLabel(ctx, 'Travel-time residuals against distance · before (colour) and after (grey) the inversion', x0, ty, null, wR);
       var R0 = this.invStraight && this.invStraight.res0, R1 = inv && inv.res1, rays = this.rays;
       if (R0 && R0.length > rays.length) R0 = null;                              /* residuals of an earlier survey */
@@ -1011,7 +1011,7 @@
       else {
         var mxp = 0, mxn = 0, dmax = 0;
         for (k = 0; k < R0.length; k++) { mxp = Math.max(mxp, R0[k]); mxn = Math.max(mxn, -R0[k]); dmax = Math.max(dmax, L.km(rays[k].d)); }
-        var hi0 = Math.max(50, Math.ceil(mxp / 50) * 50), lo0 = Math.max(50, Math.ceil(mxn / 50) * 50), hi = Math.max(hi0, lo0 / 4), lo = Math.max(lo0, hi0 / 4), xmax = Math.max(2, Math.ceil(dmax));
+        var hi0 = Math.max(50, Math.ceil(mxp / 50) * 50), lo0 = Math.max(50, Math.ceil(mxn / 50) * 50), hi = Math.max(hi0, Math.ceil(lo0 / 4 / 50) * 50), lo = Math.max(lo0, Math.ceil(hi0 / 4 / 50) * 50), xmax = Math.max(2, Math.ceil(dmax));
         var X = function (dkm) { return px0 + dkm / xmax * (px1 - px0); }, Y = function (ms) { return py0 + (hi - ms) / (hi + lo) * (py1 - py0); };
         ctx.lineWidth = 1; ctx.strokeStyle = pal.grid; ctx.beginPath(); ctx.moveTo(px0, Math.round(Y(hi / 2)) + 0.5); ctx.lineTo(px1, Math.round(Y(hi / 2)) + 0.5); ctx.stroke();
         ctx.strokeStyle = pal.axis; ctx.beginPath(); ctx.moveTo(px0, Math.round(Y(0)) + 0.5); ctx.lineTo(px1, Math.round(Y(0)) + 0.5); ctx.moveTo(px0, py1 + 0.5); ctx.lineTo(px1, py1 + 0.5); ctx.stroke();
@@ -1435,7 +1435,9 @@
         mx /= n; mzz /= n;
         for (i = i0; i < rec.len; i++) { var dx = rec.get(0, i, 1) - mx, dz = rec.get(0, i, 0) - mzz; cxx += dx * dx; czz += dz * dz; cxz += dx * dz; if (i > i0) area += rec.get(0, i - 1, 1) * rec.get(0, i, 0) - rec.get(0, i, 1) * rec.get(0, i - 1, 0); }
         var tr2 = (cxx + czz) / 2, dd = Math.sqrt(Math.pow((cxx - czz) / 2, 2) + cxz * cxz), l1 = tr2 + dd, l2 = tr2 - dd;
-        var dir = this.sta[0].x >= r.x ? 1 : -1, txt = 1 - l2 / Math.max(1e-30, l1) >= 0.9 ? 'linear · body wave (P or S)' : (area * dir > 0 ? 'elliptical · retrograde (Rayleigh)' : 'elliptical · prograde');
+        var lin = 1 - l2 / Math.max(1e-30, l1) >= 0.9, n0s = Math.round(1.2 / L.eng.f0) / L.rate, tR = n0s + (r.tp - n0s) * Math.sqrt(3) / 0.9194, age = (L.eng.n - r.n) / L.rate;
+        var surf = r.y <= 0.07 * L.ny && age >= tR && age <= tR + 1.2;         /* the Rayleigh wave (0.9194 V_S for λ = μ) of the last, shallow source is passing */
+        var dir = this.sta[0].x >= r.x ? 1 : -1, txt = lin ? 'linear · body wave (P or S)' : (surf ? (area * dir > 0 ? 'elliptical · retrograde (Rayleigh)' : 'elliptical · prograde') : 'elliptical');
         L.axisTitle(ctx); ctx.fillStyle = pal.sub; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText(txt, x0, y0 + S2 + 5);
       }
     },
