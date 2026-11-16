@@ -3,7 +3,7 @@
 - 第一轮规格：`design/v2a-aesthetic-spec.md`（已实现并合并进 `main`）。本文件是第二轮，只做设计。
 - 代码基线：`main` @ `eb3b8d3`。文件记号：`LH` = `drafts/v2a/lab/index.html`，`LJ` = `js/lab.js`，`LC` = `js/lab-chapters.js`，`E` = `js/wave-engine.js`，`H` = `drafts/v2a/index.html`，`HJ` = `js/hero.js`。
 - 现状截图：`design/shots-r2/`（1440×900 暗 / 亮；`*@2x.png` 是数据面板与波场的 2 倍局部；`text/*.txt` 是各状态下的全部界面文字；清单见 `INDEX.md`）。
-- 视觉样张：`design/mocks/r2-lab-tomo.html`（整页：层析做完后的样子）与 `design/mocks/r2-panels.html`（各数据图与说明栏片段），截图在同目录 `r2-*.png`。样张是静态的，画面是程序化示意，不是求解器；它们由 Opus 子代理只读本规格做出来，用来检验规格能否照着执行。
+- 视觉样张：`design/mocks/r2-lab-tomo.html`（整页：层析做完后的样子）与 `design/mocks/r2-panels.html`（各数据图与说明栏片段），截图在同目录 `r2-*.png`；`r2-fig1…5-compare.png` 是“现状 / 样张”并排、带编号标注的对比图（由 `r2-compare.html` 生成）。样张是静态的，画面是程序化示意，不是求解器；它们由 Opus 子代理只读本规格做出来，用来检验规格能否照着执行，前后做了三遍，每一遍暴露出的缺口和标注碰撞都已改回本规格。
 - 边界：求解器、数值方法、拾取与反演算法、现有交互一律不变。本轮只新增“输出”：标注、坐标、图例、读数、统计图，以及措辞。凡是新算出来的量都只读已有状态，不回写。
 
 ---
@@ -24,6 +24,7 @@
 | D10 | **噪声实验停在“看到了峰”**，没有把峰的位置变成一个量（台间速度），也看不到“叠得越多越清楚”的规律；下方那张图的说明是一句行话。 | `noise-late-dark-data@2x.png` | 缺“测量”和“统计规律”两步。 |
 | D11 | **步骤是清单，不是流程**。看不出哪步是布置、哪步是观测、哪步是处理、哪步是解释；弹性波第 2 步的公式被两行折叠截断。 | `elastic-ps-dark.png` 右栏 | 实验的逻辑链不可见。 |
 | D12 | 弹性波的 “S − P → 距离” 用的是**预测**到时，却没有说明，读起来像循环论证。 | `text/elastic-ps.txt` | 需要说清“这是预测值”，并在图上把它画出来。 |
+| D13 | 时间反演的**两把尺不是同一个量**。页面量的是 p² 的半高宽（实测 0.40–0.42 λ），却拿它和“约 λ/2 的衍射极限”相比；λ/2 是压力振幅 J₀(kr) 的半高宽（0.48 λ），同一个理想焦斑按 p² 量是 0.36 λ。 | `text/tr-focus.txt` | 读数比“极限”还小，看起来像突破了衍射极限。必须用同一口径的参考值。 |
 
 保留的部分：波场本身的光感、卡片版面、选中语言、暗 / 亮两套配色，全部不动。
 
@@ -78,6 +79,8 @@ L.fontS = function (ctx, px, w) { ctx.font = (w || 400) + ' ' + px + 'px "Inter"
 
 **等宽字一律不超过 500**（600 没有加载）。
 
+小图标题不得超出自己那张小图的宽度：`L.panelLabel(ctx, s, x, y, col, maxW)` 新增第 6 个参数，传了 `maxW` 且 `ctx.measureText(s).width > maxW` 时，从末尾起逐段去掉 `' · …'`，直到放得下。所有小图标题都把小图宽度作为 `maxW` 传入。
+
 ### 3.4 线型与符号（全站统一）
 
 | 含义 | 画法 |
@@ -121,7 +124,7 @@ L.fontS = function (ctx, px, w) { ctx.font = (w || 400) + ' ' + px + 'px "Inter"
 | 尺寸 | `10 × 5.5 km`（`L.KM` × `L.fmt(L.km(L.ny), 1)`） | `Size of the model` |
 | 边界 | `free` → `free surface on top`；`box` → `reflecting box`；`absorb` 时不输出这一项（和 5.1 一致：只有会反射的边界才标出来） | `Boundary condition` |
 | 背景速度 | 声波 `v₀ 2.5 km/s`；弹性 `V<sub>P</sub> 2.5 · V<sub>S</sub> 1.44 km/s` | `Background velocity (v = 1)` |
-| 震源 | `f₀ 7.6 Hz · λ 0.33 km`（`f = L.eng.fHz * S.fmul`，`λ = 2.5 / f` km） | `Peak frequency of the source wavelet and its wavelength at the background velocity` |
+| 震源 | `f₀ 7.6 Hz · λ 0.33 km`，`λ = 2.5 / f` km。`f` 的取法：play、arrays、elastic 用 `L.eng.fHz * S.fmul`（地震工具可以改主频）；tr、tomo 用 `L.eng.fHz`（它们的震源主频固定）；noise 也用 `L.eng.fHz`，但写成 `f₀ ≈ 7.6 Hz`（噪声源主频有 ±30 % 的随机变化）。弹性波章节把 `λ` 写成 `λ<sub>P</sub>` | `Peak frequency of the source wavelet and its wavelength at the background velocity` |
 
 ### 4.2 数据面板标题区：标题 + 关键数字 + 一句“怎么读”
 
@@ -154,7 +157,8 @@ L.fontS = function (ctx, px, w) { ctx.font = (w || 400) + ' ' + px + 'px "Inter"
 .lkey{flex:none; display:inline-flex; align-items:center; gap:6px; font:400 11.5px var(--sans); color:var(--muted); white-space:nowrap}
 .lkey[hidden]{display:none}
 .lkey i{display:inline-block; width:16px; height:0; border-top:1.5px solid var(--ink2)}
-.lkey i.pre{border-top:1.5px dashed var(--cyan); margin-left:6px}
+.lkey i.pre{border-top:1.5px dashed var(--ink2); margin-left:6px}      /* 只表示线型：预测线的颜色随震相而变（P 青、S 琥珀、DAS 上是白） */
+.data-cap svg{width:12px; height:12px; vertical-align:-1.5px}
 ```
 
 `LJ`：章节对象新增三个可选成员 `cap()`（返回 HTML，内容全部是本规格给出的固定文案）、`kpi()`（返回 HTML）、`lineKey`（布尔）。在 `hud()` 里每帧取值，和上一次不同才写 DOM（照 `lastHud` 的写法）：`#dataCap` 与 `#dataKpi` 用 `innerHTML`，并把 `#dataCap` 的 `textContent` 写进它的 `title`（被省略号截断时悬停可读全文）；`#dataKey.hidden = !ch.lineKey`。文案见 6.1 与 6.2。
@@ -185,7 +189,7 @@ L.fontS = function (ctx, px, w) { ctx.font = (w || 400) + ' ' + px + 'px "Inter"
 
 按这个顺序画：散射体 → **反射边界** → 震源标记 → 章节叠加层 → **比例尺** → 笔刷光标。
 
-- **比例尺**（所有章节）：`pxkm = L.W / L.KM`；`km = pxkm >= 70 ? 1 : 2`；左下角 `x = 14, y = L.H − 14`。折线 `(x, y−5) → (x, y) → (x + km·pxkm, y) → (x + km·pxkm, y−5)`，先 `pal.halo` 3.5px 描边，再 `rgba(ink,.9)` 1.5px。右侧 6px 处写 `1 km` / `2 km`，用“台站码”字体角色。
+- **比例尺**（所有章节）：`pxkm = L.W / L.KM`；`km = pxkm >= 70 ? 1 : 2`；左下角 `x = 14, y = L.H − 14`。折线 `(x, y−5) → (x, y) → (x + km·pxkm, y) → (x + km·pxkm, y−5)`，先 `pal.halo` 3.5px 描边，再 `rgba(ink,.9)` 1.5px。在 `(x + km·pxkm + 6, y − 2)` 处写 `1 km` / `2 km`（`textAlign 'left'`、`textBaseline 'middle'`），用“台站码”字体角色。
 - **反射边界**：`var B = L.BC[L.bc] || L.bc`；凡 `B.top === false`（或 bottom / left / right）的边，沿该边内侧 1px 处画一条 2px `rgba(ink,.5)` 的线。吸收边不画。（自由表面和反射箱由此可见。）
 - **震源标记留到记录滚出窗口**：现在星形 2.5 s 后淡出，而数据图里的发震时刻线要 6 s 才滚出。淡出之后、且 `L.eng.n − m.n < L.TR` 期间，在原处画一颗空心星：半径 6，`pal.halo` 3.5px 描边垫底，`rgba(neg,.85)` 1.5px 描边，不填充。`L.star` 增加一个 `hollow` 参数实现。`ch.noMarks` 的章节照旧不画。
 - **`L.label(ctx, s, x, y, align, col, mono)`**：新增第 7 个参数；`mono` 为真用“台站码”角色，否则用“文字标签”角色。`stations()` 里传 `true`，其余调用不传。
@@ -227,7 +231,7 @@ L.fontS = function (ctx, px, w) { ctx.font = (w || 400) + ' ' + px + 'px "Inter"
 地震计：
 
 - `pred` 同 5.3。线阵时 `right: 46`，`rowText` = 沿阵列到第一个台的距离（km，一位小数）；环阵不传。`link: true`。
-- **视速度量角器**（仅线阵，新函数 `L.slopeFan(ctx, x, y, pxPerSec, pxPerKm)`）：三条从同一顶点 `(x, y)` 向右下的参考线，分别对应 1.5、2.5、3.5 km/s，**水平跨度相同、下降高度不同**。`Hx = 44 · pxPerSec / (3.5 · pxPerKm)`；速度为 `v` 的那条线的终点是 `(x + Hx, y + v · Hx / pxPerSec · pxPerKm)`，所以 3.5 km/s 那条正好下降 44px：越快越陡，和“越竖越快”的读法一致。线宽 1，`pal.label`。三条线的终点右侧 4px 处用数字角色写 `1.5`、`2.5`、`3.5 km/s`（竖直方向各差约 12px，不会相叠）；顶点上方 6px 处用坐标轴标题角色写 `apparent velocity`。先在外接矩形（含文字，四周各扩 6px）下垫一块 `rgba(pn,.82)`、圆角 6 的底。顶点放在 `(g.x + 12, g.y + g.h − 62)`，底块不得盖住底边轴线。`Hx > 0.3 · g.w` 时把 44 换成 30 重算；`Hx < 24` 时不画。`pxPerSec = g.w / 6`；`pxPerKm = g.sp / 台间距(km)`。
+- **视速度量角器**（仅线阵，新函数 `L.slopeFan(ctx, x, y, pxPerSec, pxPerKm)`）：三条从同一顶点 `(x, y)` 向右下的参考线，分别对应 1.5、2.5、3.5 km/s，**水平跨度相同、下降高度不同**。`Hx = 44 · pxPerSec / (3.5 · pxPerKm)`；速度为 `v` 的那条线的终点是 `(x + Hx, y + v · Hx / pxPerSec · pxPerKm)`，所以 3.5 km/s 那条正好下降 44px：越快越陡，和“越竖越快”的读法一致。线宽 1，`pal.label`。三条线的终点右侧 4px 处用数字角色写 `1.5`、`2.5`、`3.5 km/s`（竖直方向各差约 12px，不会相叠）；顶点上方 6px 处用坐标轴标题角色写 `apparent velocity`。先在外接矩形（含文字，四周各扩 6px）下垫一块 `rgba(pn,.92)`、圆角 6、带 1px `pal.tick` 描边的底：它是一块有边框的小图例，不是把记录擦掉了一块。顶点放在 `(g.x + 12, g.y + g.h − 62)`，底块不得盖住底边轴线。`Hx > 0.3 · g.w` 时把 44 换成 30 重算；`Hx < 24` 时不画。`pxPerSec = g.w / 6`；`pxPerKm = g.sp / 台间距(km)`。
 
 DAS：
 
@@ -248,11 +252,13 @@ DAS：
 
 数据面板（`data()`，`w ≥ 640`）：
 
-- 录制 / 已录制：整宽的记录图；底部刻度每 0.5 s 一个，数字 `0`、`0.5`、`1.0`…，最后一个数字带单位（`1.5 s`）；轴下居中的那句改用坐标轴标题角色，写 `recording time`。回放与完成阶段的左栏画同样的刻度，居中那句写 `recording time, played right to left`。
+- 记录图（各阶段都一样）：上方加小图标题，录制 / 已录制阶段写 `Recordings at the mirror`，回放 / 完成阶段写 `Recordings · re-emitted last sample first`；第一道从 `y = 18` 开始（原来是 4），`sp = (H − 14) / show.length`。底部刻度每 0.5 s 一个，数字 `0`、`0.5`、`1.0`…，最后一个数字带单位（`1.5 s`）；轴下不再写居中的那句话（它会和刻度数字相撞，意思已经在标题里）。
+- 录制 / 已录制：记录图占整宽。
 - 回放 / 完成：三栏。
   - 左栏宽 `wl = round(w · (this.img ? 0.56 : 0.68))`，画记录与回放指针（现状）。
   - 中栏：标题 `Pressure² at the source`；预测聚焦时刻的竖线改为虚线 `[4,3]` `rgba(pos,.9)`，下方文字 `predicted focus`（标注角色，`rgba(pos,.95)`，以虚线为中心，超出绘图区时贴边）；曲线仍用 `pal.hot` 实线。有 `this.img` 时中栏宽 `round(w · 0.20)`，否则占满余下宽度。
-  - 右栏（仅有 `this.img` 时）：**焦斑放大图**。`finish()` 里多存一块裁剪：`R = max(5, round(lam))`（焦点四周各一个波长），`this.img.crop` = 以焦点为中心 `(2R+1)²` 格的 `mx / best`（越界填 0），`this.img.R = R`。画法：正方形左上角 `(xi, 18)`，边长 `S = min(w − 14 − xi, H − 14)`，`xi` = 中栏右边 + 16，`S < 90` 时不画；每格颜色 = `pal.pn` 向 `pal.hot` 按 `t = pow(max(0, (a − .05)/.95), .75)` 混合；外框 `pal.tick`。标题 `Focal spot · ×N`，`N = round((S / (2R + 1)) / (L.W / L.nx))`，即相对波场上一格的屏幕大小放大了几倍。中心画 `✕`（焦点），真实震源按偏移画 6px 虚线圆。左下角叠两根横条，都从 `xi + 8` 起，分别位于正方形底边上方 24px 与 10px：上面一根长度 = x 方向半高宽，`rgba(ink,.95)` 2px 带端帽，右侧写 `FWHM 0.42 λ`；下面一根长度 = λ/2，`pal.label` 2px 带端帽，右侧写 `λ/2 limit`。两根横条一长一短，焦斑有没有做到衍射极限一眼可比。
+  - 右栏（仅有 `this.img` 时）：**焦斑放大图**。`finish()` 里多存一块裁剪：`R = max(5, round(lam))`（焦点四周各一个波长），`this.img.crop` = 以焦点为中心 `(2R+1)²` 格的 `mx / best`（越界填 0），`this.img.R = R`。画法：正方形左上角 `(xi, 18)`，边长 `S = min(w − 14 − xi, H − 14)`，`xi` = 中栏右边 + 16，`S < 90` 时不画；每格颜色 = `pal.pn` 向 `pal.hot` 按 `t = pow(max(0, (a − .05)/.95), .75)` 混合；外框 `pal.tick`。标题 `Focal spot · ×N`，`N = round((S / (2R + 1)) / (L.W / L.nx))`，即相对波场上一格的屏幕大小放大了几倍。中心画 `✕`（焦点），真实震源按偏移画 6px 虚线圆。左下角叠两根横条，都从 `xi + 8` 起，分别位于正方形底边上方 24px 与 10px：上面一根长度 = x 方向半高宽，`rgba(ink,.95)` 2px 带端帽，右侧写 `FWHM 0.42 λ`；下面一根长度 = 0.36 λ，`pal.label` 2px 带端帽，右侧写 `theory 0.36 λ`。两根横条一长一短，焦斑离理论值多远一眼可比。
+  - **参考值为什么是 0.36 λ**（D13）：完整圆环、单一频率时，时间反演的焦斑是 J₀(kr)。页面量的是 p² 的半高宽，即 J₀² 的半高宽：J₀(x) = 1/√2 → x = 1.126 → 2x / 2π = 0.36 λ。常说的“约 λ/2”是同一个焦斑按压力振幅量的宽度（J₀(x) = 1/2 → 0.48 λ）。本轮所有“实测对理论”的比较都用 0.36 λ，文字里两个数都交代（见 6.5）。
 - `lineKey`：回放与完成阶段为真。`kpi()`、`cap()`、结果卡见第 6 节。
 
 ### 5.6 Tomography（`LC`，`id: 'tomo'`）
@@ -275,7 +281,8 @@ for (k = 0; k < nr; k++) { res0[k] = b[k] / L.rate * 1000; res1[k] = (b[k] - Ax[
   - 色标二（第三张图正下方，宽 `mw`）：`pal.pn` 到“`pal.pn` 向 `pal.pos` 混 50 %”的渐变；左 `few rays`，右 `many`。
   - **走时残差图**（新）：标题 `Travel-time residuals against distance · before (colour) and after (grey) the inversion`，位于图底 + 34；绘图区 `x` 从 `x0 + 44` 到 `x0 + wR`，`y` 从标题下 16 到 `h − 18`。
     - 横轴：炮检距，0 到 `ceil(最大炮检距 km)`，每 2 km 一个刻度和数字，最后一个数字带单位（`8 km`）。
-    - 纵轴：`±Rm`，`Rm = max(50, ceil(max|res0| / 50) · 50)` ms；零线 `pal.axis`，`±Rm/2` 处 `pal.grid`；左侧数字 `+Rm ms`、`0`、`−Rm`。
+    - 纵轴上下不对称，各按数据取整：`hi0 = max(50, ceil(max(res0) / 50) · 50)`，`lo0 = max(50, ceil(max(−res0) / 50) · 50)`，`hi = max(hi0, lo0 / 4)`，`lo = max(lo0, hi0 / 4)`，范围 `−lo … +hi` ms（任一侧至少占另一侧的四分之一，零线的数字不会和端点数字相撞）。零线 `pal.axis`；左侧数字 `+800 ms`（顶）、`0`（零线）、`−200`（底）。
+    - 在 `main` 上实测（CPU 400 × 220，弯曲射线）供核对：默认随机模型 `res0` 为 −69 … +781 ms，均值 +215 ms，97 % 的拾取晚到（模型中部是一大块低速区），统一时移 τ 只有 28 ms；棋盘模型为 −196 … +108 ms，28 % 晚到。所以默认模型下几乎全是粉点、随距离向上散开，这是对的；棋盘模型下蓝粉各半。
     - 点：每条射线一个。反演前：半径 1.5，`res0 > 0`（到得晚，路径偏慢）用 `rgba(slow,.85)`，`res0 < 0` 用 `rgba(fast,.85)`；反演后：半径 1.2，`rgba(ink,.5)`，画在上层。
     - 没有反演结果时，绘图区中央写 `run the survey: every pick becomes a dot here`（占位提示角色）。
     - 勘测过程中每放完一炮就会重画，点会一批批长出来。
@@ -289,19 +296,20 @@ for (k = 0; k < nr; k++) { res0[k] = b[k] / L.rate * 1000; res1[k] = (b[k] - Ax[
 - `resetCC()` 里 `this.snrH = []`；`window()` 里 `this.nWin++` 之后 `this.snrH.push(this.snr())`（最多保留 400 个）。
 - `peak(sign)`：在 `±t_AB` 附近 `±0.2 s` 内找叠加曲线的最大值，用三点抛物线细化，返回滞后时间（秒）或 `null`。
 - `vEst()`：`snr() ≥ 4` 时返回 `台间距(km) / 滞后`，两侧都有峰取两侧滞后绝对值的平均，单侧噪声只用峰更高的一侧；否则返回 `null`。真值 `= 台间距(km) / this.tAB`。
+- `snr()`、`peak()`、`vEst()` 只在 `window()` 里各算一次，存进 `this.now = { snr, lagP, lagN, v }`；`kpi()`、`data()`、结果卡都读这份缓存，不在每一帧重算。`resetCC()` 里清空。
 
 `data()` 版面（`w ≥ 640`）：
 
 - 左栏（宽 `lw = round(w · 0.3)`）上下两块：
   - 上：标题 `Raw noise at A and B · last 6 s`；两道，道区高 `Hraw = round((h − 60) · 0.45)`，下接时间轴。
-  - 下：标题 `Signal-to-noise ratio of the stack against windows stacked`（位于上块时间轴下 6px）。绘图区：`x` 从 `14 + 22` 到 `14 + lw`，`y` 从标题下 16 到 `h − 20`。横轴 0 到 `Nmax = max(20, ceil(nWin / 20) · 20)`，刻度数字 `0`、`Nmax/2`、`Nmax`；纵轴 0 到 `max(4, ceil(max SNR))`，左侧写两端数字。实线：`snrH`，`pal.trace` 1.5px，末点画半径 3 的 `rgba(pos,1)` 实心圆。虚线：`a·√N`，`a = Σ(sᵢ·√i) / Σ i`，`rgba(pos,.9)`；在 `N = 0.6 · Nmax` 处、虚线上方 8px 写 `∝ √N`（标注角色，`rgba(pos,.95)`）。坐标轴 `pal.axis`。
+  - 下：标题 `Signal-to-noise ratio of the stack`（位于上块时间轴下 6px）。绘图区：`x` 从 `14 + 22` 到 `14 + lw`，`y` 从标题下 20 到 `h − 20`。横轴 0 到 `Nmax = max(20, ceil(nWin / 20) · 20)`，刻度数字 `0`、`Nmax/2`、`Nmax windows`（单位写在最后一个上）；纵轴 0 到 `max(4, ceil(max SNR))`，两端数字右对齐于 `x − 4`、`textBaseline 'middle'`，分别对准绘图区的顶和底。实线：`snrH`，`pal.trace` 1.5px，末点画半径 3 的 `rgba(pos,1)` 实心圆。虚线：`a·√N`，`a = Σ(sᵢ·√i) / Σ i`，`rgba(pos,.9)`；在 `N = 0.6 · Nmax` 处、虚线上方 8px 写 `∝ √N`（标注角色，`rgba(pos,.95)`）。坐标轴 `pal.axis`。
 - 右栏结构不变，改五处：
   - 标题 `Cross-correlation C_AB(τ) against lag τ · stack of 40 windows`，其中 `AB` 画成下标（基线下移 3px，字号 8.5）。
   - 叠加曲线的纵向幅度从 `H1/2 − 4` 改为 `H1/2 − 16`，图框内上方留出 16px 给文字和三角。
   - `±t_AB` 两条预测线改为虚线 `[4,3]` `rgba(pos,.9)`；文字 `−t_AB · B → A` 与 `+t_AB · A → B` 用标注角色、`rgba(pos,.95)`，下标同上。
   - `vEst()` 不为空时，在测得的峰顶上方 6px 画一个尖朝下的实心三角（边长 6，`rgba(ink,.95)`）：实测的峰和预测的虚线是否重合，一眼可见。
   - 横轴每 1 s 一个刻度和数字（`−3`…`0`…`+2`、`+3 s`，单位写在最后一个上）；删掉底部那句 `lag τ · rows: stack envelope / RMS after each window, newest last`。下方“浮现图”左上角内侧加一行小字 `stack after each window · newest at the bottom`（坐标轴标题角色，垫一块 `rgba(pn,.8)`）。
-- `lineKey: true`。第 3 步里的 `<p class="live" id="nLive">` 保留。新增结果卡（见 6.3），每个窗口更新一次。
+- `lineKey: true`。第 3 步里的 `<p class="live" id="nLive">` 保留。新增结果卡（见 6.3）：`results()` 返回 `<div class="res" id="nRes">…</div>`；之后每个窗口在 `window()` 里用 `L.html('nRes', …)` 只换卡片内部，不调用 `L.refresh()`（整栏重建会打断悬停和滚动）。
 
 ### 5.8 Elastic waves（`LC`，`id: 'elastic'`）
 
@@ -335,8 +343,8 @@ for (k = 0; k < nr; k++) { res0[k] = b[k] / L.rate * 1000; res1[k] = (b[k] - Ax[
 | 章节 · 状态 | 文本 |
 |---|---|
 | play · 还没有地震 | `Time runs left to right and ends at “now”. Click the wavefield to make a quake.` |
-| play · 1 个台 | `Time ends at “now” on the right. ★ is the quake’s origin time; the wave should arrive at the dashed line.`（其中 `★` 用 `L.glyph('star')` 的珊瑚色星代替文字符号） |
-| play · 多个台 | `One row per station, nearest to the quake on top. The dashed curve is where the wave should arrive.` |
+| play · 1 个台 | `★ is the quake’s origin time; the dashed line is the arrival predicted for a straight ray.`（其中 `★` 用 `L.glyph('star')` 的珊瑚色星代替文字符号） |
+| play · 多个台 | `One row per station, nearest to the quake on top. Dashed curve: arrivals predicted for straight rays.` |
 | arrays · 地震计 · 线阵 | `One row per station along the array. An upright band is fast (all stations at once); a leaning band is slow.` |
 | arrays · 地震计 · 环阵 | `One row per station around the ring. The wave reaches the nearest stations first.` |
 | arrays · DAS | `Rows are positions along the cable, colour is strain rate. Broadside waves leave almost no trace.` |
@@ -344,7 +352,7 @@ for (k = 0; k < nr; k++) { res0[k] = b[k] / L.rate * 1000; res1[k] = (b[k] - Ax[
 | tr · record / recorded | `One row per sensor. Sensors far from the source record the pulse later.` |
 | tr · reverse / done | `Recordings played backwards · pressure² at the source, peaking on the dashed line · the focal spot, magnified.` |
 | tomo · idle | `Left: one shot’s seismograms and first-arrival picks. Right: the true model, the result and the ray coverage.` |
-| tomo · survey / done | `Early picks (blue dots) crossed fast rock, late picks (pink) slow rock: the inversion maps these residuals.` |
+| tomo · survey / done | `Late picks (pink dots) crossed slow rock, early picks (blue) fast rock: the inversion maps these residuals.` |
 | noise · 还没有窗口 | `Left: raw noise at A and B. Right: their cross-correlation, stacked window by window.` |
 | noise · 已有窗口 | `Peaks grow at lag ±t<sub>AB</sub>, the A–B travel time. Positive lag: waves going A → B; negative lag: B → A.` |
 | elastic | `Z and X ground velocity with the predicted P and S arrivals. Right: the path the ground traces.` |
@@ -355,7 +363,7 @@ for (k = 0; k < nr; k++) { res0[k] = b[k] / L.rate * 1000; res1[k] = (b[k] - Ax[
 
 | 章节 · 条件 | HTML |
 |---|---|
-| tr · 有 `img` | `<span class="kpi"><b>0.41 λ</b>focal spot</span><span class="kpi dim"><b>0.5 λ</b>limit</span>`（第一个数 = x、z 半高宽的平均） |
+| tr · 有 `img` | `<span class="kpi"><b>0.41 λ</b>focal spot</span><span class="kpi dim" title="Half-maximum width of J₀(kr)², the focus of a perfect ring at one frequency"><b>0.36 λ</b>theory</span>`（第一个数 = x、z 半高宽的平均） |
 | tomo · 有 `inv` | `<span class="kpi"><b>r = 0.96</b>vs truth</span><span class="kpi dim"><b>255 → 42 ms</b>misfit</span>` |
 | noise · `nWin > 0` | `<span class="kpi dim"><b>SNR 5.5</b>40 windows</span>`；`vEst()` 不为空时前面再加 `<span class="kpi"><b>2.52 km/s</b>from the lag</span>` |
 | elastic · 有 `last` | `<span class="kpi dim"><b>1.06 s</b>S − P</span><span class="kpi"><b>3.6 km</b>distance</span>` |
@@ -366,7 +374,7 @@ for (k = 0; k < nr; k++) { res0[k] = b[k] / L.rate * 1000; res1[k] = (b[k] - Ax[
 `.res` 内，`<h3>` 之后、`<dl class="kv">` 之前插一行：
 
 ```html
-<p class="res-big"><b>0.41 λ</b><span>focal spot width (FWHM) · the diffraction limit is about 0.5 λ</span></p>
+<p class="res-big"><b>0.41 λ</b><span>focal spot width, FWHM of p² · theory for a perfect ring: 0.36 λ</span></p>
 ```
 
 ```css
@@ -382,10 +390,10 @@ for (k = 0; k < nr; k++) { res0[k] = b[k] / L.rate * 1000; res1[k] = (b[k] - Ax[
 
 | 章节 | 大数字 | 旁注 | 其余 |
 |---|---|---|---|
-| tr | x、z 半高宽的平均，`0.41 λ` | `focal spot width (FWHM) · the diffraction limit is about 0.5 λ` | 原有四行 `kv` 与结论句不变 |
-| tomo | `r = 0.96` | `correlation between the recovered and the true model` | `kv` 之前加一组对比条：`<div class="bar2"><i style="--w:100%"></i><em>255 ms · uniform start</em><i class="on" style="--w:16%"></i><em>42 ms · recovered</em></div>`，第二条宽度 = `rmsPost / rmsPre`；`kv` 里删去这两行残差，其余不变 |
+| tr | x、z 半高宽的平均，`0.41 λ` | `focal spot width, FWHM of p² · theory for a perfect ring: 0.36 λ` | 原有四行 `kv` 不变；结论句按 6.5 改 |
+| tomo | `r = 0.96` | `correlation between the recovered and the true model` | `kv` 之前加一组对比条：`<div class="bar2"><i style="--w:100%"></i><em>255 ms · uniform start</em><i class="on" style="--w:16%"></i><em>42 ms · recovered</em></div>`，第二条宽度 = `rmsPost / rmsPre`；`kv` 里删去两行残差和 `Correlation with the truth`（它已经是大数字），只留 `Picked rays` 与 `Straight rays alone` 两行；结论句不变 |
 | noise（新卡，`<div class="res" id="nRes">`，标题 `Interferometry`） | `vEst()` 不为空：`2.52 km/s`；否则 `SNR 2.1` | 前者：`velocity between A and B from the peak lag · true 2.50 km/s`；后者：`not above the noise yet: keep stacking` | `kv`：`Windows stacked` `40 (120 s of noise)`；`Predicted t_AB` `0.96 s`；`Measured lag`（有值时）`+0.95 s · −0.96 s`；`Signal-to-noise ratio` `5.5` |
-| elastic（第 2 步的 `#spLive`，不是 `.res`） | `3.6 km` | `distance that this S − P time implies · true distance 3.6 km` | `kv` 改为三行：`S − P time, predicted` `1.06 s`；`× V_P / (√3 − 1)` `3.42 km/s`；`Mean V_P on the path` `2.50 km/s` |
+| elastic（第 2 步的 `#spLive`，不是 `.res`） | `3.6 km` | `distance from the predicted S − P time · check that P and S arrive on the dashed lines` | `kv` 改为三行：`S − P time, predicted` `1.06 s`；`× V_P / (√3 − 1)` `3.42 km/s`；`Mean V_P on the path` `2.50 km/s` |
 
 结果卡第一次出现时（时间反演 `finish()` 之后、层析勘测完成并反演之后），在 `L.refresh()` 之后调用一次 `insp.querySelector('.res').scrollIntoView({ block: 'nearest', behavior: L.reduceMotion ? 'auto' : 'smooth' })`。同一次运行只滚一次。
 
@@ -406,6 +414,8 @@ for (k = 0; k < nr; k++) { res0[k] = b[k] / L.rate * 1000; res1[k] = (b[k] - Ax[
 |---|---|---|
 | arrays 第 4 步 `d` | `Each arrival is a band across the record; its slope is the apparent slowness 1/v<sub>app</sub>, so steep bands are slow waves.` | `Each arrival is a band across the record. Time runs across and distance runs down, so the tilt of a band is the apparent velocity along the array: an upright band reaches every sensor almost at once (fast, or arriving broadside), a band that leans over is slow.` |
 | elastic 第 2 步 | 公式写在 `d` 里（会被折叠截断） | `d` 改为 `<b>P</b> arrives first, <b>S</b> later; the gap grows with distance.`（两行以内，折叠时不被截断）；公式移到 `eq`：`d ≈ Δt<sub>S−P</sub> · V<sub>P</sub>V<sub>S</sub> / (V<sub>P</sub> − V<sub>S</sub>)` |
+| tr 结论句（圆环） | `A full ring focuses to about half a wavelength, the diffraction limit.` | `A full ring reaches the diffraction limit: a spot about λ/2 wide in pressure, 0.36 λ at half maximum of p².` |
+| tr `explain()` 的 Diffraction limit 段，第一句 | `The focal spot cannot be smaller than about λ/2.` | `The focal spot cannot be smaller than about λ/2: a perfect ring refocuses to J<sub>0</sub>(kr), 0.48 λ wide at half amplitude and 0.36 λ at half of p², the quantity measured here.` |
 | arrays 标题 | `… · pressure · last 6 s` | `… · pressure p(t) · last 6 s` |
 | tr 标题 | `… · pressure` | `… · pressure p(t)` |
 | 所有数据图 | `origin` | `origin time` |
@@ -452,7 +462,7 @@ L.legendVel = function (name) {
 
 ## 7. 动效与手机端
 
-- 动效只加一处：`.kpi` 的内容变化时闪一下，`@keyframes kpi-in{from{background:color-mix(in srgb,var(--cyan) 30%,transparent)}}`，`animation:kpi-in 600ms var(--ease)`；`prefers-reduced-motion` 下关闭。结果卡滚入视野见 6.3。
+- 动效只加一处：关键数字**出现**时闪一下。`hud()` 写 `#dataKpi` 时，若 `.kpi` 的个数和上一次不同，就给 `#dataKpi` 加上类 `in`，`animationend` 后去掉；`.kpis.in .kpi{animation:kpi-in 600ms var(--ease)}`，`@keyframes kpi-in{from{background:color-mix(in srgb,var(--cyan) 30%,transparent)}}`。只是数值变化不闪（噪声实验每 0.75 s 就更新一次）。`prefers-reduced-motion` 下关闭。结果卡滚入视野见 6.3。
 - 手机端（`≤ 899px`）：
   - `.fkey{flex-wrap:wrap; margin:0}`；`.facts{display:none}`；删除原来给 `.legend` 的 `order:4; flex-basis:100%; max-width:none`。
   - `.data-h{grid-template-columns:minmax(0,1fr)}`；`.data-r{flex-wrap:wrap; justify-content:flex-start}`；`.data-cap{white-space:normal; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical}`；`.lkey{display:none}`。
@@ -465,8 +475,8 @@ L.legendVel = function (name) {
 
 1. 任一章节，波场左下角有比例尺；波场正下方一行是图例与 `10 × 5.5 km · v₀ 2.5 km/s · f₀ … Hz · λ … km`，没有被切掉一半的项；速度图例是 `1.5 ▬ 3.5 km/s`，色标颜色与波场上的淡彩相同。任一实验的数据图标题都没有省略号（1440px 宽）。
 2. 任一张数据图里，虚线只出现在“预测”上；发震时刻是实线加星，文字不被任何一道穿过。
-3. 层析完成后，不滚动就能在数据图标题右侧看到 `r = …` 与 `… → … ms`；面板下半是残差散点图，反演后的灰点明显比彩色点更贴近零线。
-4. 时间反演完成后，焦斑上没有文字压着；数据图右侧有焦斑放大图和两根对比横条；环外没有大片米色雾。
+3. 层析完成后，不滚动就能在数据图标题右侧看到 `r = …` 与 `… → … ms`；面板下半是残差散点图，反演后的灰点明显比彩色点更贴近零线；默认随机模型下彩色点几乎全是粉色（晚到），棋盘模型下蓝粉都有。
+4. 时间反演完成后，焦斑上没有文字压着；数据图右侧有焦斑放大图和两根对比横条（实测半高宽对理论 0.36 λ）；环外没有大片米色雾；页面上不再把 p² 的半高宽和 λ/2 直接相比。
 5. Playground 放 6 个台并发一次震：波场上 6 个台都有台站码；记录图按距离从近到远排列，右侧有每道的 km 数，一条虚线走时曲线穿过各道、随距离变晚。
 6. Arrays 第 4 步不再出现 “steep bands are slow waves”；线阵记录图左下有 1.5 / 2.5 / 3.5 km/s 的量角器。
 7. 噪声叠到 40 个窗口：左下有 SNR 随窗口数增长的曲线和 `∝ √N` 虚线；SNR ≥ 4 后标题右侧出现 `… km/s`，与真值相差在百分之几以内。
@@ -492,7 +502,7 @@ L.legendVel = function (name) {
 | P0-5 | `LH` `.data-h`；`LJ` `hud()`；`LC` 各章新增 `cap()`、`kpi()`、`lineKey` | 4.2 与 6.1、6.2 |
 | P0-6 | `LJ` `drawOverlay`、`L.star`、`L.label`；`LC` `stations()` 与 play 的 `overlay` | 5.1：比例尺、反射边界、震源空心星、Playground 台站全标注 |
 | P0-7 | `LJ` `L.drawSection`、`L.timeAxis`；`HJ` `drawTrace`；`LC` DAS / elastic / noise / tr 里各自画发震时刻与预测线的地方 | 5.2 的 `lane` 与 `marks` 新画法；3.4 的线型统一（发震时刻实线加星；预测一律虚线 `[4,3]` 震相色） |
-| P0-8 | `LC` arrays 第 4 步；`HJ` `info` 面板；6.5 表内其余各行 | 措辞改正（D4、D8） |
+| P0-8 | `LC` arrays 第 4 步、tr 的结论句与 `explain()`；`HJ` `info` 面板；6.5 表内其余各行 | 措辞改正（D4、D8、D13） |
 | P0-9 | `E` `CA.render` 的 `max` 分支与 `FS.show` 第三分支；`LC` tr 的 `overlay`、`legend()` | 5.5：线性 p²；标签加引线移开 |
 | P0-10 | `LC` tomo 的 `solve()`、`data()` | 5.6：返回 `res0` / `res1`；新版面与走时残差图 |
 | P0-11 | `LH` 新增 `.res-big`、`.bar2`；`LC` tr / tomo 的 `results()`，elastic 的 `liveSP()` | 6.3 的大数字与对比条；结果卡首次出现时滚入视野 |
