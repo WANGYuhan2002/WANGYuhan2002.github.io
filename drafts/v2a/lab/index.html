@@ -29,6 +29,7 @@
   --sh-1:inset 0 1px 0 rgba(255,255,255,.04), 0 8px 24px -12px rgba(0,0,0,.6);
   --sh-2:inset 0 1px 0 rgba(255,255,255,.05), 0 24px 56px -20px rgba(0,0,0,.7);
   --glass-a:.68; --glow:0 0 10px var(--cyan);
+  --field:#080b13; --vs:#421f40; --vf:#17316c;
   --display:"Space Grotesk",system-ui,sans-serif; --sans:"Inter",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
   --sp-1:2px; --sp-2:4px; --sp-3:8px; --sp-4:12px; --sp-5:16px; --sp-6:24px; --sp-7:32px; --sp-8:48px;
   --r-sm:6px; --r-md:10px; --r-lg:14px; --r-xl:20px; --r-pill:999px; --bw:1px; --blur:16px;
@@ -46,6 +47,7 @@
   --sh-1:0 1px 2px rgba(28,36,52,.06), 0 8px 24px -14px rgba(28,36,52,.18);
   --sh-2:0 2px 4px rgba(28,36,52,.06), 0 24px 56px -24px rgba(28,36,52,.28);
   --glass-a:.80; --glow:none;
+  --field:#f6f5f0; --vs:#d2c2c7; --vf:#bbc5d9;
   color-scheme:light;
 }
 *{box-sizing:border-box}
@@ -95,7 +97,7 @@ kbd{font:500 11px var(--mono); padding:1px 5px; border:1px solid var(--line2); b
 .rail a[aria-current="page"] b{background:var(--cyan); border-color:var(--cyan); color:var(--accent-ink)}
 .rail-foot{margin-top:auto; padding:14px 10px 0; font:400 12px/1.6 var(--sans); color:var(--muted)}
 
-.stage{grid-area:stage; display:grid; grid-template-rows:auto minmax(0,1fr) clamp(200px,32vh,310px); gap:10px; padding:10px; min-width:0; min-height:0}
+.stage{grid-area:stage; display:grid; grid-template-rows:auto minmax(0,1fr) auto clamp(212px,33vh,320px); gap:10px; padding:10px; min-width:0; min-height:0}
 /* bar above the wavefield: tools · status · main action · legend, so nothing covers the field (the velocity model is always shown) */
 .vbar{display:flex; align-items:center; gap:12px; min-height:40px; padding:0 2px; min-width:0}
 .tools{display:flex; align-items:center; gap:2px; padding:3px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--bg2); flex:none}
@@ -111,12 +113,20 @@ kbd{font:500 11px var(--mono); padding:1px 5px; border:1px solid var(--line2); b
 .hud span + span::before{content:"· "; color:var(--muted)}
 .hud .em{color:var(--ink); font-weight:500}
 /* legend: waves are dots, the structure is one slow → fast gradient bar; one line (trailing items are dropped by lab.js when it does not fit) */
-.legend{display:flex; flex-wrap:nowrap; justify-content:flex-end; gap:12px; max-width:48%; min-width:0; overflow:hidden; font:400 12px/1.35 var(--sans); color:var(--ink2)}
+/* figure key under the field: legend (left) and the model's facts (right); whole trailing items are hidden by lab.js when space runs out */
+.fkey{display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:20px; margin:-4px 0 -2px; padding:0 4px; min-width:0; overflow:hidden}
+.legend{display:flex; flex:none; flex-wrap:nowrap; justify-content:flex-start; gap:14px; min-width:0; font:400 12px/1.35 var(--sans); color:var(--ink2)}
+.legend .lg{gap:5px}
+.legend em{font-style:normal; color:var(--muted)}
+.legend b{font:500 11.5px var(--mono); color:var(--ink2)}
+.legend svg{width:12px; height:12px; flex:none}
+.vkey i{display:block; width:64px; height:12px; border-radius:3px; flex:none; border:1px solid var(--line2);
+  background:linear-gradient(90deg,transparent calc(50% - .5px),var(--line2) 0,var(--line2) calc(50% + .5px),transparent 0),linear-gradient(90deg,var(--vs),var(--field) 50%,var(--vf))}   /* the thin centre line = background velocity 2.5 km/s */
+.facts{display:flex; flex:none; gap:14px; white-space:nowrap; font:500 11.5px var(--mono); color:var(--muted)}
+.facts sub{font-size:.8em}
 .legend span{display:inline-flex; align-items:center; gap:6px; white-space:nowrap}
 .sw{display:inline-block; width:8px; height:8px; border-radius:50%; flex:none}
-.vramp{gap:6px}
-.vramp i, .vlegend-ramp{display:block; width:28px; height:8px; border-radius:4px; flex:none; background:linear-gradient(90deg,var(--slow),color-mix(in srgb,var(--slow) 25%,var(--bg2)) 46%,color-mix(in srgb,var(--fast) 25%,var(--bg2)) 54%,var(--fast))}
-.cta{flex:none; white-space:nowrap}
+.cta{flex:none; white-space:nowrap; margin-left:auto}
 .cta[hidden]{display:none}
 .chip{flex:none; display:inline-flex; align-items:center; gap:7px; padding:6px 10px; border-radius:var(--r-md); border:1px solid var(--line2); background:none; font:500 12px var(--sans); letter-spacing:0; text-transform:none; color:var(--ink2); cursor:pointer; transition:background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); white-space:nowrap}
 .chip:hover{background:var(--panel2); color:var(--ink)}
@@ -140,7 +150,23 @@ kbd{font:500 11px var(--mono); padding:1px 5px; border:1px solid var(--line2); b
 .toast.on{opacity:1; transform:translate(-50%,0)}
 
 .data{display:flex; flex-direction:column; min-height:0; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--bg2); overflow:hidden}
-.data-h{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 14px 2px; min-height:40px}
+.data-h{display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; column-gap:12px; row-gap:2px; padding:8px 14px 4px; min-height:0}
+.data-r{display:flex; align-items:center; gap:10px}
+.data-c{grid-column:1 / -1; display:flex; align-items:baseline; gap:12px; min-width:0}
+.data-cap{flex:1 1 auto; min-width:0; margin:0; font:400 12px/1.4 var(--sans); color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.data-cap sub{font-size:.8em}
+.data-cap svg{width:12px; height:12px; vertical-align:-1.5px}
+.kpis{display:flex; gap:6px}
+.kpi{display:inline-flex; align-items:baseline; gap:6px; padding:3px 9px; border-radius:var(--r-md); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent-line); font:400 12px/1.5 var(--sans); color:var(--ink2); white-space:nowrap}
+.kpi b{font:500 13px var(--mono); color:var(--cyan)}
+.kpi.dim{background:var(--panel); box-shadow:inset 0 0 0 1px var(--line)}
+.kpi.dim b{color:var(--ink)}
+.kpis.in .kpi{animation:kpi-in 600ms var(--ease)}
+@keyframes kpi-in{from{background:color-mix(in srgb,var(--cyan) 30%,transparent)}}
+.lkey{flex:none; display:inline-flex; align-items:center; gap:6px; font:400 11.5px var(--sans); color:var(--muted); white-space:nowrap}
+.lkey[hidden]{display:none}
+.lkey i{display:inline-block; width:16px; height:0; border-top:1.5px solid var(--ink2)}
+.lkey i.pre{border-top:1.5px dashed var(--ink2); margin-left:6px}      /* line style only: predicted lines take the colour of their phase */
 .data-h h2{margin:0; font:600 12.5px/1.3 var(--sans); letter-spacing:0; text-transform:none; color:var(--ink2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
 .data-h h2 b{font-family:var(--mono); font-weight:500; color:var(--cyan)}
 .data-ctl{display:flex; gap:6px; flex:none}
@@ -152,7 +178,7 @@ kbd{font:500 11px var(--mono); padding:1px 5px; border:1px solid var(--line2); b
 .insp h1{margin:6px 0; font:700 26px/1.1 var(--display); letter-spacing:-.02em}
 .goal{margin:0 0 14px; color:var(--ink2); font-size:13.5px; line-height:1.55}
 .steps{list-style:none; margin:0; padding:0; display:grid; gap:4px}
-.st{display:grid; grid-template-columns:22px minmax(0,1fr); gap:12px; padding:12px; border-radius:var(--r-lg); border:1px solid transparent; transition:background var(--t-slow) var(--ease), border-color var(--t-slow) var(--ease), box-shadow var(--t-slow) var(--ease)}
+.st{position:relative; display:grid; grid-template-columns:22px minmax(0,1fr); gap:12px; padding:12px; border-radius:var(--r-lg); border:1px solid transparent; transition:background var(--t-slow) var(--ease), border-color var(--t-slow) var(--ease), box-shadow var(--t-slow) var(--ease)}
 .st-n{display:grid; place-items:center; width:22px; height:22px; border-radius:50%; border:1px solid var(--line2); font:500 11px var(--mono); color:var(--muted)}
 .st.now{background:var(--bg3); border-color:var(--line2); box-shadow:var(--sh-1)}
 .st.now .st-n{background:var(--cyan); border-color:var(--cyan); color:var(--accent-ink)}
@@ -161,6 +187,11 @@ kbd{font:500 11px var(--mono); padding:1px 5px; border:1px solid var(--line2); b
 .st-t{margin:1px 0 0; font:600 15px/1.35 var(--sans); color:var(--ink)}
 .st-d{margin:4px 0 0; color:var(--ink2); font-size:13px; line-height:1.5}
 .st-d b{color:var(--ink); font-weight:600}
+.st-k{display:block; margin:0 0 1px; font:500 10.5px/1.3 var(--mono); letter-spacing:.06em; text-transform:uppercase; font-style:normal; color:var(--muted)}
+.st.now .st-k{color:var(--cyan)}
+.st:not(:last-child)::after{content:""; position:absolute; left:22.5px; top:38px; bottom:-14px; width:1px; background:var(--line2); pointer-events:none}
+.st.done:not(:last-child)::after{background:var(--accent-line)}
+.eq{margin:8px 0 2px; padding:7px 10px; border-radius:var(--r-md); background:var(--panel2); font:500 12.5px/1.5 var(--mono); color:var(--ink); white-space:nowrap; overflow-x:auto}
 /* steps other than the current one fold to two lines; hover or keyboard focus opens them; their controls stay usable */
 .st:not(.now) .st-d{display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
 .st:not(.now):hover .st-d, .st:not(.now):focus-within .st-d{-webkit-line-clamp:unset}
@@ -203,7 +234,14 @@ kbd{font:500 11px var(--mono); padding:1px 5px; border:1px solid var(--line2); b
 .res h3{margin:0 0 8px; font:500 11px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--cyan)}
 .kv{display:grid; grid-template-columns:auto 1fr; gap:4px 14px; margin:0; font-size:12px}
 .kv dt{color:var(--muted)}
-.kv dd{margin:0; font:600 13px var(--mono); color:var(--ink); text-align:right}
+.kv dd{margin:0; font:500 13px var(--mono); color:var(--ink); text-align:right; white-space:nowrap}
+.res-big{margin:0 0 12px; padding-bottom:10px; border-bottom:1px solid var(--line)}
+.res-big b{display:block; font:700 28px/1 var(--display); letter-spacing:-.02em; color:var(--ink)}
+.res-big span{display:block; margin-top:5px; font:400 12px/1.35 var(--sans); color:var(--ink2)}
+.bar2{display:grid; grid-template-columns:1fr auto; align-items:center; gap:4px 10px; margin:10px 0 2px; font:400 12px var(--sans); color:var(--muted)}
+.bar2 i{display:block; height:6px; border-radius:3px; background:var(--line2); width:var(--w)}
+.bar2 i.on{background:var(--cyan)}
+.bar2 em{font:500 12px var(--mono); font-style:normal; color:var(--ink); white-space:nowrap}
 .res p{margin:8px 0 0; font-size:13px; color:var(--ink2)}
 .live{font:500 12px var(--mono); color:var(--ink)}
 .explain{margin-top:18px; padding-top:14px; border-top:1px solid var(--line)}
@@ -213,7 +251,7 @@ kbd{font:500 11px var(--mono); padding:1px 5px; border:1px solid var(--line2); b
 .explain[open] summary::before{content:"−"}
 .explain p{margin:10px 0 0; color:var(--ink2); font-size:13px; line-height:1.6}
 .explain b{color:var(--ink); font-weight:600}
-.explain code{font:500 12px var(--mono); color:var(--cyan)}
+.explain code, .st-d code{font:500 12px var(--mono); color:var(--ink); background:var(--panel2); padding:1px 6px; border-radius:var(--r-sm); white-space:nowrap}
 .ch-nav{display:flex; justify-content:space-between; gap:8px; margin-top:20px}
 .ch-nav a{font:500 12.5px var(--sans); color:var(--muted); text-decoration:none; padding:6px 2px}
 .ch-nav a:hover{color:var(--cyan)}
@@ -231,7 +269,6 @@ kbd{font:500 11px var(--mono); padding:1px 5px; border:1px solid var(--line2); b
 
 @media (min-width:900px) and (max-width:1439px){
   .hud span + span{display:none}
-  .legend{max-width:40%}
 }
 @media (min-width:900px) and (max-width:1199px){
   .app{grid-template-columns:64px minmax(0,1fr) 300px}
@@ -239,7 +276,7 @@ kbd{font:500 11px var(--mono); padding:1px 5px; border:1px solid var(--line2); b
   .rail a{grid-template-columns:1fr; justify-items:center; padding:9px 4px}
   .rail a span, .rail-h, .rail-foot{display:none}
   .status{display:none}
-  .legend{display:none}
+  .facts{display:none}
 }
 @media (max-width:899px){
   body{overflow:auto}
@@ -254,20 +291,27 @@ kbd{font:500 11px var(--mono); padding:1px 5px; border:1px solid var(--line2); b
   .rail a span{font-size:13.5px}
   .stage{display:flex; flex-direction:column; padding:8px; gap:8px}
   .view{height:min(62svh,118vw); border-radius:12px}
-  .data{height:230px; border-radius:12px}
+  .data{height:auto; border-radius:12px}
+  #datac{flex:none; height:200px}
   .insp{margin:0 8px 8px; border-radius:12px; padding:16px 14px 40px}
   .vbar{flex-wrap:wrap; gap:7px 10px; padding:0}
   .tools button{width:40px; height:40px}
   .hud{order:3; flex-basis:100%}
   .cta{order:2; margin-left:auto}
-  .legend{order:4; flex-basis:100%; max-width:none; justify-content:flex-start; font-size:11.5px; gap:10px}
+  .fkey{flex-wrap:wrap; margin:0}
+  .facts{display:none}
+  .legend{font-size:11.5px; gap:10px}
+  .data-h{grid-template-columns:minmax(0,1fr)}
+  .data-r{flex-wrap:wrap; justify-content:flex-start}
+  .data-cap{white-space:normal; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical}
+  .lkey{display:none}
   .data-h h2{white-space:normal}
   .topt{left:8px; right:8px; top:8px; width:auto}
   .pop{left:8px; right:8px; width:auto}
 }
 @media (prefers-reduced-motion:reduce){
   .view.shake{animation:none} .prog i{transition:none}
-  .menu, .topt, .pop{animation:none}
+  .menu, .topt, .pop, .kpis.in .kpi{animation:none}
   .toast, .st, .rail a, .rail a b, .tools button, .opt, .seg button, .pbtn, .chip, .bbtn, .ibtn{transition:none}
 }
 </style>
@@ -311,7 +355,6 @@ kbd{font:500 11px var(--mono); padding:1px 5px; border:1px solid var(--line2); b
       <div class="tools" id="tools" role="toolbar" aria-label="Tools for the wavefield"></div>
       <div class="hud" id="hud" aria-live="off"></div>
       <button class="pbtn go cta" id="ctaBtn" type="button" hidden></button>
-      <div class="legend" id="legend"></div>
     </div>
     <div class="view" id="view" aria-label="Live wavefield">
       <canvas id="glc" aria-hidden="true"></canvas>
@@ -321,8 +364,16 @@ kbd{font:500 11px var(--mono); padding:1px 5px; border:1px solid var(--line2); b
       <div class="prog" aria-hidden="true"><i id="prog"></i></div>
       <div class="toast glass" id="toast" role="status" aria-live="polite"></div>
     </div>
+    <div class="fkey" id="fkey">
+      <div class="legend" id="legend"></div>
+      <div class="facts" id="facts"></div>
+    </div>
     <section class="data" aria-label="Data panel">
-      <div class="data-h"><h2 id="dataTitle"></h2><div class="data-ctl" id="dataCtl"></div></div>
+      <div class="data-h">
+        <h2 id="dataTitle"></h2>
+        <div class="data-r"><div class="kpis" id="dataKpi"></div><div class="data-ctl" id="dataCtl"></div></div>
+        <div class="data-c"><p class="data-cap" id="dataCap"></p><span class="lkey" id="dataKey" hidden><i class="obs"></i>observed<i class="pre"></i>predicted</span></div>
+      </div>
       <canvas id="datac" aria-hidden="true"></canvas>
     </section>
   </main>

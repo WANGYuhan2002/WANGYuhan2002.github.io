@@ -26,18 +26,19 @@
   /* canvas palettes: "glow" on the dark theme, "ink on paper" on the light theme.
      Matter is cool and quiet (vs/vf: the structure tint, berry = slow, cobalt = fast); energy is bright
      (pos/neg/sw: the waves). slow/fast are the saturated swatches for legends, colour bars and the brush.
-     edge/edgeA: interface lines; core: white core on strong amplitudes; pn: data-panel background. */
+     edge/edgeA: interface lines; core: white core on strong amplitudes; pn: data-panel background;
+     sub: titles of small plots on the data canvases; axis: axis and zero lines. */
   var PAL = {
     dark: { bg: [8, 11, 19], pos: [86, 225, 240], neg: [255, 128, 88], slow: [217, 86, 155], fast: [77, 134, 255],
       vs: [124, 50, 108], vf: [38, 86, 196], edge: [170, 190, 230], edgeA: 0.32, ink: [238, 242, 248],
       sw: [255, 190, 84], hot: [255, 226, 150], halo: 'rgba(4,6,12,.9)', mix: 0.92, core: 0.30, tint: 0.50, faint: 0.07,
       trace: 'rgba(238,242,248,.86)', fill: 'rgba(86,225,240,.38)', tick: 'rgba(148,170,214,.18)', grid: 'rgba(148,170,214,.08)',
-      label: '#8b97ab', origin: '255,128,88', panel: '#0b1019', pn: [11, 16, 25] },
+      label: '#8b97ab', origin: '255,128,88', panel: '#0b1019', pn: [11, 16, 25], sub: '#b3bfd0', axis: 'rgba(148,170,214,.34)' },
     light: { bg: [246, 245, 240], pos: [0, 124, 143], neg: [212, 71, 43], slow: [181, 60, 125], fast: [43, 97, 212],
       vs: [132, 84, 112], vf: [62, 96, 168], edge: [40, 52, 80], edgeA: 0.18, ink: [19, 26, 38],
       sw: [165, 104, 0], hot: [196, 84, 20], halo: 'rgba(255,255,255,.95)', mix: 0.94, core: 0, tint: 0.32, faint: 0.06,
       trace: 'rgba(19,26,38,.84)', fill: 'rgba(0,124,143,.26)', tick: 'rgba(28,36,52,.18)', grid: 'rgba(28,36,52,.07)',
-      label: '#667185', origin: '212,71,43', panel: '#fbfaf7', pn: [251, 250, 247] }
+      label: '#667185', origin: '212,71,43', panel: '#fbfaf7', pn: [251, 250, 247], sub: '#3a4658', axis: 'rgba(28,36,52,.34)' }
   };
   /* soft threshold + gamma: weak coda stays invisible, the main pulses keep their shape */
   var LUT = new Float32Array(1025);
@@ -193,7 +194,7 @@
     if (o.mode === 'max' && this.mx) {
       var X = this.mx, pk = 0; for (i = 0; i < N; i++) if (X[i] > pk) pk = X[i];
       var gm = (o.gain2 || 1) / Math.sqrt(pk || 1), H = pal.hot;
-      for (i = 0, j = 0; i < N; i++, j += 4) { var a = Math.sqrt(X[i]) * gm; if (a > 1) a = 1; var t = LUT[a * 1024 | 0], kk = 1 - t * mx, hc = cr * t * t * t;
+      for (i = 0, j = 0; i < N; i++, j += 4) { var a = X[i] * gm * gm; if (a > 1) a = 1;   /* linear in p² */ var t = LUT[a * 1024 | 0], kk = 1 - t * mx, hc = cr * t * t * t;
         var r0 = bg[3 * i] * kk + H[0] * t, g0 = bg[3 * i + 1] * kk + H[1] * t, b0 = bg[3 * i + 2] * kk + H[2] * t;
         if (hc) { r0 += (255 - r0) * hc; g0 += (255 - g0) * hc; b0 += (255 - b0) * hc; }
         d[j] = r0; d[j + 1] = g0; d[j + 2] = b0; d[j + 3] = 255; }
@@ -358,7 +359,7 @@
       'vec2 f=bl(g);\n' +
       'if(uMode==0){float u=clamp(f.r*uGain,-1.0,1.0);float a=ramp(abs(u));col=core(col*(1.0-a*uMix)+(u>=0.0?uPos:uNeg)*a,a);}\n' +
       'else if(uMode==1){float a=ramp(abs(f.r)*uGain);col=core(col*(1.0-a*uMix)+uPos*a,a);float b=ramp(abs(f.g)*uGain2);col=core(col*(1.0-b*uMix)+uSw*b,b);}\n' +
-      'else{float a=ramp(sqrt(max(f.r,0.0))*uGain);col=core(col*(1.0-a*uMix)+uSw*a,a);}\n' +
+      'else{float s=sqrt(max(f.r,0.0))*uGain;float a=ramp(s*s);col=core(col*(1.0-a*uMix)+uSw*a,a);}\n' +
       'o=vec4(col,1.0);}'
   };
   function compile(gl, type, src) {

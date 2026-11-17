@@ -21,19 +21,49 @@
     return r('absorb', 'Absorbing on all sides', 'a damping layer: waves leave the screen') + r('free', 'Free surface on top', 'p = 0 at the top edge: reflects with reversed polarity') + r('box', 'Reflecting box', 'p = 0 on all edges, no damping layer');
   }
   function pad2(k) { return (k < 9 ? '0' : '') + (k + 1); }
-  /* triangles for receivers; labels for the first and last of an array (and all of them when there are few) */
+  /* triangles for receivers; labels for the first and last of an array, all of them when there are few or with labels: 'all'.
+     The station being dragged, or linked to the hovered trace (L.hi), is drawn larger in cyan and always labelled. */
   function stations(ctx, pts, o) {
     o = o || {}; var many = pts.length > 1, s0 = many ? 5 : 6.5, dg = L.dragging(), hid = dg && dg.kind === 'handle' && dg.h ? dg.h.id : -1;
     for (var k = 0; k < pts.length; k++) {
-      var on = k === hid, s = on ? s0 * 1.3 : s0, p = pts[k], X = L.sx(p.x), Y = Math.max(s * 1.7 + 2, L.sy(p.y));
+      var on = k === hid || (o.hover !== false && k === L.hi), s = on ? s0 * 1.3 : s0, p = pts[k], X = L.sx(p.x), Y = Math.max(s * 1.7 + 2, L.sy(p.y));
       L.tri(ctx, X, Y, s, on ? 1 : (o.alpha || 0.96), on ? L.pal.pos : o.col);
-      if (o.labels !== false && (pts.length <= 4 || k === 0 || k === pts.length - 1)) {
+      if (on || (o.labels !== false && (o.labels === 'all' || pts.length <= 4 || k === 0 || k === pts.length - 1))) {
         var ly = Y - s * 1.7 - 5; if (ly < 12) ly = Y + 13;
-        L.label(ctx, p.code, X, ly);
+        L.label(ctx, p.code, X, ly, null, null, true);
       }
     }
   }
-  function placeholder(ctx, w, h, s) { L.font(ctx, 11, 400); ctx.fillStyle = L.pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(s, w / 2, h / 2); }
+  function placeholder(ctx, w, h, s) { L.placeholder(ctx, w / 2, h / 2, s); }
+  /* predicted arrival at station p of quake mark m, in steps on the solver's clock: origin + wavelet delay + straight-ray travel time
+     through the current model (the same rule as the elastic chapter's predicted P) */
+  function predArrival(m, p) {
+    var tt = L.model.travelTime(m.x, m.y, p.x, p.y, L.rate);
+    return isFinite(tt) ? m.n + Math.round(1.2 / (L.eng.f0 * (m.fm || 1))) + tt * L.rate : null;
+  }
+  /* amplitude spectrum of the last 6 s of one trace (Hann window, 48 frequencies from 0 to 3 f0): a small plot right of the record */
+  var specCache = { t: 0, a: null };
+  function spectrum(ctx, X, Y, w, h, rec, f0Hz) {
+    var pal = L.pal, nf = 48, len = rec.len, k, i;
+    if (!specCache.a || (specCache.t++ % 15) === 0) {
+      var a = new Float32Array(nf), mx = 1e-12;
+      for (k = 0; k < nf; k++) {
+        var f = 3 * f0Hz * k / (nf - 1), re = 0, im = 0, om = 2 * Math.PI * f / L.rate;
+        for (i = 0; i < len; i += 2) { var wv = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (len - 1)), v = rec.get(0, i, 0) * wv; re += v * Math.cos(om * i); im -= v * Math.sin(om * i); }
+        a[k] = Math.hypot(re, im); if (a[k] > mx) mx = a[k];
+      }
+      for (k = 0; k < nf; k++) a[k] /= mx;
+      specCache.a = a;
+    }
+    var sp = specCache.a, y0 = Y + 18, H = h - 18, xs = function (k) { return X + k / (nf - 1) * w; }, ys = function (v) { return y0 + H - v * (H - 4); };
+    L.panelLabel(ctx, 'Amplitude spectrum against frequency', X, Y, null, w);
+    ctx.beginPath(); ctx.moveTo(xs(0), y0 + H); for (k = 0; k < nf; k++) ctx.lineTo(xs(k), ys(sp[k])); ctx.lineTo(xs(nf - 1), y0 + H); ctx.closePath(); ctx.fillStyle = pal.fill; ctx.fill();
+    ctx.beginPath(); for (k = 0; k < nf; k++) { if (k) ctx.lineTo(xs(k), ys(sp[k])); else ctx.moveTo(xs(k), ys(sp[k])); } ctx.strokeStyle = pal.trace; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.lineWidth = 1; ctx.strokeStyle = pal.axis; ctx.beginPath(); ctx.moveTo(X, y0 + H - 0.5); ctx.lineTo(X + w, y0 + H - 0.5); ctx.stroke();
+    var xf = Math.round(X + w / 3) + 0.5; ctx.setLineDash([4, 3]); ctx.strokeStyle = L.rgba(pal.pos, 0.9); ctx.beginPath(); ctx.moveTo(xf, y0); ctx.lineTo(xf, y0 + H); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = pal.tick; ctx.beginPath(); [X, xf, X + w].forEach(function (x) { ctx.moveTo(Math.round(x) + 0.5, y0 + H); ctx.lineTo(Math.round(x) + 0.5, y0 + H + 4); }); ctx.stroke();
+    L.num(ctx); ctx.textBaseline = 'top'; ctx.textAlign = 'left'; ctx.fillText('0', X, y0 + H + 6); ctx.textAlign = 'center'; ctx.fillText('f₀', xf, y0 + H + 6); ctx.textAlign = 'right'; ctx.fillText('3 f₀', X + w, y0 + H + 6);
+  }
   function physicsExplain(extra) {
     var e = L.eng;
     return '<p><b>Equation.</b> The 2-D constant-density acoustic wave equation <code>∂²p/∂t² = c(x, z)² ∇²p</code> for the pressure p. Only P waves exist here; S and surface waves need the elastic solver of experiment 6.</p>' +
@@ -76,11 +106,11 @@
     steps: function () {
       var st = this.st, d = st.did;
       return [
-        { t: 'Pick a starting model', d: 'A map view, or a geological cross-section whose top edge is the Earth’s surface.', c: modelChips(L.model.preset), done: !!(d.model || d.edit || d.sta || d.bc) },   /* moving on counts as a choice */
-        { t: 'Shape the medium', d: 'With the tools above the field: paint <b>slow</b> (S) or <b>fast</b> (F) bodies, <b>erase</b> (E), or drop point <b>scatterers</b> (C). Click a tool again for its options.', c: '<div class="btns">' + L.btn('sprinkle', 'Sprinkle 30 scatterers') + L.btn('resetEdits', 'Undo all edits') + '</div>', done: !!d.edit },
-        { t: 'Place your stations', d: 'With the station tool (T), click to add up to ' + MAXSTA + ' stations; drag any station to move it, double-click to remove it. With more than one, the panel below becomes a record section.', c: '<div class="btns">' + L.btn('oneSta', 'Back to one station', '', this.rec && this.rec.n === 1) + '</div>', done: !!d.sta },
-        { t: 'Make an earthquake', d: 'Click anywhere with the earthquake tool (Q): an acoustic point source, a Ricker pulse of pressure. Its options set the magnitude and the peak frequency.', done: !!d.quake },
-        { t: 'Change the boundaries', c: bcRadios(st.bc), done: !!d.bc }
+        { k: 'setup', t: 'Pick a starting model', d: 'A map view, or a geological cross-section whose top edge is the Earth’s surface.', c: modelChips(L.model.preset), done: !!(d.model || d.edit || d.sta || d.bc) },   /* moving on counts as a choice */
+        { k: 'setup', t: 'Shape the medium', d: 'With the tools above the field: paint <b>slow</b> (S) or <b>fast</b> (F) bodies, <b>erase</b> (E), or drop point <b>scatterers</b> (C). Click a tool again for its options.', c: '<div class="btns">' + L.btn('sprinkle', 'Sprinkle 30 scatterers') + L.btn('resetEdits', 'Undo all edits') + '</div>', done: !!d.edit },
+        { k: 'setup', t: 'Place your stations', d: 'With the station tool (T), click to add up to ' + MAXSTA + ' stations; drag any station to move it, double-click to remove it. With more than one, the panel below becomes a record section.', c: '<div class="btns">' + L.btn('oneSta', 'Back to one station', '', this.rec && this.rec.n === 1) + '</div>', done: !!d.sta },
+        { k: 'observe', t: 'Make an earthquake', d: 'Click anywhere with the earthquake tool (Q): an acoustic point source, a Ricker pulse of pressure. Its options set the magnitude and the peak frequency.', done: !!d.quake },
+        { k: 'explore', t: 'Change the boundaries', c: bcRadios(st.bc), done: !!d.bc }
       ];
     },
     explain: function () { return physicsExplain(bcExplain + '<p><b>Receivers</b> sample p(t) at their positions every time step (bilinear interpolation). <b>Not physical:</b> magnitudes only scale the source amplitude.</p>'); },
@@ -132,10 +162,25 @@
         this.auto = now; L.quake(Math.round(L.nx * (0.3 + 0.6 * Math.random())), Math.round(L.ny * (0.15 + 0.6 * Math.random())), { mag: +(1.6 + Math.random() * 0.8).toFixed(1), sound: false });
       }
     },
-    overlay: function (ctx) { stations(ctx, this.rec.pts); },
+    overlay: function (ctx) { stations(ctx, this.rec.pts, { labels: 'all' }); },
+    lineKey: true,
+    cap: function () {
+      if (!L.marks.length) return 'Time runs left to right and ends at “now”. Click the wavefield to make a quake.';
+      return this.rec.n === 1 ? L.glyph('star') + ' is the quake’s origin time; the dashed line is the arrival predicted for a straight ray.'
+        : 'One row per station, nearest to the quake on top. Dashed curve: arrivals predicted for straight rays.';
+    },
     data: function (ctx, w, h) {
-      var g = L.drawSection(ctx, 14, 4, w - 28, h - 24, this.rec, { agc: this.st.agc, marks: L.marks, now: L.eng.n });
-      L.timeAxis(ctx, g.x, h - 20, g.w, 6, this.rec.len, L.eng.n, 4);
+      var rec = this.rec, n = rec.n, m = L.marks[L.marks.length - 1], o = { agc: this.st.agc, marks: L.marks, now: L.eng.n, hi: L.hi, link: n > 1 };
+      if (m) {
+        var d = rec.pts.map(function (p) { return Math.hypot(p.x - m.x, p.y - m.y); });
+        o.pred = function (tr) { return predArrival(m, rec.pts[tr]); };
+        if (n > 1) { o.order = d.map(function (_, i) { return i; }).sort(function (a, b) { return d[a] - d[b]; }); o.right = 46; o.rowText = function (tr) { return L.fmt(L.km(d[tr]), 1) + ' km'; }; }
+      }
+      L.fontS(ctx, 11, 600);                                                   /* one station: its amplitude spectrum on the right, wide enough for its title */
+      var wS = n === 1 && w >= 640 ? Math.max(180, Math.ceil(ctx.measureText('Amplitude spectrum against frequency').width) + 2) : 0;
+      var g = L.drawSection(ctx, 14, 4, w - 28 - (wS ? wS + 24 : 0), h - 24, rec, o);
+      L.timeAxis(ctx, g.x, h - 20, g.w, 4, rec.len, L.eng.n, g.y);
+      if (wS) spectrum(ctx, w - 14 - wS, 4, wS, h - 38, rec, L.eng.fHz * (m ? m.fm || 1 : S.fmul));
     },
     csv: function () { return L.recCSV(this.rec, ['p'], 'pressure, arbitrary units'); }
   });
@@ -248,7 +293,7 @@
     },
     head: function () {
       var st = this.st;
-      if (st.sensor === 'array') L.setData((st.arr.g === 'line' ? 'Line' : 'Ring') + ' array · <b>' + st.n + '</b> stations · pressure · last 6 s', L.seg('agc', [['0', 'True amplitude'], ['1', 'AGC 0.5 s']], st.agc ? '1' : '0', 'sm'));
+      if (st.sensor === 'array') L.setData((st.arr.g === 'line' ? 'Line' : 'Ring') + ' array · <b>' + st.n + '</b> stations · pressure p(t) · last 6 s', L.seg('agc', [['0', 'True amplitude'], ['1', 'AGC 0.5 s']], st.agc ? '1' : '0', 'sm'));
       else L.setData('DAS · axial strain rate · <b>' + this.das.nc + '</b> channels over ' + L.fmt(L.km(this.das.np - 1), 1) + ' km · gauge ' + L.fmt(L.km(2 * this.das.g), 2) + ' km · last 6 s', L.seg('perch', [['0', 'Common scale'], ['1', 'Per channel']], st.perCh ? '1' : '0', 'sm'));
     },
     save: function () { this.st.m = L.model.serialize(); },
@@ -261,10 +306,10 @@
         : '<p class="st-d" style="margin:0">Draw the cable with the fibre tool (D), or pick a layout:</p><div class="grid2" style="margin-top:.4rem">' + L.opt('fibPre', 'surface', 'Along the surface') + L.opt('fibPre', 'borehole', 'Down a borehole') + L.opt('fibPre', 'L', 'L-shaped') + L.opt('fibPre', 'loop', 'A loop') + '</div>' +
           L.range('gauge', 'Gauge length', 4, 24, 1, st.gauge, L.fmt(st.gauge / 480 * L.KM, 2) + ' km');
       return [
-        { t: 'Choose a sensor', c: L.seg('sensor', [['array', 'Seismometers'], ['fiber', 'DAS fibre']], st.sensor), done: !!d.sensor },
-        { t: arr ? 'Lay out the array' : 'Lay the cable', c: lay, done: !!d.layout },
-        { t: 'Make an earthquake', d: 'Click on the wavefield (Q).', c: '<div class="btns">' + L.btn('repeat', 'Repeat the last quake', '', !L.marks.length) + '</div>', done: !!d.quake },
-        { t: 'Compare the two records', d: 'Fire the same quake for both sensors. Each arrival is a band across the record; its slope is the apparent slowness 1/v<sub>app</sub>, so steep bands are slow waves. The fibre only feels strain <b>along</b> the cable: a wave that hits it broadside leaves almost no trace.', done: !!(d.qa && d.qf) }
+        { k: 'setup', t: 'Choose a sensor', c: L.seg('sensor', [['array', 'Seismometers'], ['fiber', 'DAS fibre']], st.sensor), done: !!d.sensor },
+        { k: 'setup', t: arr ? 'Lay out the array' : 'Lay the cable', c: lay, done: !!d.layout },
+        { k: 'observe', t: 'Make an earthquake', d: 'Click on the wavefield (Q).', c: '<div class="btns">' + L.btn('repeat', 'Repeat the last quake', '', !L.marks.length) + '</div>', done: !!d.quake },
+        { k: 'interpret', t: 'Compare the two records', d: 'Fire the same quake for both sensors. Each arrival is a band across the record. Time runs across and distance runs down, so the tilt of a band is the apparent velocity along the array: an upright band reaches every sensor almost at once (fast, or arriving broadside), a band that leans over is slow. The fibre only feels strain <b>along</b> the cable: a wave that hits it broadside leaves almost no trace.', done: !!(d.qa && d.qf) }
       ];
     },
     explain: function () {
@@ -343,16 +388,51 @@
       }
     },
     data: function (ctx, w, h) {
-      if (this.rec) { var g = L.drawSection(ctx, 14, 4, w - 28, h - 24, this.rec, { agc: this.st.agc, marks: L.marks, now: L.eng.n }); L.timeAxis(ctx, g.x, h - 20, g.w, 6, this.rec.len, L.eng.n, 4); return; }
-      var das = this.das, left = 50, X = 14 + left, Wd = w - 28 - left, H = h - 26;
-      drawWaterfall(ctx, X, 4, Wd, H, das, this.st.perCh);
-      L.font(ctx, 10); ctx.fillStyle = L.pal.label; ctx.textAlign = 'right'; ctx.textBaseline = 'top'; ctx.fillText('0 km', X - 6, 4);
-      ctx.textBaseline = 'bottom'; ctx.fillText(L.fmt(L.km(das.np - 1), 1) + ' km', X - 6, 4 + H);
-      ctx.save(); ctx.translate(18, 4 + H / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('along cable', 0, 0); ctx.restore();
-      if (L.marks.length) { var age = L.eng.n - L.marks[L.marks.length - 1].n; if (age <= das.len) { var xm = X + Wd - age / das.len * Wd; ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(' + L.pal.origin + ',.8)'; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(xm + 0.5, 4); ctx.lineTo(xm + 0.5, 4 + H); ctx.stroke(); ctx.setLineDash([]); } }
-      L.timeAxis(ctx, X, h - 20, Wd, 6, das.len, L.eng.n);
+      var pal = L.pal, m = L.marks[L.marks.length - 1], now = L.eng.n;
+      if (this.rec) {
+        var rec = this.rec, line = this.st.arr.g === 'line', o = { agc: this.st.agc, marks: L.marks, now: now, hi: L.hi, link: true };
+        if (m) o.pred = function (tr) { return predArrival(m, rec.pts[tr]); };
+        var p0 = rec.pts[0], dx = rec.n > 1 ? L.km(Math.hypot(rec.pts[1].x - p0.x, rec.pts[1].y - p0.y)) : 0;
+        if (line) { o.right = 46; o.rowText = function (tr) { return L.fmt(L.km(Math.hypot(rec.pts[tr].x - p0.x, rec.pts[tr].y - p0.y)), 1) + ' km'; }; }
+        var g = L.drawSection(ctx, 14, 4, w - 28, h - 24, rec, o);
+        L.timeAxis(ctx, g.x, h - 20, g.w, 4, rec.len, now, g.y);
+        if (line && dx > 0) L.slopeFan(ctx, g.x + 12, g.y + g.h - 62, g.w / 6, g.sp / dx, 0.3 * g.w, g.y + g.h);
+        return;
+      }
+      var das = this.das, left = 50, X = 14 + left, Wd = w - 28 - left, Y0 = 18, H = h - 22 - Y0, kmTot = L.km(das.np - 1), k;
+      drawWaterfall(ctx, X, Y0, Wd, H, das, this.st.perCh);
+      ctx.lineWidth = 1; ctx.strokeStyle = L.rgba(pal.pos, 0.45); ctx.beginPath(); ctx.moveTo(X + Wd - 0.5, Y0); ctx.lineTo(X + Wd - 0.5, Y0 + H); ctx.stroke();   /* now */
+      ctx.strokeStyle = pal.tick; ctx.beginPath(); L.num(ctx); ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      for (k = 0; k <= kmTot + 1e-6; k++) { var yk = Math.round(Y0 + k / kmTot * H) + 0.5; ctx.moveTo(X - 4, yk); ctx.lineTo(X, yk); if (k % 2 === 0) ctx.fillText(String(k), X - 6, yk); }
+      ctx.stroke();
+      ctx.save(); ctx.translate(20, Y0 + H / 2); ctx.rotate(-Math.PI / 2); L.axisTitle(ctx); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('distance along the cable (km)', 0, 0); ctx.restore();
+      if (m) {
+        var age = now - m.n;
+        if (age >= 0 && age <= das.len) {
+          var xm = Math.round(X + Wd - age / das.len * Wd) + 0.5;
+          ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(' + pal.origin + ',.5)'; ctx.beginPath(); ctx.moveTo(xm, Y0 - 2); ctx.lineTo(xm, Y0 + H); ctx.stroke();
+        }
+        ctx.setLineDash([4, 3]); ctx.lineWidth = 1; ctx.strokeStyle = L.rgba(pal.ink, 0.9); ctx.beginPath();   /* predicted arrivals along the cable (white on the colour image) */
+        var pen = false;
+        for (var c = 0; c < das.nc; c++) {
+          var pp = das.pts[das.ch[c]], pn = predArrival(m, { x: pp[0], y: pp[1] }), a2 = pn == null ? -1 : now - pn;
+          if (pn == null || a2 < 0 || a2 > das.len) { pen = false; continue; }
+          var xp = X + Wd - a2 / das.len * Wd, yp = Y0 + (c + 0.5) / das.nc * H;
+          if (pen) ctx.lineTo(xp, yp); else ctx.moveTo(xp, yp); pen = true;
+        }
+        ctx.stroke(); ctx.setLineDash([]);
+        if (age >= 0 && age <= das.len) { L.star(ctx, xm, 4 + 7, 4.5, pal.neg, 0.95); L.laneText(ctx, 'origin time', xm, 4 + 2, X + Wd, 'rgba(' + pal.origin + ',.95)', 9, 80); }
+      }
+      L.timeAxis(ctx, X, h - 20, Wd, 4, das.len, now);
+      if (kmTot > 0) L.slopeFan(ctx, X + 12, Y0 + H - 62, Wd / 6, H / kmTot, 0.3 * Wd, Y0 + H);
     },
-    legend: function () { return L.legendAcoustic() + (this.das ? '<span><i class="sw" style="background:var(--cyan);width:14px;height:3px;border-radius:2px"></i>fibre · dot = 1 km</span>' : ''); },
+    lineKey: true,
+    cap: function () {
+      if (this.das) return 'Rows are positions along the cable, colour is strain rate. Broadside waves leave almost no trace.';
+      return this.st.arr.g === 'line' ? 'One row per station along the array. An upright band is fast (all stations at once); a leaning band is slow.'
+        : 'One row per station around the ring. The wave reaches the nearest stations first.';
+    },
+    legend: function () { return L.legendAcoustic() + (this.das ? '<span>' + L.glyph('fibre') + 'fibre · dot = 1 km</span>' : ''); },
     csv: function () {
       if (this.rec) return L.recCSV(this.rec, ['p'], 'pressure, arbitrary units');
       var das = this.das; if (!das || !das.count) return null;
@@ -388,7 +468,7 @@
       this.pts = pts.map(function (p, i) { return { x: Math.round(p[0]), y: Math.round(p[1]), code: 'M' + pad2(i) }; });
       L.setProbes(this.pts.map(function (p) { return [p.x, p.y]; }));
     },
-    head: function () { L.setData('Time-reversal mirror · <b>' + this.pts.length + '</b> sensor' + (this.pts.length > 1 ? 's' : '') + ' · pressure', ''); },
+    head: function () { L.setData('Time-reversal mirror · <b>' + this.pts.length + '</b> sensor' + (this.pts.length > 1 ? 's' : '') + ' · pressure p(t)', ''); },
     inside: function (c) {
       var st = this.st;
       if (st.mirror === 'ring') return Math.hypot(c[0] - L.nx / 2, c[1] - L.ny / 2) < this.R - 10;
@@ -438,7 +518,10 @@
       function width(dx, dy) { var a = 0, b = 0, j; for (j = 1; j < 200; j++) { var q = mx[(fy + dy * j) * nx + fx + dx * j]; if (!(q >= half)) { var p = mx[(fy + dy * (j - 1)) * nx + fx + dx * (j - 1)]; a = j - 1 + (p - half) / Math.max(1e-12, p - (q || 0)); break; } } for (j = 1; j < 200; j++) { var q2 = mx[(fy - dy * j) * nx + fx - dx * j]; if (!(q2 >= half)) { var p2 = mx[(fy - dy * (j - 1)) * nx + fx - dx * (j - 1)]; b = j - 1 + (p2 - half) / Math.max(1e-12, p2 - (q2 || 0)); break; } } return a + b; }
       var wx = width(1, 0), wy = width(0, 1), lam = L.eng.ppw;   /* wavelength at v = 1, in cells */
       this.img = { x: fx, y: fy, err: Math.hypot(fx - this.src[0], fy - this.src[1]), wx: wx, wy: wy, lam: lam, gain2: Math.sqrt(gmax / Math.max(best, 1e-12)) };
-      this.view = 'image'; st.did.look = true; L.refresh(); L.updateLegend();
+      var R = Math.max(5, Math.round(lam)), crop = new Float32Array((2 * R + 1) * (2 * R + 1)), cx, cy;   /* max p² around the focus, 1 = the focus */
+      for (cy = -R; cy <= R; cy++) for (cx = -R; cx <= R; cx++) { var gx = fx + cx, gy = fy + cy; crop[(cy + R) * (2 * R + 1) + cx + R] = gx >= 0 && gy >= 0 && gx < nx && gy < ny ? mx[gy * nx + gx] / best : 0; }
+      this.img.crop = crop; this.img.R = R;
+      this.view = 'image'; st.did.look = true; L.refresh(); L.updateLegend(); L.scrollRes();
     },
     save: function () { this.st.m = L.model.serialize(); },
     serialize: function () { var st = this.st; return { m: L.model.serialize(), mirror: st.mirror, src: st.src }; },
@@ -447,23 +530,23 @@
       var st = this.st, d = st.did, ph = this.phase;
       var rec = ph === 'record' ? '<p class="live" id="trLive">Recording…</p>' : '';
       return [
-        { t: 'Pick a time-reversal mirror', d: st.mirror === 'cavity' ? 'One sensor in a box with perfectly reflecting walls: the echoes act as many virtual sensors.' : (st.mirror === 'line' ? 'A line of 40 sensors on one side only: limited aperture.' : 'A ring of 48 sensors around the source: full aperture.'),
+        { k: 'setup', t: 'Pick a time-reversal mirror', d: st.mirror === 'cavity' ? 'One sensor in a box with perfectly reflecting walls: the echoes act as many virtual sensors.' : (st.mirror === 'line' ? 'A line of 40 sensors on one side only: limited aperture.' : 'A ring of 48 sensors around the source: full aperture.'),
           c: L.seg('mirror', [['ring', 'Ring'], ['line', 'Line'], ['cavity', '1 sensor + box']], st.mirror) + '<div class="btns">' + L.btn('trScat', L.model.scat.length ? 'Remove scatterers' : 'Add 40 scatterers') + '</div>', done: !!d.mirror || !!d.fire },
-        { t: 'Fire a hidden source', d: 'Click inside the mirror. The source sends out one pulse; every sensor records what reaches it.' + (st.mirror === 'cavity' ? ' The box rings for 8 s.' : ''), c: rec, done: !!d.fire && ph !== 'record' && ph !== 'idle' },
-        { t: 'Play it backwards', d: 'Each sensor becomes a loudspeaker and re-emits its own recording, last sample first. Physics does the rest.', c: '<div class="btns">' + L.btn('reverse', '◀◀ Time-reverse', 'go', !(ph === 'recorded' || ph === 'done')) + '</div>', done: !!d.reverse && ph !== 'reverse' },
-        { t: 'Look at the focus', d: 'The image shows the largest pressure each point reached while the reversed waves played: a spot where the source was.', c: this.img ? L.seg('trView', [['image', 'Focusing image'], ['field', 'Wavefield']], this.view || 'image') : '', done: !!d.look }
+        { k: 'observe', t: 'Fire a hidden source', d: 'Click inside the mirror. The source sends out one pulse; every sensor records what reaches it.' + (st.mirror === 'cavity' ? ' The box rings for 8 s.' : ''), c: rec, done: !!d.fire && ph !== 'record' && ph !== 'idle' },
+        { k: 'process', t: 'Play it backwards', d: 'Each sensor becomes a loudspeaker and re-emits its own recording, last sample first. Physics does the rest.', c: '<div class="btns">' + L.btn('reverse', '◀◀ Time-reverse', 'go', !(ph === 'recorded' || ph === 'done')) + '</div>', done: !!d.reverse && ph !== 'reverse' },
+        { k: 'interpret', t: 'Look at the focus', d: 'The image shows the largest pressure each point reached while the reversed waves played: a spot where the source was.', c: this.img ? L.seg('trView', [['image', 'Focusing image'], ['field', 'Wavefield']], this.view || 'image') : '', done: !!d.look }
       ];
     },
     results: function () {
       var r = this.img; if (!r) return '';
       var lam = r.lam;
-      return '<div class="res"><h3>Refocusing</h3><dl class="kv"><dt>Focus vs. true source</dt><dd>' + L.fmt(L.km(r.err), 2) + ' km · ' + L.fmt(r.err / lam, 2) + ' λ</dd>' +
+      return '<div class="res"><h3>Refocusing</h3><p class="res-big"><b>' + L.fmt((r.wx + r.wy) / 2 / lam, 2) + ' λ</b><span>focal spot width, FWHM of p² · theory for a perfect ring: 0.36 λ</span></p><dl class="kv"><dt>Focus vs. true source</dt><dd>' + L.fmt(L.km(r.err), 2) + ' km · ' + L.fmt(r.err / lam, 2) + ' λ</dd>' +
         '<dt>Spot width (FWHM), x</dt><dd>' + L.fmt(r.wx / lam, 2) + ' λ</dd><dt>Spot width (FWHM), z</dt><dd>' + L.fmt(r.wy / lam, 2) + ' λ</dd><dt>Wavelength λ</dt><dd>' + L.fmt(L.km(lam), 2) + ' km</dd></dl>' +
-        '<p>' + (this.st.mirror === 'line' ? 'With a one-sided mirror the spot is stretched away from the line: the aperture limits the resolution. Add scatterers and try again: they bend extra energy back into the mirror.' : (this.st.mirror === 'cavity' ? 'One sensor was enough: the reverberations in the box carry the information that a full ring would have collected.' : 'A full ring focuses to about half a wavelength, the diffraction limit.')) + '</p></div>';
+        '<p>' + (this.st.mirror === 'line' ? 'With a one-sided mirror the spot is stretched away from the line: the aperture limits the resolution. Add scatterers and try again: they bend extra energy back into the mirror.' : (this.st.mirror === 'cavity' ? 'One sensor was enough: the reverberations in the box carry the information that a full ring would have collected.' : 'A full ring reaches the diffraction limit: a spot about λ/2 wide in pressure, 0.36 λ at half maximum of p².')) + '</p></div>';
     },
     explain: function () {
       return '<p><b>Why it works.</b> Without losses, the wave equation is unchanged when t → −t. If every sensor re-emits its recording reversed in time, the wave retraces its path and converges on the source at the moment the original pulse left it, then spreads out again (no sink absorbs it).</p>' +
-        '<p><b>Diffraction limit.</b> The focal spot cannot be smaller than about λ/2. A mirror that sees the wave from only one side yields a larger, elongated spot; scattering or reflecting walls send extra energy to the mirror and sharpen the focus (Fink’s time-reversal mirrors and chaotic cavities).</p>' +
+        '<p><b>Diffraction limit.</b> The focal spot cannot be smaller than about λ/2: a perfect ring refocuses to J<sub>0</sub>(kr), 0.48 λ wide at half amplitude and 0.36 λ at half of p², the quantity measured here. A mirror that sees the wave from only one side yields a larger, elongated spot; scattering or reflecting walls send extra energy to the mirror and sharpen the focus (Fink’s time-reversal mirrors and chaotic cavities).</p>' +
         '<p><b>Here:</b> interior attenuation is switched off (α = 0) so the simulation is reversible; the recordings are normalised and injected as sources at the sensor positions. The image is max<sub>t</sub> p(x, t)² during the reversed run.</p>' + physicsExplain();
     },
     act: function (a, v) {
@@ -516,35 +599,52 @@
       return [this.view === 'image' ? 'Focusing image' : 'After the focus'];
     },
     legend: function () {
-      if (this.mode() === 'max') return '<span><i class="sw" style="background:linear-gradient(90deg,transparent,' + 'rgb(' + L.pal.hot.join(',') + '))"></i>peak p² (1 = focus)</span><span>○ true source</span><span>✕ focus</span>';
-      return L.legendAcoustic() + '<span>▼ mirror sensors</span>';
+      if (this.mode() === 'max') return '<span><i class="sw" style="background:linear-gradient(90deg,transparent,' + 'rgb(' + L.pal.hot.join(',') + '))"></i>peak pressure² (1 = at the focus)</span><span>' + L.glyph('ring') + 'true source</span><span>' + L.glyph('cross') + 'focus</span>';
+      return L.legendAcoustic() + '<span>' + L.glyph('sensor') + 'mirror sensors</span>';
     },
     overlay: function (ctx) {
-      var pal = L.pal;
+      var pal = L.pal, sx0 = this.src ? L.sx(this.src[0]) : (this.img ? L.sx(this.img.x) : 0), dir = sx0 < L.sx(L.nx / 2) ? 1 : -1;   /* labels face the centre */
       stations(ctx, this.pts, { labels: false, alpha: 0.9, col: pal.pos });
       if (this.st.mirror === 'ring') { ctx.setLineDash([3, 4]); ctx.strokeStyle = L.rgba(pal.pos, 0.35); ctx.beginPath(); ctx.arc(L.sx(L.nx / 2), L.sy(L.ny / 2), this.R / L.nx * L.W, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]); }
       if (this.src && this.phase !== 'idle') {
         var X = L.sx(this.src[0]), Y = L.sy(this.src[1]);
         if (this.phase === 'record' && this.k < this.n0 * 2) L.star(ctx, X, Y, 8, pal.neg, 0.95);
         ctx.beginPath(); ctx.arc(X, Y, 9, 0, 6.2832); ctx.lineWidth = 1.5; ctx.strokeStyle = L.rgba(pal.ink, 0.85); ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]);
-        if (this.phase !== 'reverse') L.label(ctx, 'true source', X, Y - 14);
+        if (this.phase === 'done') {                                           /* labels on leader lines, off the focal spot */
+          ctx.lineWidth = 1; ctx.strokeStyle = L.rgba(pal.ink, 0.6); ctx.beginPath(); ctx.moveTo(X + 7 * dir, Y - 7); ctx.lineTo(X + 22 * dir, Y - 22); ctx.stroke();
+          L.label(ctx, 'true source', X + 25 * dir, Y - 24, dir > 0 ? 'left' : 'right');
+        } else if (this.phase !== 'reverse') L.label(ctx, 'true source', X, Y - 14);
       }
       if (this.img && this.phase === 'done') {
         var fx = L.sx(this.img.x), fy = L.sy(this.img.y);
         ctx.strokeStyle = L.rgba(pal.ink, 0.95); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(fx - 6, fy - 6); ctx.lineTo(fx + 6, fy + 6); ctx.moveTo(fx + 6, fy - 6); ctx.lineTo(fx - 6, fy + 6); ctx.stroke();
-        L.label(ctx, 'focus', fx, fy + 20);
+        ctx.lineWidth = 1; ctx.strokeStyle = L.rgba(pal.ink, 0.6); ctx.beginPath(); ctx.moveTo(fx + 7 * dir, fy + 7); ctx.lineTo(fx + 22 * dir, fy + 22); ctx.stroke();
+        L.label(ctx, 'focus', fx + 25 * dir, fy + 30, dir > 0 ? 'left' : 'right');
       }
+    },
+    lineKey: function () { return this.phase === 'reverse' || this.phase === 'done'; },
+    cap: function () {
+      var ph = this.phase;
+      if (ph === 'idle') return 'Fire a source inside the mirror: each row will be one sensor’s recording.';
+      if (ph === 'record' || ph === 'recorded') return 'One row per sensor. Sensors far from the source record the pulse later.';
+      return 'Recordings played backwards · pressure² at the source, peaking on the dashed line · the focal spot, magnified.';
+    },
+    kpi: function () {
+      var r = this.img; if (!r) return '';
+      return '<span class="kpi"><b>' + L.fmt((r.wx + r.wy) / 2 / r.lam, 2) + ' λ</b>focal spot</span><span class="kpi dim" title="Half-maximum width of J₀(kr)², the focus of a perfect ring at one frequency"><b>0.36 λ</b>theory</span>';
     },
     data: function (ctx, w, h) {
       if (!this.rec || this.phase === 'idle') { placeholder(ctx, w, h, 'Fire a source inside the mirror: its recordings appear here'); return; }
-      var pal = L.pal, nR = this.pts.length, show = [], k, i, wl = this.phase === 'reverse' || this.phase === 'done' ? w * 0.68 : w - 28, X = 14 + 42, Wt = wl - 14 - 42 - 10, H = h - 28;
+      var pal = L.pal, nR = this.pts.length, show = [], k, i, late = this.phase === 'reverse' || this.phase === 'done', wide = w >= 640;
+      var wl = late ? Math.round(w * (wide && this.img ? 0.56 : 0.68)) : w - 28, X = 14 + 42, Wt = wl - 14 - 42 - 10, H = h - 28;
       var step = Math.max(1, Math.round(nR / 24)); for (k = 0; k < nR; k += step) show.push(k);
       var len = this.len, kRec = this.phase === 'record' ? this.k : len, peak = 1e-9;
       show.forEach(function (r) { for (i = 0; i < kRec; i++) { var a = Math.abs(this.rec[r][i]); if (a > peak) peak = a; } }, this);
-      var sp = H / show.length, amp = (show.length > 1 ? 0.9 * sp : H / 2 - 3) / peak, stride = Math.max(1, Math.floor(len / (Wt * 1.5)));
+      L.panelLabel(ctx, late ? 'Recordings · re-emitted last sample first' : 'Recordings at the mirror', 14, 2, null, wl - 24);
+      var sp = (H - 14) / show.length, amp = (show.length > 1 ? 0.9 * sp : (H - 14) / 2 - 3) / peak, stride = Math.max(1, Math.floor(len / (Wt * 1.5)));
       for (var q = 0; q < show.length; q++) {
-        var r = show[q], y0 = 4 + sp * (q + 0.5), a = this.rec[r];
-        if (show.length <= 12 || q % 2 === 0) { L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(this.pts[r].code, 14, y0); }
+        var r = show[q], y0 = 18 + sp * (q + 0.5), a = this.rec[r];
+        if (show.length <= 12 || q % 2 === 0) { L.num(ctx); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(this.pts[r].code, 14, y0); }
         ctx.beginPath(); ctx.moveTo(X, y0);
         for (i = 0; i < kRec; i += stride) ctx.lineTo(X + i / (len - 1) * Wt, y0 - Math.max(0, Math.min(1.4 * sp, a[i] * amp)));
         ctx.lineTo(X + Math.min(kRec, len - 1) / (len - 1) * Wt, y0); ctx.closePath(); ctx.fillStyle = pal.fill; ctx.fill();
@@ -555,22 +655,52 @@
       var ph = this.phase === 'record' ? this.k : (this.phase === 'reverse' ? len - 1 - Math.min(this.k, len - 1) : null);
       if (ph != null) {
         var xp = X + ph / (len - 1) * Wt;
-        if (this.phase === 'reverse') { ctx.fillStyle = L.rgba(pal.pn || pal.bg, 0.55); ctx.fillRect(xp, 2, X + Wt - xp, H + 4); }
-        ctx.strokeStyle = L.rgba(this.phase === 'reverse' ? pal.neg : pal.pos, 0.95); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(xp, 2); ctx.lineTo(xp, H + 6); ctx.stroke();
+        if (this.phase === 'reverse') { ctx.fillStyle = L.rgba(pal.pn || pal.bg, 0.55); ctx.fillRect(xp, 16, X + Wt - xp, H - 10); }
+        ctx.strokeStyle = L.rgba(this.phase === 'reverse' ? pal.neg : pal.pos, 0.95); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(xp, 16); ctx.lineTo(xp, H + 6); ctx.stroke();
       }
-      L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textBaseline = 'top';
-      ctx.textAlign = 'left'; ctx.fillText('0 s', X, H + 10); ctx.textAlign = 'right'; ctx.fillText(L.fmt(len / L.rate, 1) + ' s', X + Wt, H + 10);
-      ctx.textAlign = 'center'; ctx.fillText(this.phase === 'reverse' || this.phase === 'done' ? '◀ re-emitted last sample first' : 'recording time →', X + Wt / 2, H + 10);
-      if (this.focusTr && (this.phase === 'reverse' || this.phase === 'done')) {
-        var x0 = wl + 10, W2 = w - x0 - 14, H2 = H - 14, f = this.focusTr, mxF = 1e-12, kk = Math.min(this.k, this.total);
+      /* time axis: a tick every 0.5 s (1 s when narrow), the unit on the last number */
+      var T = len / L.rate, dt = Wt / T * 0.5 < 34 ? 1 : 0.5, ticks = [];
+      for (var t = 0; t <= T + 1e-6; t += dt) ticks.push(t);
+      ctx.lineWidth = 1; ctx.strokeStyle = pal.axis; ctx.beginPath(); ctx.moveTo(X, H + 4.5); ctx.lineTo(X + Wt, H + 4.5); ctx.stroke();
+      ctx.strokeStyle = pal.tick; ctx.beginPath(); ticks.forEach(function (t) { var xt = Math.round(X + t * L.rate / (len - 1) * Wt) + 0.5; ctx.moveTo(xt, H + 5); ctx.lineTo(xt, H + 9); }); ctx.stroke();
+      L.num(ctx); ctx.textBaseline = 'top';
+      ticks.forEach(function (t, j) { var xt = X + t * L.rate / (len - 1) * Wt, last = j === ticks.length - 1; ctx.textAlign = j === 0 ? 'left' : (last ? 'right' : 'center'); ctx.fillText(L.fmt(t, t % 1 ? 1 : (dt < 1 && t ? 1 : 0)) + (last ? ' s' : ''), last ? Math.min(xt + 8, X + Wt) : xt, H + 11); });
+      if (this.focusTr && late) {
+        var x0 = wl + 10, W2 = (wide && this.img ? Math.round(w * 0.20) : w - x0 - 14), H2 = H - 14, f = this.focusTr, mxF = 1e-12, kk = Math.min(this.k, this.total);
         for (i = 0; i < kk; i++) if (f[i] > mxF) mxF = f[i];
-        L.panelLabel(ctx, 'p² AT THE TRUE SOURCE', x0, 2);
+        L.panelLabel(ctx, 'Pressure² at the source', x0, 2, null, W2);
         ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.strokeRect(x0 + 0.5, 16.5, W2 - 1, H2 - 1);
-        var xf = x0 + this.kf / (this.total - 1) * W2; ctx.lineWidth = 1; ctx.setLineDash([2, 3]); ctx.strokeStyle = 'rgba(' + pal.origin + ',.8)'; ctx.beginPath(); ctx.moveTo(xf, 17); ctx.lineTo(xf, 16 + H2); ctx.stroke(); ctx.setLineDash([]);
+        var xf = Math.round(x0 + this.kf / (this.total - 1) * W2) + 0.5;
+        ctx.setLineDash([4, 3]); ctx.strokeStyle = L.rgba(pal.pos, 0.9); ctx.beginPath(); ctx.moveTo(xf, 17); ctx.lineTo(xf, 16 + H2); ctx.stroke(); ctx.setLineDash([]);
         ctx.beginPath(); for (i = 0; i < kk; i += Math.max(1, Math.floor(this.total / W2))) { var yv = 16 + H2 - 2 - f[i] / mxF * (H2 - 8); if (i) ctx.lineTo(x0 + i / (this.total - 1) * W2, yv); else ctx.moveTo(x0, yv); }
         ctx.strokeStyle = L.rgba(pal.hot, 0.95); ctx.lineWidth = 1.4; ctx.stroke();
-        L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText('expected focus', xf, H + 10);
+        L.annot(ctx, L.rgba(pal.pos, 0.95)); ctx.textBaseline = 'top'; var tw = ctx.measureText('predicted focus').width;
+        ctx.textAlign = 'left'; ctx.fillText('predicted focus', Math.max(x0, Math.min(x0 + W2 - tw, xf - tw / 2)), H + 10);
+        if (wide && this.img && this.img.crop) this.spot(ctx, x0 + W2 + 16, w, H);
       }
+    },
+    /* the focal spot, magnified: max p² around the focus (1 = focus), the true source as a dashed circle, measured FWHM vs. theory */
+    spot: function (ctx, xi, w, H) {
+      var pal = L.pal, r = this.img, R = r.R, n = 2 * R + 1, S = Math.min(w - 14 - xi, H - 14), y0 = 18, k, c;
+      if (S < 90) return;
+      var cpx = S / n, b = pal.pn || pal.bg, hc = pal.hot;
+      for (k = 0; k < n; k++) for (c = 0; c < n; c++) {
+        var a = r.crop[k * n + c], t = Math.pow(Math.max(0, (a - 0.05) / 0.95), 0.75);
+        ctx.fillStyle = 'rgb(' + ((b[0] + (hc[0] - b[0]) * t) | 0) + ',' + ((b[1] + (hc[1] - b[1]) * t) | 0) + ',' + ((b[2] + (hc[2] - b[2]) * t) | 0) + ')';
+        ctx.fillRect(xi + c * cpx, y0 + k * cpx, cpx + 0.6, cpx + 0.6);
+      }
+      ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.strokeRect(xi + 0.5, y0 + 0.5, S - 1, S - 1);
+      L.panelLabel(ctx, 'Focal spot · ×' + Math.round(cpx / (L.W / L.nx)), xi, 2, null, S);
+      var cx = xi + S / 2, cy = y0 + S / 2;
+      ctx.strokeStyle = L.rgba(pal.ink, 0.95); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(cx - 5, cy - 5); ctx.lineTo(cx + 5, cy + 5); ctx.moveTo(cx + 5, cy - 5); ctx.lineTo(cx - 5, cy + 5); ctx.stroke();
+      var sxp = cx + (this.src[0] - r.x) * cpx, syp = cy + (this.src[1] - r.y) * cpx;
+      if (sxp > xi && sxp < xi + S && syp > y0 && syp < y0 + S) { ctx.setLineDash([3, 3]); ctx.lineWidth = 1.2; ctx.strokeStyle = L.rgba(pal.ink, 0.85); ctx.beginPath(); ctx.arc(sxp, syp, 6, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]); }
+      var bar = function (y, len, col, txt) {
+        ctx.lineWidth = 2; ctx.strokeStyle = col; ctx.beginPath(); ctx.moveTo(xi + 8, y); ctx.lineTo(xi + 8 + len, y); ctx.moveTo(xi + 8, y - 3); ctx.lineTo(xi + 8, y + 3); ctx.moveTo(xi + 8 + len, y - 3); ctx.lineTo(xi + 8 + len, y + 3); ctx.stroke();
+        L.font(ctx, 10); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 3; ctx.strokeStyle = L.rgba(b, 0.85); ctx.strokeText(txt, xi + 14 + len, y); ctx.fillStyle = col; ctx.fillText(txt, xi + 14 + len, y);
+      };
+      bar(y0 + S - 24, (r.wx + r.wy) / 2 * cpx, L.rgba(pal.ink, 0.95), 'FWHM ' + L.fmt((r.wx + r.wy) / 2 / r.lam, 2) + ' λ');   /* mean of x and z, as in the header */
+      bar(y0 + S - 10, 0.36 * r.lam * cpx, pal.label, 'theory 0.36 λ');
     },
     csv: function () {
       if (!this.rec) return null;
@@ -638,7 +768,7 @@
     span: function () { var m = 0.05; for (var j = 0; j < this.truth.length; j++) m = Math.max(m, Math.abs(this.truth[j] - 1)); return Math.ceil(m * 20) / 20; },
     cell: function (x, y) { var b = this.box, i = Math.floor((x - b[0]) / this.cw), k = Math.floor((y - b[1]) / this.chh); if (i < 0 || k < 0 || i >= this.gx || k >= this.gz) return -1; return k * this.gx + i; },
     startSurvey: function () {
-      this.gridSetup(); this.rays = []; this.inv = null; this.shot = 0; this.phase = 'survey'; this.st.did.survey = false;
+      this.gridSetup(); this.rays = []; this.inv = null; this.invStraight = null; this.shot = 0; this.phase = 'survey'; this.st.did.survey = false;
       this.nextShot(); L.refresh();
     },
     nextShot: function () {
@@ -710,13 +840,14 @@
       }
       var x = cgls(A, At, b, n, 90), sN = new Float64Array(nC), v = new Float64Array(nC), pre = 0, post = 0;
       for (k = 0; k < nC; k++) { sN[k] = Math.max(1 / 1.6, Math.min(2, s0[k] + x[k])); v[k] = 1 / sN[k]; }
-      var Ax = A(x); for (k = 0; k < nr; k++) { pre += b[k] * b[k]; post += (b[k] - Ax[k]) * (b[k] - Ax[k]); }
+      var Ax = A(x), res0 = new Float32Array(nr), res1 = new Float32Array(nr);
+      for (k = 0; k < nr; k++) { pre += b[k] * b[k]; post += (b[k] - Ax[k]) * (b[k] - Ax[k]); res0[k] = b[k] / L.rate * 1000; res1[k] = (b[k] - Ax[k]) / L.rate * 1000; }
       /* correlation of the recovered and true slowness perturbations, over cells crossed by rays */
       var t = this.truth, sa = 0, sb = 0, sab = 0, saa = 0, sbb = 0, nn = 0;
       for (k = 0; k < nC; k++) if (hits[k] > 0) { var u = 1 / t[k] - 1, w = sN[k] - 1; sa += u; sb += w; sab += u * w; saa += u * u; sbb += w * w; nn++; }
       var cov = sab / nn - sa / nn * sb / nn, r = cov / Math.sqrt(Math.max(1e-20, (saa / nn - Math.pow(sa / nn, 2)) * (sbb / nn - Math.pow(sb / nn, 2))));
       var hm = 0; for (k = 0; k < nC; k++) hm = Math.max(hm, hits[k]);
-      return { s: sN, v: v, hits: hits, hmax: hm, rmsPre: Math.sqrt(pre / nr) / L.rate, rmsPost: Math.sqrt(post / nr) / L.rate, r: r, n: nr, tau: x[nC] * tscale / L.rate };
+      return { s: sN, v: v, hits: hits, hmax: hm, rmsPre: Math.sqrt(pre / nr) / L.rate, rmsPost: Math.sqrt(post / nr) / L.rate, r: r, n: nr, tau: x[nC] * tscale / L.rate, res0: res0, res1: res1 };
     },
     /* bent rays by pseudo-bending (Um & Thurber 1987): start from the straight ray; in every sweep each interior point
        is set to the midpoint of its neighbours, then moved along the path normal by d = −(∂s/∂n)·l²/(2s), the offset
@@ -768,18 +899,21 @@
     steps: function () {
       var st = this.st, d = st.did, ph = this.phase, inv = this.inv;
       return [
-        { t: 'Pick the true model', d: 'The survey will try to recover it; it stays visible under the waves. Or paint your own with the slow and fast brushes.', c: '<div class="grid3">' + L.opt('truth', 'random', 'Random blobs', st.truth === 'random') + L.opt('truth', 'checker', 'Checker&shy;board', st.truth === 'checker') + L.opt('truth', 'custom', 'Paint your own', st.truth === 'custom') + '</div>', done: !!d.truth || ph !== 'idle' },
-        { t: 'Run the survey', d: st.geom === 'ring' ? '12 shots fired one after another, 48 receivers all around: rays cross in every direction.' : 'Cross-well: 10 shots in a borehole on the left, 40 receivers in one on the right. Rays are nearly horizontal.',
+        { k: 'setup', t: 'Pick the true model', d: 'The survey will try to recover it; it stays visible under the waves. Or paint your own with the slow and fast brushes.', c: '<div class="grid3">' + L.opt('truth', 'random', 'Random blobs', st.truth === 'random') + L.opt('truth', 'checker', 'Checker&shy;board', st.truth === 'checker') + L.opt('truth', 'custom', 'Paint your own', st.truth === 'custom') + '</div>', done: !!d.truth || ph !== 'idle' },
+        { k: 'observe', t: 'Run the survey', d: st.geom === 'ring' ? '12 shots fired one after another, 48 receivers all around: rays cross in every direction.' : 'Cross-well: 10 shots in a borehole on the left, 40 receivers in one on the right. Rays are nearly horizontal.',
           c: L.seg('geom', [['ring', 'Surround'], ['cross', 'Cross-well']], st.geom) + '<div class="btns">' + L.btn('survey', ph === 'survey' ? 'Surveying…' : (ph === 'done' ? 'Run again' : 'Fire ' + this.S.length + ' shots'), 'go', ph === 'survey') + '</div>' + (ph === 'survey' ? '<p class="live" id="tomoLive"></p>' : ''), done: ph === 'done' },
-        { t: 'Invert the travel times', d: 'First arrivals are picked automatically, then a damped, smoothed least-squares problem (CGLS) finds the slowness in ' + this.gx + ' × ' + this.gz + ' cells that best explains them. <b>Bent rays</b> re-bend every ray through the current model, three times.',
+        { k: 'process', t: 'Invert the travel times', d: 'First arrivals are picked automatically, then a damped, smoothed least-squares problem (CGLS) finds the slowness in ' + this.gx + ' × ' + this.gz + ' cells that best explains them. <b>Bent rays</b> re-bend every ray through the current model, three times.',
           c: L.seg('rays', [['straight', 'Straight rays'], ['bent', 'Bent rays']], st.rays) + L.range('smooth', 'Smoothing', 0, 100, 1, Math.round(st.smooth * 100), Math.round(st.smooth * 100) + ' %'), done: !!inv && ph === 'done' },
-        { t: 'Compare with the truth', d: 'The panel below shows the true model, the recovered model and the ray coverage. Try the checkerboard: it shows where the survey can resolve detail, and where the rays smear it.', done: !!d.compare }
+        { k: 'interpret', t: 'Compare with the truth', d: 'The panel below shows the true model, the recovered model and the ray coverage. Try the checkerboard: it shows where the survey can resolve detail, and where the rays smear it.', done: !!d.compare }
       ];
     },
     results: function () {
       var r = this.inv; if (!r) return '';
-      return '<div class="res"><h3>Inversion · ' + (r.mode === 'bent' ? 'bent' : 'straight') + ' rays</h3><dl class="kv"><dt>Picked rays</dt><dd>' + r.n + '</dd><dt>RMS residual, v = 1 start</dt><dd>' + L.fmt(r.rmsPre * 1000, 0) + ' ms</dd><dt>RMS residual, recovered</dt><dd>' + L.fmt(r.rmsPost * 1000, 0) + ' ms</dd>' +
-        '<dt>Correlation with the truth</dt><dd>r = ' + L.fmt(r.r, 2) + '</dd>' +
+      var pre = r.rmsPre * 1000, post = r.rmsPost * 1000, wPost = Math.max(2, Math.min(100, post / Math.max(pre, 1e-9) * 100));
+      return '<div class="res"><h3>Inversion · ' + (r.mode === 'bent' ? 'bent' : 'straight') + ' rays</h3>' +
+        '<p class="res-big"><b>r = ' + L.fmt(r.r, 2) + '</b><span>correlation between the recovered and the true model</span></p>' +
+        '<div class="bar2"><i style="--w:100%"></i><em>' + L.fmt(pre, 0) + ' ms · uniform start</em><i class="on" style="--w:' + L.fmt(wPost, 0) + '%"></i><em>' + L.fmt(post, 0) + ' ms · recovered</em></div>' +
+        '<dl class="kv"><dt>Picked rays</dt><dd>' + r.n + '</dd>' +
         (r.mode === 'bent' && this.invStraight ? '<dt>Straight rays alone</dt><dd>r = ' + L.fmt(this.invStraight.r, 2) + ' · ' + L.fmt(this.invStraight.rmsPost * 1000, 0) + ' ms</dd>' : '') +
         '</dl><p>' + this.verdict(r) + '</p></div>';
     },
@@ -803,7 +937,7 @@
       return 'Blurry: with straight rays and few crossing directions part of the model stays unresolved, and it is smeared along the dominant ray direction.';
     },
     head: function () { L.setData('Travel-time tomography · <b>' + this.S.length + '</b> shots × <b>' + this.R.length + '</b> receivers · ' + (this.st.rays === 'bent' ? 'bent' : 'straight') + ' rays', ''); },
-    reset: function () { this.phase = 'idle'; this.rays = []; this.inv = null; this.gridSetup(); },
+    reset: function () { this.phase = 'idle'; this.rays = []; this.inv = null; this.invStraight = null; this.gridSetup(); },
     cta: function () { var ph = this.phase; return { label: ph === 'survey' ? 'Surveying…' : (ph === 'done' ? 'Run the survey again' : 'Fire ' + this.S.length + ' shots'), act: 'survey', disabled: ph === 'survey' }; },
     input: function (id, v) {
       if (id !== 'smooth') return;
@@ -824,15 +958,18 @@
         if (this.shot < this.S.length) this.nextShot();
         else {
           var self = this; this.phase = 'done'; L.eng.clear(); this.st.did.compare = true;            /* truth and result are side by side now */
-          if (this.st.rays === 'bent') { this.bending = true; setTimeout(function () { self.invert(); self.bending = false; L.refresh(); }, 40); }   /* let the screen update first */
-          L.refresh();
+          if (this.st.rays === 'bent') { this.bending = true; setTimeout(function () { self.invert(); self.bending = false; L.refresh(); L.scrollRes(); }, 40); }   /* let the screen update first */
+          L.refresh(); if (this.st.rays !== 'bent') L.scrollRes();
         }
       }
     },
     after: function () { if (this.phase === 'survey') L.text('tomoLive', 'Shot ' + (this.shot + 1) + ' of ' + this.S.length + ' · ' + this.rays.length + ' travel times picked'); },
     progress: function () { return this.phase === 'survey' ? (this.shot + this.k / this.len) / this.S.length : null; },
     hud: function () { if (this.phase === 'survey') return ['<b class="em">Shot ' + (this.shot + 1) + ' / ' + this.S.length + '</b>', 'fast-forward'];   /* the bar under the field shows the progress */ if (this.phase === 'done') return [this.bending ? 'Bending rays…' : this.rays.length + ' rays']; return ['Ready to shoot']; },
-    legend: function () { return L.legendAcoustic() + '<span>★ shot</span><span>▼ receiver</span><span>— ray</span>'; },
+    legend: function () { return L.legendAcoustic() + '<span>' + L.glyph('star') + 'shot</span><span>' + L.glyph('tri') + 'receiver</span><span>' + L.glyph('ray') + 'ray</span>'; },
+    lineKey: true,
+    cap: function () { return this.phase === 'idle' && !this.rays.length ? 'Left: one shot’s seismograms and first-arrival picks. Right: the true model, the result and the ray coverage.' : 'Late picks (pink dots) crossed slow rock, early picks (blue) fast rock: the inversion maps these residuals.'; },
+    kpi: function () { var r = this.inv; if (!r || this.phase === 'survey') return ''; return '<span class="kpi"><b>r = ' + L.fmt(r.r, 2) + '</b>vs truth</span><span class="kpi dim"><b>' + L.fmt(r.rmsPre * 1000, 0) + ' → ' + L.fmt(r.rmsPost * 1000, 0) + ' ms</b>misfit</span>'; },
     overlay: function (ctx) {
       var pal = L.pal, self = this;
       if (this.rays.length) {
@@ -849,27 +986,47 @@
       this.S.forEach(function (s, i) { L.star(ctx, L.sx(s[0]), L.sy(s[1]), i === self.shot && self.phase === 'survey' ? 8 : 5.5, pal.neg, i === self.shot && self.phase === 'survey' ? 1 : 0.75); });
     },
     data: function (ctx, w, h) {
-      var pal = L.pal, gx = this.gx, gz = this.gz, inv = this.inv, self = this, narrow = w < 640;
-      var mw = narrow ? (w - 28 - 24) / 3 : Math.min((w * 0.78 - 52) / 3, (h - 62) * gx / gz), mh = mw * gz / gx;
-      var yT = 2, y0 = 20;                                        /* top-aligned: the four panel titles share one row with the gather's */
-      var x0 = narrow ? 14 : w - 14 - 3 * mw - 24;
+      var pal = L.pal, gx = this.gx, gz = this.gz, inv = this.inv, self = this, narrow = w < 640, k, i;
+      var gw = narrow ? 0 : Math.round(w * 0.22), x0 = narrow ? 14 : 14 + gw + 30, wR = w - 14 - x0;
+      var mw = narrow ? (w - 28 - 24) / 3 : Math.min((wR - 24) / 3, (h - 140) * gx / gz), mh = mw * gz / gx, y0 = 18;
       function map(X, title, val) {
-        L.panelLabel(ctx, title, X, yT);
+        L.panelLabel(ctx, title, X, 2, null, mw);
         for (var k = 0; k < gz; k++) for (var i = 0; i < gx; i++) { var c = val(k * gx + i); ctx.fillStyle = 'rgb(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ')'; ctx.fillRect(X + i * mw / gx, y0 + k * mh / gz, mw / gx + 0.6, mh / gz + 0.6); }
         ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.strokeRect(X + 0.5, y0 + 0.5, mw - 1, mh - 1);
       }
-      var span = this.span();
-      map(x0, 'TRUE MODEL', function (j) { return L.velCol(self.truth[j] - 1, span); });
-      map(x0 + mw + 12, inv ? 'RECOVERED · ' + (inv.mode === 'bent' ? 'BENT' : 'STRAIGHT') + ' RAYS' : 'RECOVERED', function (j) { return inv ? L.velCol(inv.v[j] - 1, span) : (pal.pn || pal.bg); }, false);
-      map(x0 + 2 * (mw + 12), 'RAY COVERAGE', function (j) { var a = inv ? Math.min(1, inv.hits[j] / (0.5 * inv.hmax)) : 0, b = pal.pn || pal.bg, c = pal.pos; return [b[0] + (c[0] - b[0]) * a * 0.5, b[1] + (c[1] - b[1]) * a * 0.5, b[2] + (c[2] - b[2]) * a * 0.5]; }, false);
-      if (!inv) { L.font(ctx, 10, 400); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('run the survey', x0 + mw + 12 + mw / 2, y0 + mh / 2); }
-      L.colorbar(ctx, x0, y0 + mh + 10, Math.min(2 * mw + 12, 220), 8, function (t) { return L.velCol(t * span, span); }, '−' + Math.round(span * 100) + ' %', '+' + Math.round(span * 100) + ' %', 'velocity vs. v = 1');
+      var span = this.span(), b0 = pal.pn || pal.bg, cov = function (a) { return [b0[0] + (pal.pos[0] - b0[0]) * a * 0.5, b0[1] + (pal.pos[1] - b0[1]) * a * 0.5, b0[2] + (pal.pos[2] - b0[2]) * a * 0.5]; };
+      map(x0, 'True model', function (j) { return L.velCol(self.truth[j] - 1, span); });
+      map(x0 + mw + 12, inv ? 'Recovered · ' + (inv.mode === 'bent' ? 'bent' : 'straight') + ' rays' : 'Recovered', function (j) { return inv ? L.velCol(inv.v[j] - 1, span) : b0; });
+      map(x0 + 2 * (mw + 12), 'Ray coverage', function (j) { return cov(inv ? Math.min(1, inv.hits[j] / (0.5 * inv.hmax)) : 0); });
+      if (!inv) L.placeholder(ctx, x0 + mw + 12 + mw / 2, y0 + mh / 2, 'run the survey');
+      L.colorbar(ctx, x0, y0 + mh + 8, 2 * mw + 12, 6, function (t) { return L.velCol(t * span, span); }, '−' + Math.round(span * 100) + ' %', '+' + Math.round(span * 100) + ' %', 'velocity anomaly · 0 = 2.5 km/s');
       if (narrow) return;
-      /* left: the current (or last) shot gather with its picks */
-      var gw = x0 - 14 - 22, g0 = y0, GH = h - 12 - g0;                            /* full panel height (48 traces stay readable); starts where the maps start */
-      L.panelLabel(ctx, this.phase === 'idle' ? 'SHOT GATHER' : 'SHOT ' + Math.min(this.shot + 1, this.S.length) + ' · GATHER AND PICKS', 14, yT);
-      if (!this.buf) { L.font(ctx, 10, 400); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('waiting for the first shot', 14 + gw / 2, g0 + GH / 2); return; }
-      var nR = this.R.length, len = this.len, kk = this.phase === 'survey' ? this.k : len, sp = GH / nR, peak = 1e-9, r, i;
+      L.colorbar(ctx, x0 + 2 * (mw + 12), y0 + mh + 8, mw, 6, function (t) { return cov((t + 1) / 2); }, 'few rays', 'many', null, true);
+      /* travel-time residuals against source–receiver distance: before (colour) and after (grey) the inversion */
+      var ty = y0 + mh + 34, px0 = x0 + 44, px1 = x0 + wR, py0 = ty + 20, py1 = h - 18;
+      L.panelLabel(ctx, 'Travel-time residuals against distance · before (colour) and after (grey) the inversion', x0, ty, null, wR);
+      var R0 = this.invStraight && this.invStraight.res0, R1 = inv && inv.res1, rays = this.rays;
+      if (R0 && R0.length > rays.length) R0 = null;                              /* residuals of an earlier survey */
+      if (!R0 || !R0.length || py1 - py0 < 30) { if (py1 - py0 >= 20) L.placeholder(ctx, (px0 + px1) / 2, (py0 + py1) / 2, 'run the survey: every pick becomes a dot here'); }
+      else {
+        var mxp = 0, mxn = 0, dmax = 0;
+        for (k = 0; k < R0.length; k++) { mxp = Math.max(mxp, R0[k]); mxn = Math.max(mxn, -R0[k]); dmax = Math.max(dmax, L.km(rays[k].d)); }
+        var hi0 = Math.max(50, Math.ceil(mxp / 50) * 50), lo0 = Math.max(50, Math.ceil(mxn / 50) * 50), hi = Math.max(hi0, Math.ceil(lo0 / 4 / 50) * 50), lo = Math.max(lo0, Math.ceil(hi0 / 4 / 50) * 50), xmax = Math.max(2, Math.ceil(dmax));
+        var X = function (dkm) { return px0 + dkm / xmax * (px1 - px0); }, Y = function (ms) { return py0 + (hi - ms) / (hi + lo) * (py1 - py0); };
+        ctx.lineWidth = 1; ctx.strokeStyle = pal.grid; ctx.beginPath(); ctx.moveTo(px0, Math.round(Y(hi / 2)) + 0.5); ctx.lineTo(px1, Math.round(Y(hi / 2)) + 0.5); ctx.stroke();
+        ctx.strokeStyle = pal.axis; ctx.beginPath(); ctx.moveTo(px0, Math.round(Y(0)) + 0.5); ctx.lineTo(px1, Math.round(Y(0)) + 0.5); ctx.moveTo(px0, py1 + 0.5); ctx.lineTo(px1, py1 + 0.5); ctx.stroke();
+        ctx.strokeStyle = pal.tick; ctx.beginPath(); for (k = 2; k <= xmax; k += 2) { var xk = Math.round(X(k)) + 0.5; ctx.moveTo(xk, py1); ctx.lineTo(xk, py1 + 4); } ctx.stroke();
+        L.num(ctx); ctx.textBaseline = 'top'; ctx.textAlign = 'center';
+        var lastK = xmax - (xmax % 2); for (k = 2; k <= xmax; k += 2) ctx.fillText(k === lastK ? k + ' km' : String(k), X(k), py1 + 5);
+        ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText('+' + hi + ' ms', px0 - 4, py0); ctx.fillText('0', px0 - 4, Y(0)); ctx.fillText('−' + lo, px0 - 4, py1);
+        for (k = 0; k < R0.length; k++) { var v0 = R0[k]; ctx.fillStyle = L.rgba(v0 > 0 ? pal.slow : pal.fast, 0.85); ctx.beginPath(); ctx.arc(X(L.km(rays[k].d)), Y(Math.max(-lo, Math.min(hi, v0))), 1.5, 0, 6.2832); ctx.fill(); }
+        if (R1 && R1.length === R0.length) { ctx.fillStyle = L.rgba(pal.ink, 0.5); for (k = 0; k < R1.length; k++) { ctx.beginPath(); ctx.arc(X(L.km(rays[k].d)), Y(Math.max(-lo, Math.min(hi, R1[k]))), 1.2, 0, 6.2832); ctx.fill(); } }
+      }
+      /* left: the current (or last) shot gather with its picks and the first arrival predicted for a uniform model */
+      var g0 = 18, GH = h - 16 - g0;
+      L.panelLabel(ctx, this.phase === 'idle' && !this.buf ? 'Seismograms and picks' : 'Shot ' + Math.min(this.shot + 1, this.S.length) + ' · seismograms and picks', 14, 2, null, gw + 20);
+      if (!this.buf) { L.placeholder(ctx, 14 + gw / 2, g0 + GH / 2, 'waiting for the first shot'); return; }
+      var nR = this.R.length, len = this.len, kk = this.phase === 'survey' ? this.k : len, sp = GH / nR, peak = 1e-9, r;
       for (r = 0; r < nR; r++) for (i = 0; i < kk; i++) { var aa = Math.abs(this.buf[r * len + i]); if (aa > peak) peak = aa; }
       var stride = Math.max(1, Math.floor(len / (gw * 1.5)));
       ctx.lineWidth = 0.9; ctx.strokeStyle = L.rgba(pal.ink, 0.38);
@@ -879,10 +1036,14 @@
         for (i = 0; i < kk; i += stride) { var yy = yb - Math.max(-1.5 * sp, Math.min(1.5 * sp, this.buf[r * len + i] / peak * 2.2 * sp * 4)); if (i) ctx.lineTo(14 + i / (len - 1) * gw, yy); else ctx.moveTo(14, yy); }
         ctx.stroke();
       }
+      ctx.setLineDash([4, 3]); ctx.lineWidth = 1; ctx.strokeStyle = L.rgba(pal.pos, 0.9); ctx.beginPath(); var pen = false;   /* uniform model: t = n0 + d / C */
+      for (r = 0; r < nR; r++) { if (!this.use[r]) { pen = false; continue; } var xu = 14 + (this.n0 + this.use[r] / C) / (len - 1) * gw, yu = g0 + sp * (r + 0.5); if (xu > 14 + gw) { pen = false; continue; } if (pen) ctx.lineTo(xu, yu); else ctx.moveTo(xu, yu); pen = true; }
+      ctx.stroke(); ctx.setLineDash([]);
       var sh = this.phase === 'survey' ? this.shot : this.S.length - 1;
       ctx.fillStyle = L.rgba(pal.neg, 0.95);
       this.rays.forEach(function (ry) { if (ry.shot === sh) { ctx.beginPath(); ctx.arc(14 + ry.pk / (len - 1) * gw, g0 + sp * (ry.ri + 0.5), 1.8, 0, 6.2832); ctx.fill(); } });
-      L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textBaseline = 'top'; ctx.textAlign = 'left'; ctx.fillText('0 s', 14, h - 11); ctx.textAlign = 'right'; ctx.fillText(L.fmt(len / L.rate, 1) + ' s · dots = picks', 14 + gw, h - 11);
+      L.num(ctx); ctx.textBaseline = 'top'; ctx.textAlign = 'left'; ctx.fillText('0', 14, h - 12); ctx.textAlign = 'right'; ctx.fillText(L.fmt(len / L.rate, 1) + ' s', 14 + gw, h - 12);
+      L.axisTitle(ctx); ctx.textAlign = 'center'; ctx.fillText('time after the shot', 14 + gw / 2, h - 12);
     },
     csv: function () {
       if (!this.rays.length) return null;
@@ -921,8 +1082,26 @@
     speedMul: function () { return 4; },
     resetCC: function () {
       this.rec = new L.Rec(this.sta, L.TR); this.a = new Float32Array(this.Lb); this.b = new Float32Array(this.Lb); this.cnt = 0;
-      this.stack = new Float64Array(2 * this.Lg + 1); this.nWin = 0; this.rows = [];
+      this.stack = new Float64Array(2 * this.Lg + 1); this.nWin = 0; this.rows = []; this.snrH = []; this.now = { snr: 0, lagP: null, lagN: null, v: null };
       this.tAB = L.model.travelTime(this.sta[0].x, this.sta[0].y, this.sta[1].x, this.sta[1].y, L.rate);
+    },
+    /* measured peak of the stack within ±0.2 s of ±t_AB (sign = +1: A → B), refined by a three-point parabola; lag in s, or null */
+    peak: function (sign) {
+      var Lg = this.Lg, st = this.stack, c = sign * this.tAB * L.rate, w = Math.round(0.2 * L.rate), lo = Math.max(-Lg + 1, Math.round(c - w)), hi = Math.min(Lg - 1, Math.round(c + w)), best = -1e30, bl = null, l;
+      if (lo > hi) return null;
+      for (l = lo; l <= hi; l++) if (st[Lg + l] > best) { best = st[Lg + l]; bl = l; }
+      if (bl == null || best <= 0) return null;
+      var y0 = st[Lg + bl - 1], y1 = st[Lg + bl], y2 = st[Lg + bl + 1], dn = y0 - 2 * y1 + y2, off = dn < 0 ? Math.max(-0.5, Math.min(0.5, 0.5 * (y0 - y2) / dn)) : 0;
+      return (bl + off) / L.rate;
+    },
+    /* velocity between A and B from the measured lag(s), once the stack stands above its noise (SNR ≥ 4) */
+    vEst: function (snr, lp, ln) {
+      if (snr < 4) return null;
+      var dkm = L.km(Math.hypot(this.sta[1].x - this.sta[0].x, this.sta[1].y - this.sta[0].y)), lag;
+      if (this.st.mode === 'side') { var Lg = this.Lg, st = this.stack, vp = lp != null ? st[Lg + Math.round(lp * L.rate)] : -1e30, vn = ln != null ? st[Lg + Math.round(ln * L.rate)] : -1e30; lag = vp >= vn ? lp : ln; }
+      else if (lp != null && ln != null) lag = (Math.abs(lp) + Math.abs(ln)) / 2;
+      else lag = lp != null ? lp : ln;
+      return lag ? dkm / Math.abs(lag) : null;
     },
     save: function () { var st = this.st; st.m = L.model.serialize(); st.A = L.toN([this.sta[0].x, this.sta[0].y]); st.B = L.toN([this.sta[1].x, this.sta[1].y]); },
     serialize: function () { var st = this.st; return { m: st.m, A: st.A, B: st.B, mode: st.mode }; },
@@ -937,13 +1116,29 @@
     steps: function () {
       var st = this.st, d = st.did;
       return [
-        { t: 'Place two stations', d: 'Drag A and B. Their distance sets the travel time t<sub>AB</sub> that should appear in the correlation.', done: !!d.place || this.nWin > 0 },
-        { t: 'Switch on the noise', d: 'Weak sources pop off at random places and times in a ring around the stations, like distant ocean waves or traffic.', c: L.seg('nmode', [['off', 'Off'], ['ring', 'All around'], ['side', 'One side only']], st.mode), done: st.mode !== 'off' && this.nWin > 0 },
-        { t: 'Let the stack converge', d: 'Every 3 s the two records are cross-correlated, and the result is added to the stack. The lower panel shows, row by row, how far the stack stands above its own noise: watch two bright lines appear.', c: '<p class="live" id="nLive">' + this.liveText() + '</p>', done: this.nWin >= 12 },
-        { t: 'Read the correlation', d: 'Peaks at <b>±t<sub>AB</sub></b>: positive lag is the wave from A to B, negative lag the wave from B to A. Put the noise on <b>one side only</b> and one of the two disappears: the noise must come from the direction of the station line.', done: !!d.side && this.nWin >= 6 }
+        { k: 'setup', t: 'Place two stations', d: 'Drag A and B. Their distance sets the travel time t<sub>AB</sub> that should appear in the correlation.', done: !!d.place || this.nWin > 0 },
+        { k: 'observe', t: 'Switch on the noise', d: 'Weak sources pop off at random places and times in a ring around the stations, like distant ocean waves or traffic.', c: L.seg('nmode', [['off', 'Off'], ['ring', 'All around'], ['side', 'One side only']], st.mode), done: st.mode !== 'off' && this.nWin > 0 },
+        { k: 'process', t: 'Let the stack converge', d: 'Every 3 s the two records are cross-correlated, and the result is added to the stack. The lower panel shows, row by row, how far the stack stands above its own noise: watch two bright lines appear.', c: '<p class="live" id="nLive">' + this.liveText() + '</p>', done: this.nWin >= 12 },
+        { k: 'interpret', t: 'Read the correlation', d: 'Peaks at <b>±t<sub>AB</sub></b>: positive lag is the wave from A to B, negative lag the wave from B to A. Put the noise on <b>one side only</b> and one of the two disappears: the noise must come from the direction of the station line.', done: !!d.side && this.nWin >= 6 }
       ];
     },
-    liveText: function () { return this.nWin ? this.nWin + ' windows (' + Math.round(this.nWin * this.W / L.rate) + ' s of noise) · SNR ' + L.fmt(this.snr(), 1) : 'no windows yet'; },
+    liveText: function () { return this.nWin ? this.nWin + ' windows (' + Math.round(this.nWin * this.W / L.rate) + ' s of noise) · SNR ' + L.fmt(this.now.snr, 1) : 'no windows yet'; },
+    results: function () { return this.nWin ? '<div class="res" id="nRes">' + this.resInner() + '</div>' : ''; },
+    resInner: function () {
+      var q = this.now, dkm = L.km(Math.hypot(this.sta[1].x - this.sta[0].x, this.sta[1].y - this.sta[0].y)), vt = dkm / Math.max(1e-9, this.tAB);
+      var big = q.v != null ? '<b>' + L.fmt(q.v, 2) + ' km/s</b><span>velocity between A and B from the peak lag · true ' + L.fmt(vt, 2) + ' km/s</span>'
+        : '<b>SNR ' + L.fmt(q.snr, 1) + '</b><span>not above the noise yet: keep stacking</span>';
+      var lags = [q.lagP != null ? '+' + L.fmt(q.lagP, 2) + ' s' : null, q.lagN != null ? '−' + L.fmt(-q.lagN, 2) + ' s' : null].filter(Boolean).join(' · ');
+      return '<h3>Interferometry</h3><p class="res-big">' + big + '</p><dl class="kv"><dt>Windows stacked</dt><dd>' + this.nWin + ' (' + Math.round(this.nWin * this.W / L.rate) + ' s of noise)</dd>' +
+        '<dt>Predicted t<sub>AB</sub></dt><dd>' + L.fmt(this.tAB, 2) + ' s</dd>' + (lags ? '<dt>Measured lag</dt><dd>' + lags + '</dd>' : '') + '<dt>Signal-to-noise ratio</dt><dd>' + L.fmt(q.snr, 1) + '</dd></dl>';
+    },
+    lineKey: true,
+    cap: function () { return this.nWin ? 'Peaks grow at lag ±t<sub>AB</sub>, the A–B travel time. Positive lag: waves going A → B; negative lag: B → A.' : 'Left: raw noise at A and B. Right: their cross-correlation, stacked window by window.'; },
+    kpi: function () {
+      if (!this.nWin) return '';
+      var q = this.now;
+      return (q.v != null ? '<span class="kpi"><b>' + L.fmt(q.v, 2) + ' km/s</b>from the lag</span>' : '') + '<span class="kpi dim"><b>SNR ' + L.fmt(q.snr, 1) + '</b>' + this.nWin + ' windows</span>';
+    },
     explain: function () {
       return '<p><b>Noise interferometry.</b> If noise sources surround two receivers evenly, the long-time cross-correlation of their records, <code>C<sub>AB</sub>(τ) = ⟨p<sub>A</sub>(t)·p<sub>B</sub>(t + τ)⟩</code>, converges to the Green’s function between them (filtered by the noise spectrum): a wave as if A were a source and B a receiver, plus its time-reversed twin.</p>' +
         '<p><b>Stationary phase.</b> Only noise sources roughly in line with A and B contribute coherently; the rest averages out. That is why one-sided noise gives a one-sided correlation. Seismologists use this to image the crust from ocean-generated noise, without any earthquakes.</p>' +
@@ -990,11 +1185,14 @@
       for (l = -Lg; l <= Lg; l++) { var sum = 0; for (t = start; t < end; t++) sum += a[t % Lb] * b[(t + l) % Lb]; cc[l + Lg] = sum * nrm; }
       for (l = 0; l < cc.length; l++) this.stack[l] += cc[l];
       this.nWin++; this.rows.push(Float32Array.from(this.stack)); if (this.rows.length > 40) this.rows.shift();   /* running stack after this window */
-      L.text('nLive', this.liveText());
+      var snr = this.snr(), lp = this.peak(1), ln = this.peak(-1);                 /* measured once per window; panels and cards read this cache */
+      this.now = { snr: snr, lagP: lp, lagN: ln, v: this.vEst(snr, lp, ln) };
+      this.snrH.push(snr); if (this.snrH.length > 400) this.snrH.shift();
+      L.text('nLive', this.liveText()); L.html('nRes', this.resInner());
       if (this.nWin === 1 || this.nWin === 12 || this.nWin === 6) L.refresh();
     },
     hud: function () { return [this.st.mode === 'off' ? 'Noise off' : (this.st.mode === 'side' ? 'Noise from one side' : 'Noise all around'), '4× time-lapse', 't = ' + L.fmt(L.eng.n / L.rate, 0) + ' s']; },
-    legend: function () { return L.legendAcoustic() + '<span>○ noise source</span>'; },
+    legend: function () { return L.legendAcoustic() + '<span>' + L.glyph('noise') + 'noise source</span>'; },
     overlay: function (ctx) {
       var pal = L.pal, now = performance.now();
       this.flash.forEach(function (f) { var age = (now - f.t) / 900; if (age < 1) { ctx.beginPath(); ctx.arc(L.sx(f.x), L.sy(f.y), 2 + 8 * age, 0, 6.2832); ctx.strokeStyle = L.rgba(pal.ink, 0.45 * (1 - age)); ctx.lineWidth = 1; ctx.stroke(); } });
@@ -1004,29 +1202,61 @@
       stations(ctx, this.sta);
     },
     data: function (ctx, w, h) {
-      var pal = L.pal, narrow = w < 640, lw = narrow ? 0 : Math.round(w * 0.3), X2 = narrow ? 14 : lw + 26, W2 = w - X2 - 14, Lg = this.Lg, k, i;
+      var pal = L.pal, narrow = w < 640, lw = narrow ? 0 : Math.round(w * 0.3), X2 = narrow ? 14 : lw + 26, W2 = w - X2 - 14, Lg = this.Lg, k, i, self = this;
+      var sub = function (role) { return function (isSub) { if (role === 'title') L.fontS(ctx, isSub ? 8.5 : 11, 600); else L.fontS(ctx, isSub ? 8.5 : 10.5, 500); }; };
       if (!narrow) {
-        L.panelLabel(ctx, 'RAW NOISE · LAST 6 S', 14, 2);
-        var g = L.drawSection(ctx, 14, 16, lw, h - 38, this.rec, { left: 18, gain: 0.45 });
-        L.timeAxis(ctx, g.x, h - 20, g.w, 6, this.rec.len, L.eng.n, 16);
+        /* left, top: the raw noise; left, bottom: how the stack's signal-to-noise ratio grows with the number of windows */
+        var Hraw = Math.round((h - 60) * 0.45);
+        L.panelLabel(ctx, 'Raw noise at A and B · last 6 s', 14, 2, null, lw);
+        var g = L.drawSection(ctx, 14, 16, lw, Hraw, this.rec, { left: 18, gain: 0.45 });
+        L.timeAxis(ctx, g.x, 16 + Hraw, g.w, 4, this.rec.len, L.eng.n, 16);
+        var ty = 16 + Hraw + 21, px0 = 14 + 22, px1 = 14 + lw, py0 = ty + 20, py1 = h - 20, H = this.snrH;
+        L.panelLabel(ctx, 'Signal-to-noise ratio of the stack', 14, ty, null, lw);
+        if (py1 - py0 > 20) {
+          var Nmax = Math.max(20, Math.ceil(this.nWin / 20) * 20), smax = 4; H.forEach(function (v) { smax = Math.max(smax, Math.ceil(v)); });
+          var xN = function (n) { return px0 + n / Nmax * (px1 - px0); }, yS = function (v) { return py1 - v / smax * (py1 - py0); };
+          ctx.lineWidth = 1; ctx.strokeStyle = pal.axis; ctx.beginPath(); ctx.moveTo(px0 + 0.5, py0); ctx.lineTo(px0 + 0.5, py1 + 0.5); ctx.lineTo(px1, py1 + 0.5); ctx.stroke();
+          L.num(ctx); ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText(String(smax), px0 - 4, py0); ctx.fillText('0', px0 - 4, py1);
+          ctx.textBaseline = 'top'; ctx.textAlign = 'left'; ctx.fillText('0', px0, py1 + 4); ctx.textAlign = 'center'; ctx.fillText(String(Nmax / 2), xN(Nmax / 2), py1 + 4); ctx.textAlign = 'right'; ctx.fillText(Nmax + ' windows', px1, py1 + 4);
+          if (H.length) {
+            var nb = this.nWin - H.length, sa = 0, si = 0;                                   /* best fit a·√N through the measured points */
+            H.forEach(function (v, j) { var n = nb + j + 1; sa += v * Math.sqrt(n); si += n; });
+            var aF = sa / Math.max(1e-12, si);
+            ctx.setLineDash([4, 3]); ctx.strokeStyle = L.rgba(pal.pos, 0.9); ctx.beginPath();
+            for (k = 0; k <= 60; k++) { var n = k / 60 * Nmax, yv = yS(Math.min(smax, aF * Math.sqrt(n))); if (k) ctx.lineTo(xN(n), yv); else ctx.moveTo(xN(n), yv); }
+            ctx.stroke(); ctx.setLineDash([]);
+            L.annot(ctx, L.rgba(pal.pos, 0.95)); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.fillText('∝ √N', xN(0.6 * Nmax), yS(Math.min(smax, aF * Math.sqrt(0.6 * Nmax))) - 8);
+            ctx.beginPath(); H.forEach(function (v, j) { var x = xN(nb + j + 1), y = yS(Math.min(smax, v)); if (j) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+            ctx.strokeStyle = pal.trace; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.stroke();
+            ctx.beginPath(); ctx.arc(xN(this.nWin), yS(Math.min(smax, H[H.length - 1])), 3, 0, 6.2832); ctx.fillStyle = L.rgba(pal.pos, 1); ctx.fill();
+          }
+        }
       }
+      /* right: the stack C_AB(τ) and, below it, every window's stack as one row */
       var H1 = Math.round((h - 38) * 0.48), y1 = 16, xs = function (l) { return X2 + (l + Lg) / (2 * Lg) * W2; };
-      L.panelLabel(ctx, 'CORRELATION STACK C_AB(τ) · ' + this.nWin + ' WINDOWS', X2, 2);
+      ctx.fillStyle = pal.sub; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      L.subText(ctx, [['Cross-correlation C', 0], ['AB', 1], ['(τ) against lag τ · stack of ' + this.nWin + ' windows', 0]], X2, 2, 'left', sub('title'));
       ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.strokeRect(X2 + 0.5, y1 + 0.5, W2 - 1, H1 - 1);
-      var tl = this.tAB * L.rate;
-      [-tl, tl].forEach(function (l) { if (Math.abs(l) <= Lg) { ctx.lineWidth = 1; ctx.setLineDash([2, 3]); ctx.strokeStyle = 'rgba(' + pal.origin + ',.8)'; ctx.beginPath(); ctx.moveTo(xs(l), y1); ctx.lineTo(xs(l), h - 22); ctx.stroke(); ctx.setLineDash([]); } });
-      L.font(ctx, 10); ctx.fillStyle = 'rgba(' + pal.origin + ',.95)'; ctx.textBaseline = 'top';
-      if (tl <= Lg) { ctx.textAlign = 'left'; ctx.fillText('A→B  +t_AB', xs(tl) + 4, y1 + 3); ctx.textAlign = 'right'; ctx.fillText('−t_AB  B→A', xs(-tl) - 4, y1 + 3); }
       ctx.strokeStyle = pal.tick; ctx.beginPath(); ctx.moveTo(xs(0) + 0.5, y1); ctx.lineTo(xs(0) + 0.5, y1 + H1); ctx.stroke();
       if (this.nWin) {
         var st = this.stack, m = 1e-12; for (i = 0; i < st.length; i++) m = Math.max(m, Math.abs(st[i]));
-        var stride = Math.max(1, Math.floor(st.length / (W2 * 1.5)));
-        ctx.beginPath(); for (i = 0; i < st.length; i += stride) { var yy = y1 + H1 / 2 - st[i] / m * (H1 / 2 - 4); if (i) ctx.lineTo(xs(i - Lg), yy); else ctx.moveTo(xs(-Lg), yy); }
+        var stride = Math.max(1, Math.floor(st.length / (W2 * 1.5))), yOf = function (v) { return y1 + H1 / 2 - v / m * (H1 / 2 - 16); };
+        ctx.beginPath(); for (i = 0; i < st.length; i += stride) { var yy = yOf(st[i]); if (i) ctx.lineTo(xs(i - Lg), yy); else ctx.moveTo(xs(-Lg), yy); }
         ctx.strokeStyle = pal.trace; ctx.lineWidth = 1.5; ctx.stroke();
-      } else { L.font(ctx, 10, 400); ctx.fillStyle = pal.label; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(this.st.mode === 'off' ? 'switch on the noise' : 'collecting the first 3-s window…', X2 + W2 / 2, y1 + H1 / 2); }
+        if (this.now.v != null) [this.now.lagP, this.now.lagN].forEach(function (lag) {           /* the measured peak(s): a solid triangle */
+          if (lag == null) return; var l = lag * L.rate, xp = xs(l), yp = yOf(st[Lg + Math.round(l)]) - 6;
+          ctx.beginPath(); ctx.moveTo(xp - 4, yp - 6); ctx.lineTo(xp + 4, yp - 6); ctx.lineTo(xp, yp); ctx.closePath(); ctx.fillStyle = L.rgba(pal.ink, 0.95); ctx.fill();
+        });
+      } else L.placeholder(ctx, X2 + W2 / 2, y1 + H1 / 2, this.st.mode === 'off' ? 'switch on the noise' : 'collecting the first 3-s window…');
+      var tl = this.tAB * L.rate;                                                    /* predicted ±t_AB: dashed, P colour, through both plots */
+      [-tl, tl].forEach(function (l) { if (Math.abs(l) <= Lg) { ctx.lineWidth = 1; ctx.setLineDash([4, 3]); ctx.strokeStyle = L.rgba(pal.pos, 0.9); ctx.beginPath(); ctx.moveTo(Math.round(xs(l)) + 0.5, y1); ctx.lineTo(Math.round(xs(l)) + 0.5, h - 22); ctx.stroke(); ctx.setLineDash([]); } });
+      if (tl <= Lg) {
+        ctx.fillStyle = L.rgba(pal.pos, 0.95); ctx.textBaseline = 'top';
+        L.subText(ctx, [['+t', 0], ['AB', 1], [' · A → B', 0]], xs(tl) + 4, y1 + 3, 'left', sub('annot'));
+        L.subText(ctx, [['−t', 0], ['AB', 1], [' · B → A', 0]], xs(-tl) - 4, y1 + 3, 'right', sub('annot'));
+      }
       /* emergence: every window's correlation as one row, newest at the bottom */
-      var y2 = y1 + H1 + 6, H2 = h - 38 - H1 - 6, rows = this.rows, nr = 40, rh = H2 / nr;   /* bottom at h − 22, level with the raw-noise section */
-      L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      var y2 = y1 + H1 + 6, H2 = h - 38 - H1 - 6, rows = this.rows, nr = 40, rh = H2 / nr;   /* bottom at h − 22, level with the left column */
       ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.strokeRect(X2 + 0.5, y2 + 0.5, W2 - 1, H2 - 1);
       var cols = Math.min(2 * Lg + 1, Math.round(W2)), bin = (2 * Lg + 1) / cols, cw = W2 / cols;
       var half = Math.max(1, Math.round(0.5 / L.eng.f0)), b0 = pal.pn || pal.bg, hc = pal.hot;
@@ -1041,8 +1271,13 @@
           ctx.fillRect(X2 + c * cw, yr, cw + 0.5, rh + 0.5);
         }
       }
-      L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textBaseline = 'top';
-      ctx.textAlign = 'left'; ctx.fillText('−' + L.fmt(Lg / L.rate, 0) + ' s', X2, h - 14); ctx.textAlign = 'center'; ctx.fillText(W2 > 520 ? 'lag τ · rows: stack envelope / RMS after each window, newest last' : 'lag τ', X2 + W2 / 2, h - 14); ctx.textAlign = 'right'; ctx.fillText('+' + L.fmt(Lg / L.rate, 0) + ' s', X2 + W2, h - 14);
+      L.axisTitle(ctx); var lab = 'stack after each window · newest at the bottom', lwid = ctx.measureText(lab).width;
+      ctx.fillStyle = L.rgba(b0, 0.8); ctx.fillRect(X2 + 3, y2 + 3, lwid + 8, 15); L.axisTitle(ctx); ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText(lab, X2 + 7, y2 + 5);
+      /* lag axis: a tick and a number every second, the unit on the last one */
+      var sec = Math.floor(Lg / L.rate); ctx.strokeStyle = pal.tick; ctx.beginPath();
+      for (k = -sec; k <= sec; k++) { var xk = Math.round(xs(k * L.rate)) + 0.5; ctx.moveTo(xk, h - 22); ctx.lineTo(xk, h - 18); }
+      ctx.stroke(); L.num(ctx); ctx.textBaseline = 'top';
+      for (k = -sec; k <= sec; k++) { ctx.textAlign = k === -sec ? 'left' : (k === sec ? 'right' : 'center'); ctx.fillText(k === sec ? '+' + k + ' s' : (k > 0 ? '+' + k : (k < 0 ? '−' + (-k) : '0')), k === sec ? X2 + W2 : (k === -sec ? X2 : xs(k * L.rate)), h - 15); }
     },
     csv: function () {
       if (!this.nWin) return null;
@@ -1097,8 +1332,9 @@
     liveSP: function () {
       var r = this.last; if (!r) return;
       var dt = r.ts - r.tp, vp = 2.5 * this.vAt(r);
-      L.html('spLive', '<dl class="kv"><dt>Distance to YW01</dt><dd>' + L.fmt(L.km(r.d), 1) + ' km</dd><dt>Predicted S − P</dt><dd>' + L.fmt(dt, 2) + ' s</dd>' +
-        '<dt>Mean V<sub>P</sub> on the path</dt><dd>' + L.fmt(vp, 2) + ' km/s</dd><dt>Δt · V<sub>P</sub> / (√3 − 1)</dt><dd>' + L.fmt(dt * vp / (Math.sqrt(3) - 1), 1) + ' km</dd></dl>');
+      L.html('spLive', '<p class="res-big"><b>' + L.fmt(dt * vp / (Math.sqrt(3) - 1), 1) + ' km</b><span>distance from the predicted S − P time · check that P and S arrive on the dashed lines</span></p>' +
+        '<dl class="kv"><dt>S − P time, predicted</dt><dd>' + L.fmt(dt, 2) + ' s</dd><dt>× V<sub>P</sub> / (√3 − 1)</dt><dd>' + L.fmt(vp / (Math.sqrt(3) - 1), 2) + ' km/s</dd>' +
+        '<dt>Mean V<sub>P</sub> on the path</dt><dd>' + L.fmt(vp, 2) + ' km/s</dd></dl>');
     },
     vAt: function (r) { var p = this.sta[0], L1 = Math.hypot(r.x - p.x, r.y - 1); return L1 / Math.max(1e-6, (r.tp - Math.round(1.2 / L.eng.f0) / L.rate) * L.rate * C); },
     save: function () { this.st.m = L.model.serialize(); this.st.sx = +(this.sta[0].x / L.nx).toFixed(4); },
@@ -1107,10 +1343,10 @@
     steps: function () {
       var st = this.st, d = st.did;
       return [
-        { t: 'Click just below the surface', d: 'Look for the slow, strong wave hugging the top edge: a <b>Rayleigh wave</b>. The ground under the station moves in ellipses (particle-motion plot, bottom right).', done: !!d.shallow },
-        { t: 'Click deep below the station', d: '<b>P</b> arrives first, <b>S</b> later. The S − P time grows with distance: <code>d ≈ Δt<sub>S−P</sub> · V<sub>P</sub>V<sub>S</sub> / (V<sub>P</sub> − V<sub>S</sub>)</code>, the oldest trick for locating earthquakes.', c: '<div id="spLive"></div>', done: !!d.deep },
-        { t: 'Change the source', d: 'An explosion radiates P only. A shear dislocation (a small fault) radiates mostly S, in four lobes. A vertical force is a hammer blow, the classic Lamb problem.', c: L.seg('kind', KINDS, String(st.kind)), done: !!d.kind },
-        { t: 'Try a layered crust', d: 'At every interface part of the P energy converts into S, and back: the extra arrivals in the seismogram.', c: modelChips(L.model.preset, 'preset', { noMap: true }), done: !!d.model }
+        { k: 'observe', t: 'Click just below the surface', d: 'Look for the slow, strong wave hugging the top edge: a <b>Rayleigh wave</b>. The ground under the station moves in ellipses (particle-motion plot, bottom right).', done: !!d.shallow },
+        { k: 'interpret', t: 'Click deep below the station', d: '<b>P</b> arrives first, <b>S</b> later; the gap grows with distance.', eq: 'd ≈ Δt<sub>S−P</sub> · V<sub>P</sub>V<sub>S</sub> / (V<sub>P</sub> − V<sub>S</sub>)', c: '<div id="spLive"></div>', done: !!d.deep },
+        { k: 'explore', t: 'Change the source', d: 'An explosion radiates P only. A shear dislocation (a small fault) radiates mostly S, in four lobes. A vertical force is a hammer blow, the classic Lamb problem.', c: L.seg('kind', KINDS, String(st.kind)), done: !!d.kind },
+        { k: 'explore', t: 'Try a layered crust', d: 'At every interface part of the P energy converts into S, and back: the extra arrivals in the seismogram.', c: modelChips(L.model.preset, 'preset', { noMap: true }), done: !!d.model }
       ];
     },
     explain: function () {
@@ -1130,37 +1366,59 @@
     moveHandle: function (id, c) { this.sta[0].x = c[0]; L.setProbes([[c[0], 0.5]]); },
     onSamples: function (b, n, nP) { this.rec.push(b, n, nP, 0); },
     gain: function () { return this.g; }, gain2: function () { return this.g; },
-    legend: function () { return '<span><i class="sw" style="background:var(--cyan)"></i>P · |∇·v|</span><span><i class="sw" style="background:var(--amber)"></i>S · |∇×v|</span>' + L.legendVel(); },
+    legend: function () { return '<span><i class="sw" style="background:var(--cyan)"></i>P wave · |∇·v|</span><span><i class="sw" style="background:var(--amber)"></i>S wave · |∇×v|</span>' + L.legendVel('V<sub>P</sub>'); },
+    lineKey: true,
+    cap: function () { return 'Z and X ground velocity with the predicted P and S arrivals. Right: the path the ground traces.'; },
+    kpi: function () {
+      var r = this.last; if (!r) return '';
+      var dt = r.ts - r.tp, vp = 2.5 * this.vAt(r);
+      return '<span class="kpi dim"><b>' + L.fmt(dt, 2) + ' s</b>S − P</span><span class="kpi"><b>' + L.fmt(dt * vp / (Math.sqrt(3) - 1), 1) + ' km</b>distance</span>';
+    },
     overlay: function (ctx) { stations(ctx, this.sta); },
     data: function (ctx, w, h) {
-      var pal = L.pal, narrow = w < 640, hw = narrow ? 0 : Math.min(200, Math.round(h * 0.95)), Wt = w - 28 - (hw ? hw + 18 : 0), H = h - 26, half = H / 2, rec = this.rec;
-      var mz = 1e-9, k, i;
+      var pal = L.pal, narrow = w < 640, hw = narrow ? 0 : Math.min(200, Math.round(h * 0.95)), Wt = w - 28 - (hw ? hw + 18 : 0), H = h - 26, lane = 14, rec = this.rec;
+      var XT = 44, WT = Wt - 30, half = (H - lane) / 2, mz = 1e-9, k, i;
       for (i = 0; i < rec.len; i++) { mz = Math.max(mz, Math.abs(rec.z[0][i]), Math.abs(rec.x[0][i])); }
       rec.peak = Math.max(mz, rec.peak * 0.995, 1e-6);
-      var amp = (half / 2 - 3) / rec.peak, stride = Math.max(1, Math.floor(rec.len / (Wt * 1.5)));
+      var amp = (half / 2 - 3) / rec.peak, stride = Math.max(1, Math.floor(rec.len / (WT * 1.5)));
+      ctx.lineWidth = 1; ctx.strokeStyle = pal.axis; ctx.beginPath(); ctx.moveTo(XT, 4 + H - 0.5); ctx.lineTo(XT + WT, 4 + H - 0.5); ctx.stroke();
       [0, 1].forEach(function (c) {
-        var y0 = 4 + half * (c + 0.5); L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(c ? 'X' : 'Z', 14, y0);
-        ctx.beginPath(); for (k = 0; k < rec.len; k += stride) { var yy = y0 - Math.max(-half / 2, Math.min(half / 2, rec.get(0, k, c) * amp)); if (k) ctx.lineTo(28 + k / (rec.len - 1) * (Wt - 14), yy); else ctx.moveTo(28, yy); }
-        ctx.strokeStyle = c ? L.rgba(pal.sw, 0.95) : pal.trace; ctx.lineWidth = 1.4; ctx.stroke();
+        var y0 = 4 + lane + half * (c + 0.5);
+        L.fontS(ctx, 11, 600); ctx.fillStyle = pal.sub; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(c ? 'X' : 'Z', 14, y0 - 6);
+        L.axisTitle(ctx); ctx.fillText(c ? 'right' : 'up', 14, y0 + 6);
+        ctx.beginPath(); for (k = 0; k < rec.len; k += stride) { var yy = y0 - Math.max(-half / 2, Math.min(half / 2, rec.get(0, k, c) * amp)); if (k) ctx.lineTo(XT + k / (rec.len - 1) * WT, yy); else ctx.moveTo(XT, yy); }
+        ctx.strokeStyle = c ? L.rgba(pal.sw, 0.95) : pal.trace; ctx.lineWidth = 1.4; ctx.lineJoin = 'round'; ctx.stroke();
       });
-      var r = this.last;
+      var r = this.last, X = {}, right = XT + WT;
       if (r) {
         [['origin', 0], ['P', r.tp], ['S', r.ts]].forEach(function (m) {
           var age = L.eng.n - r.n - m[1] * L.rate; if (age < 0 || age > rec.len) return;
-          var xm = 28 + (Wt - 14) - age / rec.len * (Wt - 14);
-          ctx.lineWidth = 1; ctx.strokeStyle = m[0] === 'origin' ? 'rgba(' + pal.origin + ',.8)' : (m[0] === 'P' ? L.rgba(pal.pos, 0.8) : L.rgba(pal.sw, 0.85)); ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(xm + 0.5, 4); ctx.lineTo(xm + 0.5, 4 + H); ctx.stroke(); ctx.setLineDash([]);
-          L.font(ctx, 10); ctx.fillStyle = ctx.strokeStyle; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText(m[0] === 'origin' ? 'origin' : 'predicted ' + m[0], xm + 3, 4);
+          var xm = Math.round(XT + WT - age / rec.len * WT) + 0.5; X[m[0]] = xm; ctx.lineWidth = 1;
+          if (m[0] === 'origin') { ctx.strokeStyle = 'rgba(' + pal.origin + ',.5)'; ctx.beginPath(); ctx.moveTo(xm, 4 + lane - 2); ctx.lineTo(xm, 4 + H); ctx.stroke(); }
+          else { ctx.setLineDash([4, 3]); ctx.strokeStyle = m[0] === 'P' ? L.rgba(pal.pos, 0.9) : L.rgba(pal.sw, 0.9); ctx.beginPath(); ctx.moveTo(xm, 4 + lane - 2); ctx.lineTo(xm, 4 + H); ctx.stroke(); ctx.setLineDash([]); }
         });
+        if (X.P != null && X.S != null) {                                      /* the S − P interval between the two predicted lines */
+          var yb = Math.round(4 + lane + (H - lane) / 2) + 0.5, t = 'S − P = ' + L.fmt(r.ts - r.tp, 2) + ' s';
+          ctx.lineWidth = 1; ctx.strokeStyle = pal.sub; ctx.beginPath(); ctx.moveTo(X.P, yb); ctx.lineTo(X.S, yb); ctx.moveTo(X.P, yb - 3); ctx.lineTo(X.P, yb + 3); ctx.moveTo(X.S, yb - 3); ctx.lineTo(X.S, yb + 3); ctx.stroke();
+          L.annot(ctx, pal.sub); var tw = ctx.measureText(t).width, tx = Math.max(XT, Math.min(right - tw, (X.P + X.S) / 2 - tw / 2));
+          ctx.fillStyle = L.rgba(pal.pn || pal.bg, 0.85); ctx.fillRect(tx - 3, yb - 16, tw + 6, 13); L.annot(ctx, pal.sub); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText(t, tx, yb - 3);
+        }
+        /* lane labels: right of their line where they fit, otherwise left of it, never on top of each other */
+        var labs = [];
+        if (X.origin != null) { L.star(ctx, X.origin, 4 + 7, 4.5, pal.neg, 0.95); labs.push({ x: X.origin, s: 'origin time', col: 'rgba(' + pal.origin + ',.95)', off: 9 }); }
+        if (X.P != null) labs.push({ x: X.P, s: 'predicted P', col: L.rgba(pal.pos, 0.95), off: 4 });
+        if (X.S != null) labs.push({ x: X.S, s: 'predicted S', col: L.rgba(pal.sw, 0.95), off: 4 });
+        L.laneLabels(ctx, labs, 6, right);
       }
-      L.timeAxis(ctx, 28, h - 20, Wt - 14, 6, rec.len, L.eng.n, 4);
+      L.timeAxis(ctx, XT, h - 20, WT, 4, rec.len, L.eng.n, 4 + lane);
       if (!hw) return;
-      /* particle motion over the last 1.2 s: X horizontal, Z vertical */
-      var x0 = w - 14 - hw, y0 = 16, S2 = Math.min(hw, H - 14), n = Math.round(1.2 * L.rate), pm = 1e-9;
-      L.panelLabel(ctx, 'PARTICLE MOTION · LAST 1.2 S', x0, 2);
+      /* particle motion over the last 1.2 s: X horizontal, Z vertical; below it, what kind of motion it is */
+      var x0 = w - 14 - hw, y0 = 16, S2 = Math.min(hw, H - 28), n = Math.round(1.2 * L.rate), pm = 1e-9;
+      L.panelLabel(ctx, 'Particle motion · last 1.2 s', x0, 2, null, S2 + 10);
       ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.strokeRect(x0 + 0.5, y0 + 0.5, S2 - 1, S2 - 1);
       ctx.strokeStyle = pal.grid; ctx.beginPath(); ctx.moveTo(x0 + S2 / 2, y0); ctx.lineTo(x0 + S2 / 2, y0 + S2); ctx.moveTo(x0, y0 + S2 / 2); ctx.lineTo(x0 + S2, y0 + S2 / 2); ctx.stroke();
       for (i = rec.len - n; i < rec.len; i++) pm = Math.max(pm, Math.abs(rec.get(0, i, 0)), Math.abs(rec.get(0, i, 1)));
-      pm = Math.max(pm, 0.06 * rec.peak);
+      var weak = pm < 0.06 * rec.peak; pm = Math.max(pm, 0.06 * rec.peak);
       for (i = rec.len - n + 1; i < rec.len; i += 1) {
         var a = (i - (rec.len - n)) / n;
         ctx.strokeStyle = L.rgba(pal.pos, 0.12 + 0.85 * a); ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.beginPath();
@@ -1170,7 +1428,18 @@
       ctx.lineCap = 'butt'; ctx.beginPath();                                   /* the newest sample */
       ctx.arc(x0 + S2 / 2 + rec.get(0, rec.len - 1, 1) / pm * (S2 / 2 - 6), y0 + S2 / 2 - rec.get(0, rec.len - 1, 0) / pm * (S2 / 2 - 6), 3, 0, 6.2832);
       ctx.fillStyle = L.rgba(pal.pos, 1); ctx.fill();
-      L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillText('X →', x0 + S2 - 3, y0 + S2 / 2 - 2); ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('Z ↑', x0 + S2 / 2 + 3, y0 + 2);
+      L.axisTitle(ctx); ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillText('X →', x0 + S2 - 3, y0 + S2 / 2 - 2); ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('Z ↑', x0 + S2 / 2 + 3, y0 + 2);
+      if (!weak && r) {                                                        /* polarisation: linear (body wave) or elliptical, and its sense */
+        var mx = 0, mzz = 0, cxx = 0, czz = 0, cxz = 0, area = 0, i0 = rec.len - n;
+        for (i = i0; i < rec.len; i++) { mx += rec.get(0, i, 1); mzz += rec.get(0, i, 0); }
+        mx /= n; mzz /= n;
+        for (i = i0; i < rec.len; i++) { var dx = rec.get(0, i, 1) - mx, dz = rec.get(0, i, 0) - mzz; cxx += dx * dx; czz += dz * dz; cxz += dx * dz; if (i > i0) area += rec.get(0, i - 1, 1) * rec.get(0, i, 0) - rec.get(0, i, 1) * rec.get(0, i - 1, 0); }
+        var tr2 = (cxx + czz) / 2, dd = Math.sqrt(Math.pow((cxx - czz) / 2, 2) + cxz * cxz), l1 = tr2 + dd, l2 = tr2 - dd;
+        var lin = 1 - l2 / Math.max(1e-30, l1) >= 0.9, n0s = Math.round(1.2 / L.eng.f0) / L.rate, tR = n0s + (r.tp - n0s) * Math.sqrt(3) / 0.9194, age = (L.eng.n - r.n) / L.rate;
+        var surf = r.y <= 0.07 * L.ny && age >= tR && age <= tR + 1.2;         /* the Rayleigh wave (0.9194 V_S for λ = μ) of the last, shallow source is passing */
+        var dir = this.sta[0].x >= r.x ? 1 : -1, txt = lin ? 'linear · body wave (P or S)' : (surf ? (area * dir > 0 ? 'elliptical · retrograde (Rayleigh)' : 'elliptical · prograde') : 'elliptical');
+        L.axisTitle(ctx); ctx.fillStyle = pal.sub; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText(txt, x0, y0 + S2 + 5);
+      }
     },
     csv: function () { return L.recCSV(this.rec, ['Z_up', 'X_right'], 'ground velocity, arbitrary units'); }
   });

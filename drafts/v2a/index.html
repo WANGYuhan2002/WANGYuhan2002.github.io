@@ -27,6 +27,7 @@
   --accent-soft:color-mix(in srgb,var(--cyan) 14%,transparent);
   --accent-line:color-mix(in srgb,var(--cyan) 42%,transparent);
   --coral:#ff8058; --amber:#ffbe54; --slow:#d9569b; --fast:#4d86ff;
+  --field:#080b13; --vs:#421f40; --vf:#17316c;
   --veil:7,10,18; --portrait1:#142231; --portrait2:#0a0f17;
   --sh-1:inset 0 1px 0 rgba(255,255,255,.04), 0 8px 24px -12px rgba(0,0,0,.6);
   --sh-2:inset 0 1px 0 rgba(255,255,255,.05), 0 24px 56px -20px rgba(0,0,0,.7);
@@ -47,6 +48,7 @@
   --ink:#131a26; --ink2:#3a4658; --muted:#667185;
   --cyan:#007c8f; --accent-ink:#ffffff;
   --coral:#d4472b; --amber:#a56800; --slow:#b53c7d; --fast:#2b61d4;
+  --field:#f6f5f0; --vs:#d2c2c7; --vf:#bbc5d9;
   --veil:244,243,238; --portrait1:#e4ece9; --portrait2:#f4f3ee;
   --sh-1:0 1px 2px rgba(28,36,52,.06), 0 8px 24px -14px rgba(28,36,52,.18);
   --sh-2:0 2px 4px rgba(28,36,52,.06), 0 24px 56px -24px rgba(28,36,52,.28);
@@ -187,7 +189,7 @@ img{display:block; max-width:100%}
 /* velocity legend: the model is always drawn under the waves; one slow → fast gradient bar, as in the Wave Lab */
 .vlegend{flex:none; display:inline-flex; align-items:center; gap:10px; font:500 11px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--ink2); background:rgba(var(--veil),.5); border:1px solid var(--line2); border-radius:var(--r-pill); padding:5px 12px; cursor:help}
 .vlegend .vramp{display:inline-flex; align-items:center; gap:6px; text-transform:none; letter-spacing:0; font:400 12px var(--sans)}
-.vramp i{display:block; width:28px; height:8px; border-radius:4px; flex:none; background:linear-gradient(90deg,var(--slow),color-mix(in srgb,var(--slow) 25%,var(--bg2)) 46%,color-mix(in srgb,var(--fast) 25%,var(--bg2)) 54%,var(--fast))}
+.vramp i{display:block; width:44px; height:10px; border-radius:3px; flex:none; border:1px solid var(--line2); background:linear-gradient(90deg,var(--vs),var(--field) 50%,var(--vf))}
 
 /* ============================== SECTIONS ============================== */
 .sec{max-width:1240px; margin:0 auto; padding:clamp(4.5rem,13vh,8.5rem) var(--pad)}
