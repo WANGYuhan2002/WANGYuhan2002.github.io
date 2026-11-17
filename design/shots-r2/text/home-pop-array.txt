@@ -1,0 +1,18 @@
+RECEIVERS
+
+×
+
+Receivers record the pressure p(t) in the strip below. Drag any station to move it, double-click one to remove it.
+
+Stations
+Line
+Ring
+
+Click on the wavefield to add a station (up to 12). 1 placed.
+
+Seismogram display
+
+True amplitude
+AGC 0.5 s
+Along the top edge
+Back to one station

@@ -1,0 +1,9 @@
+ACOUSTIC SOURCE
+
+×
+
+Click anywhere on the wavefield to fire an acoustic point source: a pressure pulse with a Ricker time function (peak frequency ≈ 9 Hz). It sends out P waves only. The magnitude only scales its amplitude.
+
+Magnitude
+random
+random magnitude

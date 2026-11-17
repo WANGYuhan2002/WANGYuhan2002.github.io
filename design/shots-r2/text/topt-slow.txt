@@ -1,0 +1,9 @@
+LOW-VELOCITY BODY
+×
+
+Drag to paint. Inside the brush the velocity becomes 1 − strength (background 1), with a soft edge.
+
+Radius
+r = 0.29 km
+Strength
+−20 %

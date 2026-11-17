@@ -1,0 +1,119 @@
+<!doctype html>
+<!-- r2 report figures: before (main-branch screenshots) / after (the live round-2 mocks), with numbered callouts.
+     r2-compare.html?fig=1 … 5. Dark only. Badges are placed from the mocks' own element boxes and canvas geometry. -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<title>Round-2 comparison figure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --cjk:"Inter","WenQuanYi Zen Hei","Noto Sans CJK SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif; }
+  html,body{margin:0; background:#05070c}
+  #fig{box-sizing:border-box; width:1500px; padding:28px 30px 30px; background:#05070c; color:#eef2f8; font-family:var(--cjk)}
+  #fig h1{margin:0 0 18px; font:600 20px/1.3 var(--cjk); color:#eef2f8}
+  .blk{margin:0 0 22px}
+  .lbl{margin:0 0 10px; font:600 14px/1.3 var(--cjk); letter-spacing:.04em}
+  .lbl.before{color:#7a879c}
+  .lbl.after{color:#56e1f0}
+  .lbl::before{content:""; display:inline-block; width:8px; height:8px; margin-right:8px; border-radius:2px; background:currentColor; vertical-align:1px}
+  .imgs{display:flex; gap:20px; align-items:flex-start}
+  .imgs img{display:block; border-radius:6px; outline:1px solid rgba(148,170,214,.18)}
+  .after-box{position:relative; padding-bottom:22px}   /* room for badges that hang below the last card */
+  .frames{display:flex; flex-direction:column; gap:16px; align-items:flex-start}
+  .frames.row{flex-direction:row; gap:24px}
+  .frames iframe{display:block; border:0; background:transparent; color-scheme:dark}
+  .badge{position:absolute; box-sizing:border-box; width:20px; height:20px; border-radius:50%; background:#ffd166; color:#111; font:700 12px/20px "Inter",system-ui,sans-serif; text-align:center; box-shadow:0 0 0 1px #111; z-index:3}
+  svg.leaders{position:absolute; left:0; top:0; overflow:visible; pointer-events:none; z-index:2}
+  .legend{display:grid; grid-template-columns:1fr 1fr; gap:10px 28px; padding:14px 16px; border-radius:8px; background:rgba(148,170,214,.06); outline:1px solid rgba(148,170,214,.12)}
+  .legend p{position:relative; margin:0; padding-left:30px; font:400 14px/1.5 var(--cjk); color:#b3bfd0}
+  .legend .badge{left:0; top:1px}
+</style>
+</head>
+<body>
+<div id="fig"></div>
+<script>
+(function () {
+  'use strict';
+  var N = +((/[?&]fig=(\d)/.exec(location.search) || [])[1] || 1), SHOT = '../shots-r2/';
+  var P = function (q) { return 'r2-panels.html?only=' + q; };
+  var FIG = {
+    1: { h: '图 1 · 整页：层析实验做完之后', pad: 30, before: [['tomo-done-dark.png', 1440]], frames: [['r2-lab-tomo.html', 1440, 900]],
+      notes: ['比例尺：波场有了长度', '图注条：图例先写物理量，速度给 km/s；右侧是模型尺寸、背景速度、震源主频与波长', '关键数字放在图的标题旁，不用滚动', '一句“怎么读”，右端是线型图例：实线 = 实测，虚线 = 预测', '新增走时残差图：彩色点是反演前（粉 = 晚到），灰点是反演后', '每一步标明角色，序号之间有连线', '结果卡先给一个大数字'],
+      calls: function (A) {
+        var d = A.doc(0), v = A.el(0, '#view', 0, 1), pxkm = d.getElementById('view').clientWidth / 10, rg = A.win(0).__resGeom;
+        return [[[v[0] + 14 + pxkm / 2, v[1] - 16], [0.6, -0.8], 18], [A.el(0, '.facts', 0.5, 0), [0, -1], 18], [A.el(0, '.kpis', 0, 0.5), [-1, 0], 16],
+          [A.el(0, '.lkey', 1, 0.5), [1, 0], 14], [A.cv(0, 'datac', rg.far[0] + 3, rg.far[1]), [1, 0], 14], [A.txt(0, '.st:nth-child(3) .st-k', 1, 0.5), [1, 0], 18], [A.txt(0, '.res-big b', 1, 0.5), [1, 0], 18]];
+      } },
+    2: { h: '图 2 · 放大：记录剖面怎么读', pad: 8, before: [['play-section-dark-data@2x.png', 740], ['arrays-seis-dark-data@2x.png', 740]], frames: [[P('a'), 872], [P('c'), 872]], gapB: 4,
+      notes: ['发震时刻：实线加星（已发生的事）', '预测走时曲线：虚线（应该发生的事）', '按震中距排序，右侧是每道的距离', '视速度量角器：越竖越快', '右边缘是“现在”'],
+      calls: function (A) {
+        var a = A.win(0).__geom.a, c = A.win(1).__geom.c, p1 = a.pred[1], p2 = a.pred[2];
+        return [[A.cv(0, 'c-a', a.star[0] - 7, a.star[1]), [-1, 0], 16], [A.cv(0, 'c-a', (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2), [0.8, -0.6], 22], [A.cv(0, 'c-a', a.km[0] - 3, a.km[1]), [-1, 0], 16],
+          [A.cv(1, 'c-c', c.fan.x1, c.fan.y0 + 16), [1, 0], 16], [A.cv(1, 'c-c', c.g.x + c.g.w - 2, c.g.y + c.g.sp * 1.5), [-1, 0], 18]];
+      } },
+    3: { h: '图 3 · 放大：时间反演的焦斑', pad: 20, before: [['tr-focus-dark-view@2x.png', 720], ['tr-focus-dark-data@2x.png', 720]], frames: [[P('f'), 872], [P('e'), 872]],
+      notes: ['标签用引线移开，不再压住焦斑', '按 p² 线性显示，环外的米色雾消失', '焦斑放大图：上横条是实测半高宽，下横条是理论值 0.36 λ', '预测聚焦时刻是虚线', '实测焦斑宽度与理论值并排读数'],
+      calls: function (A) {
+        var f = A.win(0).__geom.f, e = A.win(1).__geom.e;
+        return [[A.cv(0, 'v-f', f.tsTop[0], f.tsTop[1]), [0, -1], 16], [A.cv(0, 'v-f', f.out[0], f.out[1]), [0, 1], 18], [A.cv(1, 'c-e', e.inset[0], e.inset[1] + 30), [-1, 0], 16],
+          [A.cv(1, 'c-e', e.xf - 2, e.y0 + e.H2 * 0.4), [-1, 0], 16], [A.el(1, '#item-e .kpis', 0, 0.5), [-1, 0], 16]];
+      } },
+    4: { h: '图 4 · 统计：噪声叠加如何收敛', pad: 30, before: [['noise-late-dark-data@2x.png', 870]], frames: [[P('g'), 872]],
+      notes: ['信噪比随窗口数增长，虚线是 √N 规律', '三角是实测的峰，虚线是预测的 ±t_AB', '由峰的滞后时间得到台间速度', '横轴有刻度与单位', '下图的行话换成一句人话'],
+      calls: function (A) {
+        var g = A.win(0).__geom.g;
+        return [[A.cv(0, 'c-g', g.curve[0], g.curve[1] + 4), [0, 1], 18], [A.cv(0, 'c-g', g.tri[0] - 4, g.tri[1]), [-1, 0], 16], [A.el(0, '#item-g .kpi', 0, 0.5), [-1, 0], 16],
+          [A.cv(0, 'c-g', g.lag[0], g.lag[1] + 2), [0, 1], 16], [A.cv(0, 'c-g', g.em[0] + 4, g.em[1]), [1, 0], 16]];
+      } },
+    5: { h: '图 5 · 弹性波读数与说明栏', pad: 30, before: [['elastic-ps-dark-data@2x.png', 870]], frames: [[P('h'), 872], [P('j1'), 348]], row: true,
+      notes: ['S − P 括线：把读数画在图上', '分量有方向说明', '公式单独成块，不再被折叠截断', '由 S − P 推得的距离'],
+      calls: function (A) {
+        var h = A.win(0).__geom.h;
+        return [[A.cv(0, 'c-h', h.br[0], h.br[1] + 3), [0, 1], 16], [A.cv(0, 'c-h', h.row[0], h.row[1]), [0, -1], 14], [A.el(1, '.eq', 1, 0.5), [1, 0], 16], [A.txt(1, '.res-big b', 1, 0.5), [1, 0], 18]];
+      } }
+  }[N];
+  var CIRC = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧'];
+  var fig = document.getElementById('fig'); fig.style.padding = '28px ' + FIG.pad + 'px 30px';
+  fig.innerHTML = '<h1>' + FIG.h + '</h1>' +
+    '<div class="blk"><p class="lbl before">现状（main 分支）</p><div class="imgs" style="gap:' + (FIG.gapB || 20) + 'px">' + FIG.before.map(function (b) { return '<img src="' + SHOT + b[0] + '" width="' + b[1] + '" alt="">'; }).join('') + '</div></div>' +
+    '<div class="blk"><p class="lbl after">第二轮样张</p><div class="after-box" id="ab"><div class="frames' + (FIG.row ? ' row' : '') + '">' +
+      FIG.frames.map(function (f, i) { return '<div style="width:' + f[1] + 'px; overflow:hidden"><iframe id="if' + i + '" src="' + f[0] + '" width="' + Math.max(f[1], 1000) + '" height="' + (f[2] || 300) + '" scrolling="no"></iframe></div>'; }).join('') + '</div></div></div>' +
+    '<div class="legend">' + FIG.notes.map(function (s, i) { return '<p><span class="badge">' + (i + 1) + '</span>' + s + '</p>'; }).join('') + '</div>';
+  var ab = document.getElementById('ab'), ifs = FIG.frames.map(function (f, i) { return document.getElementById('if' + i); });
+  var A = {
+    win: function (i) { return ifs[i].contentWindow; }, doc: function (i) { return ifs[i].contentDocument; },
+    off: function (i) { var r = ifs[i].getBoundingClientRect(), b = ab.getBoundingClientRect(); return [r.left - b.left, r.top - b.top]; },
+    box: function (i, r, ax, ay) { var o = A.off(i); return [o[0] + r.left + r.width * ax, o[1] + r.top + r.height * ay]; },
+    el: function (i, sel, ax, ay) { return A.box(i, A.doc(i).querySelector(sel).getBoundingClientRect(), ax, ay); },
+    txt: function (i, sel, ax, ay) { var d = A.doc(i), rg = d.createRange(); rg.selectNodeContents(d.querySelector(sel)); var rs = rg.getClientRects(); return A.box(i, rs[rs.length - 1], ax, ay); },
+    cv: function (i, id, x, y) { var r = A.doc(i).getElementById(id).getBoundingClientRect(), o = A.off(i); return [o[0] + r.left + x, o[1] + r.top + y]; }
+  };
+  function ready(i) { try { return A.doc(i).documentElement.dataset.ready === '1'; } catch (e) { return false; } }
+  function place() {
+    ifs.forEach(function (f, i) { if (!FIG.frames[i][2]) f.style.height = A.doc(i).documentElement.scrollHeight + 'px'; });
+    var calls = FIG.calls(A), svg = '<svg class="leaders" width="1" height="1">', out = [];
+    calls.forEach(function (c, k) {
+      var t = c[0], d = c[1], L0 = c[2], n = Math.hypot(d[0], d[1]), ux = d[0] / n, uy = d[1] / n, cx = t[0] + ux * (L0 + 10), cy = t[1] + uy * (L0 + 10);
+      svg += '<line x1="' + t[0] + '" y1="' + t[1] + '" x2="' + (t[0] + ux * L0) + '" y2="' + (t[1] + uy * L0) + '" stroke="#ffd166" stroke-width="1"/>';
+      out.push('<span class="badge" style="left:' + (cx - 10) + 'px;top:' + (cy - 10) + 'px">' + (k + 1) + '</span>');
+      calls[k].badge = [cx, cy];
+    });
+    ab.insertAdjacentHTML('beforeend', svg + '</svg>' + out.join(''));
+    window.__calls = calls.map(function (c) { return { target: c[0], badge: c.badge }; });
+    document.documentElement.dataset.ready = '1';
+  }
+  var tries = 0;
+  (function wait() {
+    if (ifs.every(function (f, i) { return ready(i); }) && document.fonts) {
+      document.fonts.ready.then(function () { setTimeout(function () { ifs.forEach(function (f, i) { if (!FIG.frames[i][2]) f.style.height = A.doc(i).documentElement.scrollHeight + 'px'; }); setTimeout(place, 150); }, 50); });
+      return;
+    }
+    if (++tries < 400) setTimeout(wait, 50);
+  })();
+})();
+</script>
+</body>
+</html>

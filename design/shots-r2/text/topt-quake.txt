@@ -1,0 +1,16 @@
+EARTHQUAKE
+×
+
+Click or tap the wavefield to fire an acoustic point source (a pressure pulse, P waves only) with a Ricker time function. Shift-click for a big one.
+
+Magnitude
+random
+random magnitude
+
+Peak frequency
+
+5 Hz
+8 Hz
+12 Hz
+
+13 grid points per wavelength at v = 1.

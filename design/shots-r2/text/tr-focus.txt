@@ -1,0 +1,85 @@
+## #status
+CPU · 400 × 220 · acoustic
+
+## #hud
+Focusing image
+
+## #legend
+peak p² (1 = focus)
+○ true source
+✕ focus
+
+## #dataTitle
+Time-reversal mirror · 48 sensors · pressure
+
+## #ctaBtn
+text: ◀◀ Time-reverse
+hidden: false
+disabled: false
+
+## #insp (all details open, line clamp removed)
+EXPERIMENT 3 OF 6
+
+Time reversal
+
+Record a wave on a ring of sensors, send the recordings back reversed in time, and watch the wave collapse onto its source.
+
+✓
+
+Pick a time-reversal mirror
+
+A ring of 48 sensors around the source: full aperture.
+
+Ring
+Line
+1 sensor + box
+Add 40 scatterers
+✓
+
+Fire a hidden source
+
+Click inside the mirror. The source sends out one pulse; every sensor records what reaches it.
+
+✓
+
+Play it backwards
+
+Each sensor becomes a loudspeaker and re-emits its own recording, last sample first. Physics does the rest.
+
+◀◀ Time-reverse
+✓
+
+Look at the focus
+
+The image shows the largest pressure each point reached while the reversed waves played: a spot where the source was.
+
+Focusing image
+Wavefield
+REFOCUSING
+Focus vs. true source
+0.00 km · 0.00 λ
+Spot width (FWHM), x
+0.42 λ
+Spot width (FWHM), z
+0.40 λ
+Wavelength λ
+0.33 km
+
+A full ring focuses to about half a wavelength, the diffraction limit.
+
+What’s going on
+
+Why it works. Without losses, the wave equation is unchanged when t → −t. If every sensor re-emits its recording reversed in time, the wave retraces its path and converges on the source at the moment the original pulse left it, then spreads out again (no sink absorbs it).
+
+Diffraction limit. The focal spot cannot be smaller than about λ/2. A mirror that sees the wave from only one side yields a larger, elongated spot; scattering or reflecting walls send extra energy to the mirror and sharpen the focus (Fink’s time-reversal mirrors and chaotic cavities).
+
+Here: interior attenuation is switched off (α = 0) so the simulation is reversible; the recordings are normalised and injected as sources at the sensor positions. The image is maxt p(x, t)² during the reversed run.
+
+Equation. The 2-D constant-density acoustic wave equation ∂²p/∂t² = c(x, z)² ∇²p for the pressure p. Only P waves exist here; S and surface waves need the elastic solver of experiment 6.
+
+Numerics. Second-order finite differences (leapfrog in time, 5-point Laplacian) on a 400 × 220 grid, computed live on your CPU (typed arrays). Courant number c·Δt/Δx ≤ 0.69 < 1/√2 and 13 grid points per dominant wavelength at v = 1. Sources are Ricker wavelets with a peak frequency of 7.6 Hz.
+
+Units. The model is 10 km wide; v = 1 means 2.5 km/s, and a wave at v = 1 crosses the width in 4 s.
+
+← Arrays & DAS
+Next: Tomography →

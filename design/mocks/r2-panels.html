@@ -1,0 +1,447 @@
+<!doctype html>
+<!-- r2 mock · gallery of round-2 data panels, field overlays and inspector fragments (design/v2a-design-spec-r2.md).
+     Static and synthetic: no solver. Cards use the real lab markup and CSS. #light starts in the light theme. -->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Round-2 panels · Wave Lab mock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="r2-mock.css">
+<style>
+  html, body{height:auto}
+  body{overflow:auto}
+  .gal{max-width:900px; margin:0 auto; padding:28px 14px 60px}
+  .gal-h{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 6px}
+  .gal-h h1{margin:0; font:700 24px/1.2 var(--display); letter-spacing:-.02em}
+  .gal > p{margin:0 0 22px; color:var(--muted); font-size:13px}
+  .item{margin:0 0 30px; padding:6px 0 0}
+  .item h2{margin:0 0 8px; font:600 14px/1.3 var(--sans); color:var(--ink)}
+  .item h2 i{font:500 11px var(--mono); font-style:normal; color:var(--muted); margin-right:8px; text-transform:uppercase; letter-spacing:.06em}
+  .item .data{width:872px}
+  .item #datac, .item .datac{flex:none; height:240px; width:100%; display:block}
+  .item .view{width:872px}
+  .item .view canvas{position:absolute; inset:0; width:100%; height:100%}
+  .item .fkey{width:872px; margin:6px 0 0}
+  /* the gallery is viewed at 1000 px, inside the 900–1199 px media query that hides .facts in the lab; show them here */
+  .gal .facts{display:flex}
+  html.only .gal{padding:0; margin:0} html.only .gal-h, html.only .gal > p, html.only .item > h2{display:none} html.only .item{margin:0; padding:0} html.only, html.only body{background:transparent} html.only .frags{gap:0}
+  .frags{display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start}
+  .frag{width:348px; margin:0; overflow:visible; height:auto; padding:18px 16px 18px}
+  .frag .res{margin-top:0}
+</style>
+</head>
+<body>
+<div class="gal">
+  <div class="gal-h"><h1>Round-2 panels</h1>
+    <button class="ibtn theme-btn" id="themeBtn" type="button" aria-label="Switch between dark and light theme" title="Dark / light theme">
+      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    </button>
+  </div>
+  <p>Static mocks of design/v2a-design-spec-r2.md, sections 3–6. Synthetic data, real card markup and CSS.</p>
+  <div id="items"></div>
+</div>
+
+<script src="../../drafts/v2a/js/wave-models.js"></script>
+<script src="r2-mock.js"></script>
+<script>
+(function () {
+  'use strict';
+  var WM = window.WaveModels, C = L.C, NOW = L.NOW, LEN = L.TR, RATE = L.rate, FHZ = L.fHz;
+  var CAP = {
+    play0: 'Time runs left to right and ends at “now”. Click the wavefield to make a quake.',
+    play1: L.glyph('star') + ' is the quake’s origin time; the dashed line is the arrival predicted for a straight ray.',
+    playN: 'One row per station, nearest to the quake on top. Dashed curve: arrivals predicted for straight rays.',
+    line: 'One row per station along the array. An upright band is fast (all stations at once); a leaning band is slow.',
+    das: 'Rows are positions along the cable, colour is strain rate. Broadside waves leave almost no trace.',
+    trDone: 'Recordings played backwards · pressure² at the source, peaking on the dashed line · the focal spot, magnified.',
+    noise: 'Peaks grow at lag ±t<sub>AB</sub>, the A–B travel time. Positive lag: waves going A → B; negative lag: B → A.',
+    elastic: 'Z and X ground velocity with the predicted P and S arrivals. Right: the path the ground traces.'
+  };
+  var AGC = L.seg('agc', [['0', 'True amplitude'], ['1', 'AGC 0.5 s']], '0', 'sm');
+  function dataCard(id, title, o) {
+    var t = document.createElement('p'); t.innerHTML = o.cap;
+    return '<section class="data" aria-label="Data panel"><div class="data-h"><h2>' + title + '</h2><div class="data-r">' +
+      '<div class="kpis">' + (o.kpi || '') + '</div><div class="data-ctl">' + (o.ctl || '') + '</div></div>' +
+      '<div class="data-c"><p class="data-cap" title="' + t.textContent + '">' + o.cap + '</p><span class="lkey"' + (o.key ? '' : ' hidden') + '><i class="obs"></i>observed<i class="pre"></i>predicted</span></div>' +
+      '</div><canvas class="datac" id="c-' + id + '"></canvas></section>';
+  }
+  function item(id, head, body) { return '<section class="item" id="item-' + id + '"><h2><i>' + id + '</i>' + head + '</h2>' + body + '</section>'; }
+  var ITEMS = '';
+  ITEMS += item('a', 'Playground · six stations, record section sorted by distance', dataCard('a', '<b>6</b> stations · pressure p(t) · last 6 s', { key: true, cap: CAP.playN, ctl: AGC }));
+  ITEMS += item('b', 'Playground · one station, origin time and predicted arrival', dataCard('b', 'Station <b>YW01</b> · pressure p(t) · last 6 s', { key: true, cap: CAP.play1, ctl: AGC }));
+  ITEMS += item('c', 'Arrays · 16-station line array with the apparent-velocity protractor', dataCard('c', 'Line array · <b>16</b> stations · pressure p(t) · last 6 s', { key: true, cap: CAP.line, ctl: AGC }));
+  ITEMS += item('d', 'Arrays · DAS waterfall', dataCard('d', 'DAS · axial strain rate · <b>155</b> channels over 8.0 km · gauge 0.25 km · last 6 s', { key: true, cap: CAP.das, ctl: L.seg('perch', [['0', 'Common scale'], ['1', 'Per channel']], '0', 'sm') }));
+  ITEMS += item('e', 'Time reversal · done: recordings, pressure² at the source, focal spot', dataCard('e', 'Time-reversal mirror · <b>48</b> sensors · pressure p(t)', { key: true, cap: CAP.trDone, kpi: '<span class="kpi"><b>0.41 λ</b>focal spot</span><span class="kpi dim" title="Half-maximum width of J₀(kr)², the focus of a perfect ring at one frequency"><b>0.36 λ</b>theory</span>' }));
+  ITEMS += item('f', 'Time reversal · focusing image on the field (linear p²)', '<div class="view" style="height:442px"><canvas id="v-f"></canvas></div><div class="fkey" id="k-f"><div class="legend"></div><div class="facts"></div></div>');
+  ITEMS += item('g', 'Ambient noise · SNR growth and the measured peak lag', dataCard('g', 'Noise at <b>A</b> and <b>B</b> → their cross-correlation', { key: true, cap: CAP.noise, kpi: '<span id="g-kpi"></span>' }));
+  ITEMS += item('h', 'Elastic waves · predicted P and S, the S − P bracket', dataCard('h', 'Station <b>YW01</b> on the surface · ground velocity · Z (up) and X (right) · last 6 s', { key: true, cap: CAP.elastic, kpi: '<span class="kpi dim"><b>1.06 s</b>S − P</span><span class="kpi"><b>3.6 km</b>distance</span>' }));
+  ITEMS += item('i', 'Field overlay · cross-section with a free surface', '<div class="view" style="height:302px"><canvas id="v-i"></canvas></div><div class="fkey" id="k-i"><div class="legend"></div><div class="facts"></div></div>');
+  ITEMS += item('j', 'Inspector fragments · elastic steps, noise result, time-reversal result', '<div class="frags" id="frags"></div>');
+  document.getElementById('items').innerHTML = ITEMS;
+  /* ?only=a,c (and j1 = the elastic fragment of j alone): one or more items without the gallery chrome, for r2-compare.html */
+  var ONLY = (/[?&]only=([^&]+)/.exec(location.search) || [])[1];
+  if (ONLY) {
+    var want = ONLY.split(','); document.documentElement.classList.add('only');
+    [].forEach.call(document.querySelectorAll('.item'), function (el) { var id = el.id.slice(5); if (want.indexOf(id) < 0 && !(id === 'j' && want.indexOf('j1') >= 0)) el.style.display = 'none'; });
+  }
+  var GEOM = window.__geom = {};
+  /* the noise KPI span is replaced by its chips once vEst is known */
+
+  var mRandom = new WM.Model(400, 220); mRandom.setPreset('random');
+  var mLayer = new WM.Model(400, 220); mLayer.setPreset('layered', 4);
+  var r = L.rng(42), k, i;
+  function band(t, f) { return L.ricker(t, f || FHZ); }
+  function predN(model, m, p) { return m.n + Math.round(1.2 / (L.f0 * (m.fm || 1))) + model.travelTime(m.x, m.y, p.x, p.y, RATE) * RATE; }
+
+  /* ---------- a · playground, six stations ---------- */
+  var qa = { n: NOW - Math.round(4.4 * RATE), x: 150, y: 80, fm: 1 };
+  var staA = [[300, 120], [190, 60], [80, 170], [330, 40], [230, 160], [162, 88]].map(function (p, k) { return { x: p[0], y: p[1], code: 'YW0' + (k + 1) }; });
+  function quakeRec(model, q, pts, extra) {
+    return new L.Rec(pts, LEN, function (tr, t, comp) {
+      if (comp) return 0;
+      var p = pts[tr], d = L.km(Math.hypot(p.x - q.x, p.y - q.y)), ageArr = (NOW - predN(model, q, p)) / RATE + 0.012 * d;
+      var v = band(ageArr - t) / Math.sqrt(0.6 + d) + 0.35 * band(ageArr - 0.42 - t) / (1 + d);
+      if (extra) v += extra(tr, t, ageArr, d);
+      return v;
+    });
+  }
+  var recA = quakeRec(mRandom, qa, staA), dA = staA.map(function (p) { return Math.hypot(p.x - qa.x, p.y - qa.y); });
+  var ordA = dA.map(function (d, k) { return k; }).sort(function (a, b) { return dA[a] - dA[b]; });
+  function drawA(ctx, w, h) {
+    var g = L.drawSection(ctx, 14, 4, w - 28, h - 24, recA, { marks: [qa], now: NOW, pred: function (tr) { return predN(mRandom, qa, staA[tr]); }, order: ordA, right: 46,
+      rowText: function (tr) { return L.fmt(L.km(dA[tr]), 1) + ' km'; }, link: true, hi: L.hi });
+    L.timeAxis(ctx, g.x, h - 20, g.w, 4, LEN, NOW, 4);
+    L.font(ctx, 10); GEOM.a = { star: [g.marks[0][0], 11], pred: g.pred, km: [w - 14 - ctx.measureText('2.8 km').width, g.pred[2][1]], g: g };
+  }
+  /* ---------- b · one station ---------- */
+  var qb = { n: NOW - Math.round(3.6 * RATE), x: 120, y: 70, fm: 1 }, staB = [{ x: 250, y: 120, code: 'YW01' }];
+  var recB = quakeRec(mRandom, qb, staB);
+  function drawB(ctx, w, h) {
+    var g = L.drawSection(ctx, 14, 4, w - 28, h - 24, recB, { marks: [qb], now: NOW, pred: function (tr) { return predN(mRandom, qb, staB[tr]); }, hi: L.hi, pen: true });
+    L.timeAxis(ctx, g.x, h - 20, g.w, 4, LEN, NOW, 4);
+  }
+  /* ---------- c · line array of 16 on the layered section ---------- */
+  var qc = { n: NOW - Math.round(4.6 * RATE), x: 130, y: 150, fm: 1 }, staC = [];
+  for (k = 0; k < 16; k++) staC.push({ x: Math.round(40 + 319 * k / 15), y: 6, code: 'L' + (k < 9 ? '0' : '') + (k + 1) });
+  var spC = L.km(319 / 15);
+  var recC = quakeRec(mLayer, qc, staC, function (tr, t, ageArr, d) { var dr = Math.hypot(L.km(staC[tr].x - qc.x), 2 * 3.0 - L.km(qc.y)); return -0.45 * band(ageArr - (dr - d) / 2.9 - 0.25 - t) / Math.sqrt(1 + dr); });
+  function drawC(ctx, w, h) {
+    var g = L.drawSection(ctx, 14, 4, w - 28, h - 24, recC, { marks: [qc], now: NOW, pred: function (tr) { return predN(mLayer, qc, staC[tr]); }, right: 46,
+      rowText: function (tr) { return L.fmt(tr * spC, 1) + ' km'; }, link: true, hi: L.hi });
+    L.timeAxis(ctx, g.x, h - 20, g.w, 4, LEN, NOW, 4);
+    window.__fanC = L.slopeFan(ctx, g.x + 12, g.y + g.h - 62, g.w / 6, g.sp / spC, 0.3 * g.w, g.y + g.h);
+    window.__gA = g; GEOM.c = { fan: window.__fanC, g: g };
+  }
+  /* ---------- d · DAS along the surface ---------- */
+  var qd = { n: NOW - Math.round(4.2 * RATE), x: 150, y: 140, fm: 1 }, dasPts = [], dasCh = [];
+  for (k = 0; k <= 320; k++) dasPts.push([40 + k, 4]);
+  for (k = 6; k < 321 - 5 - 1; k += 2) dasCh.push(k);
+  var nc = dasCh.length;
+  function dasPred(c) { var p = dasPts[dasCh[c]]; return predN(mLayer, qd, { x: p[0], y: p[1] }); }
+  var dasBuf = new Float32Array(nc * LEN), dasPeak = 0;
+  for (var c = 0; c < nc; c++) {
+    var p = dasPts[dasCh[c]], dx = p[0] - qd.x, dz = p[1] - qd.y, dd = Math.hypot(dx, dz), cs = dx / dd, ageA = (NOW - dasPred(c)) / RATE + 0.01 * L.km(dd);
+    var dr = Math.hypot(dx, 2 * 190 - qd.y - p[1]), csr = dx / dr, ageR = ageA - (dr - dd) / C / RATE * 0.8;
+    for (i = 0; i < LEN; i++) {
+      var t = (LEN - 1 - i) / RATE, e = 0.004;
+      var v = cs * Math.abs(cs) * (band(ageA - t - e) - band(ageA - t + e)) / Math.sqrt(1 + L.km(dd)) + 0.5 * csr * Math.abs(csr) * (band(ageR - t - e) - band(ageR - t + e)) / Math.sqrt(1 + L.km(dr)) + 0.0012 * L.gauss(r);
+      dasBuf[c * LEN + i] = v; dasPeak = Math.max(dasPeak, Math.abs(v));
+    }
+  }
+  function drawD(ctx, w, h) {
+    var pal = L.pal, X = 14 + 50, Wd = w - 28 - 50, Y = 18, Hd = h - 22 - Y, cols = Math.round(Wd), cv = document.createElement('canvas');
+    cv.width = cols; cv.height = nc; var c2 = cv.getContext('2d'), img = c2.createImageData(cols, nc), d = img.data, bin = LEN / cols;
+    for (var c = 0; c < nc; c++) for (var col = 0; col < cols; col++) {
+      var i0 = Math.floor(col * bin), i1 = Math.max(i0 + 1, Math.floor((col + 1) * bin)), best = 0;
+      for (var q = i0; q < i1; q++) { var v = dasBuf[c * LEN + q]; if (Math.abs(v) > Math.abs(best)) best = v; }
+      var rgb = L.div(best / (0.75 * dasPeak)), j = 4 * (c * cols + col); d[j] = rgb[0]; d[j + 1] = rgb[1]; d[j + 2] = rgb[2]; d[j + 3] = 255;
+    }
+    c2.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = true; ctx.drawImage(cv, X, Y, Wd, Hd);
+    ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.strokeRect(X + 0.5, Y + 0.5, Wd - 1, Hd - 1);
+    var kmT = L.km(320), yk = function (km) { return Y + km / kmT * Hd; };
+    ctx.strokeStyle = pal.axis; ctx.beginPath(); for (k = 0; k <= Math.floor(kmT); k++) { ctx.moveTo(X - 4, Math.round(yk(k)) + 0.5); ctx.lineTo(X, Math.round(yk(k)) + 0.5); } ctx.stroke();
+    L.num(ctx); ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; for (k = 0; k <= Math.floor(kmT); k += 2) ctx.fillText(String(k), X - 6, yk(k));
+    ctx.save(); ctx.translate(18, Y + Hd / 2); ctx.rotate(-Math.PI / 2); L.axisTitle(ctx); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('distance along the cable (km)', 0, 0); ctx.restore();
+    /* origin time: solid line + star in the 14-px lane */
+    var xm = Math.round(X + Wd - (NOW - qd.n) / LEN * Wd) + 0.5;
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(' + pal.origin + ',.5)'; ctx.beginPath(); ctx.moveTo(xm, Y - 2); ctx.lineTo(xm, Y + Hd); ctx.stroke();
+        /* predicted arrival: dashed polyline over the channels */
+    ctx.setLineDash([4, 3]); ctx.lineWidth = 1; ctx.strokeStyle = L.rgba(pal.ink, 0.9); ctx.beginPath(); var pen = false;
+    for (c = 0; c < nc; c++) { var age = NOW - dasPred(c); if (age < 0 || age > LEN) { pen = false; continue; } var xx = X + Wd - age / LEN * Wd, yy = Y + (c + 0.5) / nc * Hd; if (pen) ctx.lineTo(xx, yy); else ctx.moveTo(xx, yy); pen = true; }
+    ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = L.rgba(pal.pos, 0.45); ctx.beginPath(); ctx.moveTo(X + Wd - 0.5, Y); ctx.lineTo(X + Wd - 0.5, Y + Hd); ctx.stroke();   /* "now" */
+    L.timeAxis(ctx, X, h - 20, Wd, 4, LEN, NOW);
+    window.__fanD = L.slopeFan(ctx, X + 12, Y + Hd - 62, Wd / 6, Hd / kmT, 0.3 * Wd, Y + Hd);
+    L.star(ctx, xm, 4 + 7, 4.5, pal.neg, 0.95); L.laneText(ctx, 'origin time', xm, 6, X + Wd, 'rgba(' + pal.origin + ',.95)', 9, 80);
+  }
+  /* ---------- e · time reversal, done ---------- */
+  var ringC = [200, 110], ringR = 60, src = [193, 104], trPts = [], trLen, trRec = [], n0 = L.n0;
+  for (k = 0; k < 48; k++) { var an = -Math.PI / 2 + 2 * Math.PI * k / 48; trPts.push({ x: Math.round(ringC[0] + ringR * Math.cos(an)), y: Math.round(ringC[1] + ringR * Math.sin(an)), code: 'M' + (k < 9 ? '0' : '') + (k + 1) }); }
+  var dmaxT = 0; trPts.forEach(function (p) { dmaxT = Math.max(dmaxT, Math.hypot(p.x - src[0], p.y - src[1])); });
+  trLen = Math.round(dmaxT / (C * 0.95) + 2.6 * n0 + 0.35 * RATE);
+  trPts.forEach(function (p) { var d = Math.hypot(p.x - src[0], p.y - src[1]), ta = n0 + d / C, a = new Float32Array(trLen); for (i = 0; i < trLen; i++) a[i] = L.ricker((i - ta) * L.f0, 1) / Math.sqrt(d) + 0.002 * L.gauss(r); trRec.push(a); });
+  var kf = trLen - 1 - n0, total = trLen + Math.round(0.7 * RATE), focusTr = new Float32Array(total);
+  for (i = 0; i < total; i++) { var pv = L.ricker((i - kf) * L.f0 * 1.05, 1) + 0.03 * L.gauss(r) * Math.exp(-Math.abs(i - kf) / 120); focusTr[i] = pv * pv; }
+  var lam = L.ppw, fwx = 0.42, fwz = 0.40;                                /* FWHM in λ; mean 0.41 */
+  function spot(dxc, dzc) { var u = Math.hypot(2 * dxc / (fwx * lam), 2 * dzc / (fwz * lam)), j0 = L.J0(1.126 * u); return j0 * j0; }
+  function drawE(ctx, w, h) {
+    var pal = L.pal, nR = 48, show = [], wl = Math.round(w * 0.56), X = 14 + 42, Wt = wl - 14 - 42 - 10, H = h - 28, len = trLen, peak = 1e-9;
+    for (k = 0; k < nR; k += 2) show.push(k);
+    show.forEach(function (q) { for (i = 0; i < len; i++) peak = Math.max(peak, Math.abs(trRec[q][i])); });
+    L.panelLabel(ctx, 'Recordings · re-emitted last sample first', 14, 2, null, X + Wt - 14);
+    var sp = (H - 14) / show.length, amp = 0.9 * sp / peak, stride = Math.max(1, Math.floor(len / (Wt * 1.5)));
+    for (var q = 0; q < show.length; q++) {
+      var rr = show[q], y0 = 18 + sp * (q + 0.5), a = trRec[rr];
+      if (q % 2 === 0) { L.font(ctx, 10); ctx.fillStyle = pal.label; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(trPts[rr].code, 14, y0); }
+      ctx.beginPath(); ctx.moveTo(X, y0); for (i = 0; i < len; i += stride) ctx.lineTo(X + i / (len - 1) * Wt, y0 - Math.max(0, Math.min(1.4 * sp, a[i] * amp))); ctx.lineTo(X + Wt, y0); ctx.closePath(); ctx.fillStyle = pal.fill; ctx.fill();
+      ctx.beginPath(); for (i = 0; i < len; i += stride) { var yy = y0 - Math.max(-1.4 * sp, Math.min(1.4 * sp, a[i] * amp)); if (i) ctx.lineTo(X + i / (len - 1) * Wt, yy); else ctx.moveTo(X, yy); } ctx.strokeStyle = pal.trace; ctx.lineWidth = 1; ctx.stroke();
+    }
+    var tLast = Math.floor(len / RATE * 2) / 2, xT = function (t) { return X + t * RATE / (len - 1) * Wt; }, tt;
+    ctx.lineWidth = 1; ctx.strokeStyle = pal.axis; ctx.beginPath(); ctx.moveTo(X, H + 4.5); ctx.lineTo(X + Wt, H + 4.5);
+    for (tt = 0; tt <= tLast + 1e-9; tt += 0.5) { ctx.moveTo(Math.round(xT(tt)) + 0.5, H + 4); ctx.lineTo(Math.round(xT(tt)) + 0.5, H + 8); } ctx.stroke();
+    L.num(ctx); ctx.textBaseline = 'top';
+    for (tt = 0; tt <= tLast + 1e-9; tt += 0.5) { ctx.textAlign = tt === 0 ? 'left' : 'center'; ctx.fillText(tt === 0 ? '0' : (L.fmt(tt, 1) + (tt + 0.5 > tLast + 1e-9 ? ' s' : '')), xT(tt), H + 10); }
+    window.__eAxis = { ticks: tLast / 0.5 + 1, pxPerTick: xT(0.5) - xT(0) };
+    /* middle: pressure² at the source */
+    var x0 = wl + 10, W2 = Math.round(w * 0.20), H2 = H - 14, mxF = 0; for (i = 0; i < total; i++) mxF = Math.max(mxF, focusTr[i]);
+    L.panelLabel(ctx, 'Pressure² at the source', x0, 2, null, W2);
+    ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.strokeRect(x0 + 0.5, 16.5, W2 - 1, H2 - 1);
+    var xf = Math.round(x0 + kf / (total - 1) * W2) + 0.5; ctx.setLineDash([4, 3]); ctx.strokeStyle = L.rgba(pal.pos, 0.9); ctx.beginPath(); ctx.moveTo(xf, 17); ctx.lineTo(xf, 16 + H2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); for (i = 0; i < total; i += Math.max(1, Math.floor(total / W2))) { var yv = 16 + H2 - 2 - focusTr[i] / mxF * (H2 - 8); if (i) ctx.lineTo(x0 + i / (total - 1) * W2, yv); else ctx.moveTo(x0, yv); }
+    ctx.strokeStyle = L.rgba(pal.hot, 0.95); ctx.lineWidth = 1.4; ctx.stroke();
+    L.annot(ctx, L.rgba(pal.pos, 0.95)); ctx.textBaseline = 'top'; var pfw = ctx.measureText('predicted focus').width; ctx.textAlign = 'left'; ctx.fillText('predicted focus', Math.max(x0, Math.min(x0 + W2 - pfw, xf - pfw / 2)), H + 10);
+    /* right: focal-spot inset */
+    var xi = x0 + W2 + 16, S = Math.min(w - 14 - xi, H - 14), yi = 18; if (S < 90) return;
+    var R = Math.max(5, Math.round(lam)), n = 2 * R + 1, cp = S / n, b = pal.pn, hc = pal.hot, mag = Math.round(cp / (870 / 400));   /* N = round((S/(2R+1)) / (L.W/L.nx)), field 870 px over 400 cells */
+    window.__eInset = { xi: xi, yi: yi, S: S, R: R, N: mag }; GEOM.e = { inset: [xi, yi, S], xf: xf, y0: 16, H2: H2 };
+    for (var zz = -R; zz <= R; zz++) for (var xx2 = -R; xx2 <= R; xx2++) {
+      var av = spot(xx2, zz), t = Math.pow(Math.max(0, (av - 0.05) / 0.95), 0.75);
+      ctx.fillStyle = 'rgb(' + ((b[0] + (hc[0] - b[0]) * t) | 0) + ',' + ((b[1] + (hc[1] - b[1]) * t) | 0) + ',' + ((b[2] + (hc[2] - b[2]) * t) | 0) + ')';
+      ctx.fillRect(xi + (xx2 + R) * cp, yi + (zz + R) * cp, cp + 0.5, cp + 0.5);
+    }
+    ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.strokeRect(xi + 0.5, yi + 0.5, S - 1, S - 1);
+    L.panelLabel(ctx, 'Focal spot · ×' + mag, xi, 2, null, S);
+    var cx = xi + S / 2, cy = yi + S / 2;
+    ctx.strokeStyle = L.rgba(pal.ink, 0.95); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(cx - 5, cy - 5); ctx.lineTo(cx + 5, cy + 5); ctx.moveTo(cx + 5, cy - 5); ctx.lineTo(cx - 5, cy + 5); ctx.stroke();
+    ctx.setLineDash([3, 3]); ctx.lineWidth = 1.2; ctx.strokeStyle = L.rgba(pal.ink, 0.85); ctx.beginPath(); ctx.arc(cx + 0.6 * cp, cy - 0.5 * cp, 6, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]);
+    var yb1 = yi + S - 24, yb2 = yi + S - 10, l1 = fwx * lam * cp, l2 = 0.36 * lam * cp;
+    ctx.lineCap = 'round'; ctx.lineWidth = 2;
+    ctx.strokeStyle = L.rgba(pal.ink, 0.95); ctx.beginPath(); ctx.moveTo(xi + 8, yb1); ctx.lineTo(xi + 8 + l1, yb1); ctx.stroke();
+    ctx.strokeStyle = pal.label; ctx.beginPath(); ctx.moveTo(xi + 8, yb2); ctx.lineTo(xi + 8 + l2, yb2); ctx.stroke(); ctx.lineCap = 'butt';
+    L.num(ctx); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText('FWHM ' + L.fmt(fwx, 2) + ' λ', xi + 8 + l1 + 6, yb1); ctx.fillText('theory 0.36 λ', xi + 8 + l2 + 6, yb2);
+  }
+  /* ---------- f · TR focusing image on the field ---------- */
+  function drawF() {
+    var f = L.fit(document.getElementById('v-f')), ctx = f.ctx, pal = L.pal; L.view(f.w, f.h, 400);
+    var nx = L.nx, ny = L.ny, cx = nx / 2, cy = ny / 2, R = Math.min(nx, ny) / 2 - L.B - 8, fs = [Math.round(cx - 7), Math.round(cy - 5)], sr = [fs[0] - 0.6, fs[1] + 0.4];
+    var cv = document.createElement('canvas'); cv.width = nx; cv.height = ny; var c2 = cv.getContext('2d'), img = c2.createImageData(nx, ny), d = img.data, H = pal.hot, bg = pal.bg;
+    for (var y = 0; y < ny; y++) for (var x = 0; x < nx; x++) {
+      var a = spot(x - fs[0], y - fs[1]); if (a > 1) a = 1;
+      var t = Math.pow(Math.max(0, (a - 0.05) / 0.95), 0.75), kk = 1 - t * pal.mix, hc = pal.core * t * t * t, j = 4 * (y * nx + x);
+      var r0 = bg[0] * kk + H[0] * t, g0 = bg[1] * kk + H[1] * t, b0 = bg[2] * kk + H[2] * t;
+      if (hc) { r0 += (255 - r0) * hc; g0 += (255 - g0) * hc; b0 += (255 - b0) * hc; }
+      d[j] = r0; d[j + 1] = g0; d[j + 2] = b0; d[j + 3] = 255;
+    }
+    c2.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = true; ctx.drawImage(cv, 0, 0, f.w, f.h);
+    var pts = []; for (k = 0; k < 48; k++) { var an = -Math.PI / 2 + 2 * Math.PI * k / 48; pts.push({ x: Math.round(cx + R * Math.cos(an)), y: Math.round(cy + R * Math.sin(an)) }); }
+    L.stations(ctx, pts, { labels: false, alpha: 0.9, col: pal.pos });
+    ctx.setLineDash([3, 4]); ctx.lineWidth = 1; ctx.strokeStyle = L.rgba(pal.pos, 0.35); ctx.beginPath(); ctx.arc(L.sx(cx), L.sy(cy), R / nx * L.W, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]);
+    var X = L.sx(sr[0]), Y = L.sy(sr[1]);
+    ctx.beginPath(); ctx.arc(X, Y, 9, 0, 6.2832); ctx.lineWidth = 1.5; ctx.strokeStyle = L.rgba(pal.ink, 0.85); ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.lineWidth = 1; ctx.strokeStyle = L.rgba(pal.ink, 0.6); ctx.beginPath(); ctx.moveTo(X - 7, Y - 7); ctx.lineTo(X - 22, Y - 22); ctx.stroke();
+    L.label(ctx, 'true source', X - 25, Y - 24, 'right');
+    var fx = L.sx(fs[0]), fy = L.sy(fs[1]);
+    ctx.strokeStyle = L.rgba(pal.ink, 0.95); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(fx - 6, fy - 6); ctx.lineTo(fx + 6, fy + 6); ctx.moveTo(fx + 6, fy - 6); ctx.lineTo(fx - 6, fy + 6); ctx.stroke();
+    ctx.lineWidth = 1; ctx.strokeStyle = L.rgba(pal.ink, 0.6); ctx.beginPath(); ctx.moveTo(fx + 7, fy + 7); ctx.lineTo(fx + 22, fy + 22); ctx.stroke();
+    L.label(ctx, 'focus', fx + 25, fy + 30, 'left');
+    ctx.font = '600 11px "Inter", system-ui, sans-serif'; GEOM.f = { ts: [X - 25 - ctx.measureText('true source').width, Y - 28], tsTop: [X - 25 - ctx.measureText('true source').width / 2, Y - 36], fo: [fx + 25, fy + 26], out: [L.sx(cx - R) - 70, L.sy(cy) + 40] };
+    L.scaleBar(ctx);
+    var key = document.getElementById('k-f');
+    key.querySelector('.legend').innerHTML = '<span><i class="sw" style="background:linear-gradient(90deg,transparent,rgb(' + pal.hot.join(',') + '))"></i>peak pressure² (1 = at the focus)</span><span>' + L.glyph('ring') + 'true source</span><span>' + L.glyph('cross') + 'focus</span>';
+    key.querySelector('.facts').innerHTML = L.facts('absorb');
+    window.__fitF = L.fitKey(key);
+  }
+  /* ---------- g · ambient noise ---------- */
+  var distAB = 2.41, tAB = distAB / 2.5, Lg = 3 * RATE, nW = 40;
+  function noiseTrace(seed) { var rn = L.rng(seed), a = new Float32Array(LEN); for (var q = 0; q < 260; q++) { var t0 = rn() * LEN, am = L.gauss(rn), fm = 0.75 + 0.6 * rn(); for (var i = Math.max(0, Math.floor(t0 - 60)); i < Math.min(LEN, t0 + 60); i++) a[i] += am * L.ricker((i - t0) * L.f0 * fm, 1); } return a; }
+  var nA = noiseTrace(3), nB = noiseTrace(4);
+  var recG = { pts: [{ code: 'A' }, { code: 'B' }], n: 2, len: LEN, z: [nA, nB], x: [nA, nB], peak: 0, get: function (k, i) { return this.z[k][i]; } };
+  var sig = new Float64Array(2 * Lg + 1), stack = new Float64Array(2 * Lg + 1), rows = [], snrH = [], rg = L.rng(9);
+  for (i = 0; i <= 2 * Lg; i++) { var tl = (i - Lg) / RATE; sig[i] = L.ricker((tl - tAB) * FHZ * 0.9, 1) + 0.88 * L.ricker((tl + tAB) * FHZ * 0.9, 1); }
+  function snrOf(st) {
+    var t = Math.round(tAB * RATE), w = Math.round(0.12 * RATE), pk = 0, e = 0, n = 0, q;
+    for (q = -w; q <= w; q++) { pk = Math.max(pk, Math.abs(st[Lg + t + q]), Math.abs(st[Lg - t + q])); }
+    for (q = -Lg; q <= Lg; q++) if (Math.abs(Math.abs(q) - t) > 0.4 * RATE) { e += st[Lg + q] * st[Lg + q]; n++; }
+    return pk / Math.sqrt(e / n);
+  }
+  for (var wv = 0; wv < nW; wv++) {
+    var nz = new Float64Array(2 * Lg + 1);
+    for (var q2 = 0; q2 < 70; q2++) { var t0 = rg() * (2 * Lg), am = L.gauss(rg) * 1.5; for (i = Math.max(0, Math.floor(t0 - 50)); i < Math.min(2 * Lg + 1, t0 + 50); i++) nz[i] += am * L.ricker((i - t0) * L.f0 * 0.9, 1); }
+    for (i = 0; i <= 2 * Lg; i++) stack[i] += sig[i] + nz[i];
+    rows.push(Float64Array.from(stack)); snrH.push(snrOf(stack));
+  }
+  function peakLag(sign) {
+    var c0 = Lg + sign * Math.round(tAB * RATE), w = Math.round(0.2 * RATE), bi = c0, q;
+    for (q = c0 - w; q <= c0 + w; q++) if (stack[q] > stack[bi]) bi = q;
+    var y0 = stack[bi - 1], y1 = stack[bi], y2 = stack[bi + 1], dn = y0 - 2 * y1 + y2, off = dn < 0 ? 0.5 * (y0 - y2) / dn : 0;
+    return (bi + off - Lg) / RATE;
+  }
+  var lagP = peakLag(1), lagN = peakLag(-1), snrNow = snrH[nW - 1], vEst = snrNow >= 4 ? distAB / ((Math.abs(lagP) + Math.abs(lagN)) / 2) : null;
+  function drawG(ctx, w, h) {
+    var pal = L.pal, lw = Math.round(w * 0.3), X2 = lw + 26, W2 = w - X2 - 14;
+    L.panelLabel(ctx, 'Raw noise at A and B · last 6 s', 14, 2, null, lw);
+    var Hraw = Math.round((h - 60) * 0.45), g = L.drawSection(ctx, 14, 16, lw, Hraw, recG, { left: 18, gain: 0.45 });
+    L.timeAxis(ctx, g.x, 16 + Hraw, g.w, 4, LEN, NOW, 16);
+    /* SNR versus windows */
+    var ty = 16 + Hraw + 4 + 11 + 6, px0 = 14 + 22, px1 = 14 + lw, py0 = ty + 20, py1 = h - 20, Nmax = Math.max(20, Math.ceil(nW / 20) * 20), smax = 0;
+    snrH.forEach(function (s) { smax = Math.max(smax, s); }); var Ym = Math.max(4, Math.ceil(smax));
+    window.__gSnrTitle = { x: 14, w: L.panelLabel(ctx, 'Signal-to-noise ratio of the stack', 14, ty, null, lw), X2: X2 };
+    var xN = function (n) { return px0 + n / Nmax * (px1 - px0); }, yS = function (s) { return py1 - s / Ym * (py1 - py0); };
+    ctx.lineWidth = 1; ctx.strokeStyle = pal.axis; ctx.beginPath(); ctx.moveTo(px0 + 0.5, py0); ctx.lineTo(px0 + 0.5, py1 + 0.5); ctx.lineTo(px1, py1 + 0.5); ctx.stroke();
+    L.num(ctx); ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText(String(Ym), px0 - 4, py0); ctx.fillText('0', px0 - 4, py1);
+    ctx.beginPath(); [0, Nmax / 2, Nmax].forEach(function (n) { ctx.moveTo(Math.round(xN(n)) + 0.5, py1); ctx.lineTo(Math.round(xN(n)) + 0.5, py1 + 4); }); ctx.strokeStyle = pal.axis; ctx.stroke();
+    L.num(ctx); ctx.textBaseline = 'top'; ctx.textAlign = 'left'; ctx.fillText('0', xN(0), py1 + 6); ctx.textAlign = 'center'; ctx.fillText(String(Nmax / 2), xN(Nmax / 2), py1 + 6); ctx.textAlign = 'right'; ctx.fillText(Nmax + ' windows', xN(Nmax), py1 + 6);
+    var sa = 0, si = 0; snrH.forEach(function (s, q) { sa += s * Math.sqrt(q + 1); si += q + 1; }); var aF = sa / si;
+    ctx.setLineDash([4, 3]); ctx.strokeStyle = L.rgba(pal.pos, 0.9); ctx.beginPath(); for (var n = 0; n <= Nmax; n += 0.5) { var yy = yS(aF * Math.sqrt(n)); if (n) ctx.lineTo(xN(n), yy); else ctx.moveTo(xN(n), yy); } ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = pal.trace; ctx.lineWidth = 1.5; ctx.beginPath(); snrH.forEach(function (s, q) { if (q) ctx.lineTo(xN(q + 1), yS(s)); else ctx.moveTo(xN(1), yS(s)); }); ctx.stroke();
+    ctx.beginPath(); ctx.arc(xN(nW), yS(snrNow), 3, 0, 6.2832); ctx.fillStyle = L.rgba(pal.pos, 1); ctx.fill();
+    GEOM.g = { snr: [px0, py0, px1, py1], curve: [xN(30), yS(snrH[29])] };
+    L.annot(ctx, L.rgba(pal.pos, 0.95)); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.fillText('∝ √N', xN(0.6 * Nmax), yS(aF * Math.sqrt(0.6 * Nmax)) - 8);
+    /* right: correlation */
+    var H1 = Math.round((h - 38) * 0.48), y1 = 16, xs = function (l) { return X2 + (l + Lg) / (2 * Lg) * W2; }, tl = tAB * RATE;
+    var tf = function (sub) { if (sub) ctx.font = '600 8.5px "Inter", system-ui, sans-serif'; else L.fontS(ctx, 11, 600); };
+    var ccT = '(τ) against lag τ · stack of ' + nW + ' windows', ccW = function () { tf(0); var a = ctx.measureText('Cross-correlation C' + ccT).width; tf(1); return a + ctx.measureText('AB').width; };
+    while (ccW() > W2 && ccT.lastIndexOf(' · ') > 0) { ccT = ccT.slice(0, ccT.lastIndexOf(' · ')); L.shortened.push('Cross-correlation title → …' + ccT); }   /* 3.3 maxW */
+    ctx.fillStyle = pal.sub; ctx.textBaseline = 'top'; L.subText(ctx, [['Cross-correlation C', 0], ['AB', 1], [ccT, 0]], X2, 2, 'left', tf);
+    ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.strokeRect(X2 + 0.5, y1 + 0.5, W2 - 1, H1 - 1);
+    [-tl, tl].forEach(function (l) { ctx.setLineDash([4, 3]); ctx.strokeStyle = L.rgba(pal.pos, 0.9); ctx.beginPath(); ctx.moveTo(Math.round(xs(l)) + 0.5, y1); ctx.lineTo(Math.round(xs(l)) + 0.5, h - 22); ctx.stroke(); ctx.setLineDash([]); });
+    var af = function (sub) { if (sub) ctx.font = '500 8.5px "Inter", system-ui, sans-serif'; else L.fontS(ctx, 10.5, 500); };
+    ctx.fillStyle = L.rgba(pal.pos, 0.95); ctx.textBaseline = 'top';
+    L.subText(ctx, [['−t', 0], ['AB', 1], [' · B → A', 0]], xs(-tl) - 4, y1 + 3, 'right', af);
+    L.subText(ctx, [['+t', 0], ['AB', 1], [' · A → B', 0]], xs(tl) + 4, y1 + 3, 'left', af);
+    ctx.strokeStyle = pal.tick; ctx.beginPath(); ctx.moveTo(xs(0) + 0.5, y1); ctx.lineTo(xs(0) + 0.5, y1 + H1); ctx.stroke();
+    var m = 1e-12; for (i = 0; i < stack.length; i++) m = Math.max(m, Math.abs(stack[i]));
+    var yOf = function (v) { return y1 + H1 / 2 - v / m * (H1 / 2 - 16); }, stride = Math.max(1, Math.floor(stack.length / (W2 * 1.5)));
+    ctx.beginPath(); for (i = 0; i < stack.length; i += stride) { if (i) ctx.lineTo(xs(i - Lg), yOf(stack[i])); else ctx.moveTo(xs(-Lg), yOf(stack[i])); } ctx.strokeStyle = pal.trace; ctx.lineWidth = 1.5; ctx.stroke();
+    if (vEst) [lagP, lagN].forEach(function (lg) {
+      var xx = xs(lg * RATE), top = yOf(stack[Lg + Math.round(lg * RATE)]) - 6;
+      ctx.beginPath(); ctx.moveTo(xx, top); ctx.lineTo(xx - 3, top - 5.2); ctx.lineTo(xx + 3, top - 5.2); ctx.closePath(); ctx.fillStyle = L.rgba(pal.ink, 0.95); ctx.fill();
+      if (lg > 0) GEOM.g.tri = [xx, top - 2.6];
+    });
+    /* emergence image */
+    var y2 = y1 + H1 + 6, H2 = h - 38 - H1 - 6, rh = H2 / 40, cols = Math.min(2 * Lg + 1, Math.round(W2)), bin = (2 * Lg + 1) / cols, cw = W2 / cols, half = Math.max(1, Math.round(0.5 / L.f0)), b0 = pal.pn, hc = pal.hot;
+    ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.strokeRect(X2 + 0.5, y2 + 0.5, W2 - 1, H2 - 1);
+    for (k = 0; k < rows.length; k++) {
+      var row = rows[k], n2 = row.length, csum = new Float64Array(n2 + 1), e2 = 0;
+      for (i = 0; i < n2; i++) { csum[i + 1] = csum[i] + Math.abs(row[i]); e2 += row[i] * row[i]; }
+      var rms = Math.sqrt(e2 / n2) + 1e-12, yr = y2 + H2 - (rows.length - k) * rh;
+      for (var cc = 0; cc < cols; cc++) {
+        var j0 = Math.floor(cc * bin), lo2 = Math.max(0, j0 - half), hi2 = Math.min(n2, j0 + half + 1), env = (csum[hi2] - csum[lo2]) / (hi2 - lo2) / rms, a = Math.max(0, Math.min(1, (env - 0.9) / 2.2));
+        ctx.fillStyle = 'rgb(' + ((b0[0] + (hc[0] - b0[0]) * a) | 0) + ',' + ((b0[1] + (hc[1] - b0[1]) * a) | 0) + ',' + ((b0[2] + (hc[2] - b0[2]) * a) | 0) + ')';
+        ctx.fillRect(X2 + cc * cw, yr, cw + 0.5, rh + 0.5);
+      }
+    }
+    L.axisTitle(ctx); var it = 'stack after each window · newest at the bottom', iw = ctx.measureText(it).width;
+    ctx.fillStyle = L.rgba(pal.pn, 0.8); ctx.fillRect(X2 + 3, y2 + 3, iw + 8, 15); L.axisTitle(ctx); ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText(it, X2 + 7, y2 + 5);
+    GEOM.g.em = [X2 + 7 + iw, y2 + 10]; GEOM.g.lag = [xs(0.5 * RATE), h - 8];
+    /* lag axis */
+    ctx.strokeStyle = pal.axis; ctx.beginPath(); for (var s = -3; s <= 3; s++) { var xt = Math.round(xs(s * RATE)) + 0.5; ctx.moveTo(xt, h - 22); ctx.lineTo(xt, h - 18); } ctx.stroke();
+    L.num(ctx); ctx.textBaseline = 'top'; for (s = -3; s <= 3; s++) { ctx.textAlign = s === -3 ? 'left' : (s === 3 ? 'right' : 'center'); ctx.fillText(s > 0 ? '+' + s + (s === 3 ? ' s' : '') : (s < 0 ? '−' + (-s) : '0'), xs(s * RATE), h - 14); }
+  }
+  /* ---------- h · elastic ---------- */
+  var dE = 3.62, tpE = 0.158 + dE / 2.5, tsE = 0.158 + Math.sqrt(3) * dE / 2.5, agoO = 3.6;
+  var recH = new L.Rec([{ code: 'YW01' }], LEN, function (tr, t, comp) {
+    var tP = agoO - tpE - t, tS = agoO - tsE - t, f = FHZ;
+    return comp ? 0.12 * band(tP, f) + 0.9 * band(tS, f * 0.85) + 0.15 * band(tS - 0.32, f * 0.8) : 0.75 * band(tP, f) - 0.18 * band(tS, f * 0.85) + 0.1 * band(tP - 0.3, f);
+  });
+  function drawH(ctx, w, h) {
+    var pal = L.pal, hw = Math.min(200, Math.round(h * 0.95)), Wt = w - 28 - (hw + 18), H = h - 26, lane = 14, half = (H - lane) / 2, rec = recH, mz = 1e-9;
+    for (i = 0; i < rec.len; i++) mz = Math.max(mz, Math.abs(rec.z[0][i]), Math.abs(rec.x[0][i]));
+    var amp = (half / 2 - 3) / mz, stride = Math.max(1, Math.floor(rec.len / (Wt * 1.5))), xT = function (age) { return 44 + (Wt - 30) - age / rec.len * (Wt - 30); }, right = 44 + Wt - 30;
+    L.timeAxis(ctx, 44, h - 20, Wt - 30, 4, rec.len, NOW, 4);
+    ctx.lineWidth = 1; ctx.strokeStyle = pal.axis; ctx.beginPath(); ctx.moveTo(44, 4 + H - 0.5); ctx.lineTo(right, 4 + H - 0.5); ctx.stroke();
+    [0, 1].forEach(function (c) {
+      var y0 = 4 + lane + half * (c + 0.5);
+      L.fontS(ctx, 11, 600); ctx.fillStyle = pal.sub; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(c ? 'X' : 'Z', 14, y0);
+      L.axisTitle(ctx); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(c ? 'right' : 'up', 14, y0 + 12);
+      ctx.beginPath(); for (k = 0; k < rec.len; k += stride) { var yy = y0 - Math.max(-half / 2, Math.min(half / 2, rec.get(0, k, c) * amp)); if (k) ctx.lineTo(44 + k / (rec.len - 1) * (Wt - 30), yy); else ctx.moveTo(44, yy); }
+      ctx.strokeStyle = c ? L.rgba(pal.sw, 0.95) : pal.trace; ctx.lineWidth = 1.4; ctx.stroke();
+    });
+    var xo = Math.round(xT(agoO * RATE)) + 0.5, xP = Math.round(xT((agoO - tpE) * RATE)) + 0.5, xS = Math.round(xT((agoO - tsE) * RATE)) + 0.5;
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(' + pal.origin + ',.5)'; ctx.beginPath(); ctx.moveTo(xo, 4 + lane - 2); ctx.lineTo(xo, 4 + H); ctx.stroke();
+    L.star(ctx, xo, 4 + 7, 4.5, pal.neg, 0.95); L.laneText(ctx, 'origin time', xo, 6, right, 'rgba(' + pal.origin + ',.95)', 9, 80);
+    [[xP, L.rgba(pal.pos, 0.9), 'predicted P'], [xS, L.rgba(pal.sw, 0.9), 'predicted S']].forEach(function (q) {
+      ctx.setLineDash([4, 3]); ctx.lineWidth = 1; ctx.strokeStyle = q[1]; ctx.beginPath(); ctx.moveTo(q[0], 4 + lane - 2); ctx.lineTo(q[0], 4 + H); ctx.stroke(); ctx.setLineDash([]);
+      L.laneText(ctx, q[2], q[0], 6, right, q[1], 4);
+    });
+    /* S − P bracket */
+    var yb = Math.round(4 + lane + (H - lane) / 2) + 0.5; ctx.strokeStyle = pal.sub; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(xP, yb); ctx.lineTo(xS, yb); ctx.moveTo(xP, yb - 3); ctx.lineTo(xP, yb + 3); ctx.moveTo(xS, yb - 3); ctx.lineTo(xS, yb + 3); ctx.stroke();
+    GEOM.h = { br: [(xP + xS) / 2, yb], row: [20, 4 + lane + half * 0.5 - 8] };
+    var bt = 'S − P = ' + L.fmt(tsE - tpE, 2) + ' s'; L.annot(ctx, pal.sub); var bw = ctx.measureText(bt).width;
+    ctx.fillStyle = L.rgba(pal.pn, 0.85); ctx.fillRect((xP + xS) / 2 - bw / 2 - 3, yb - 16, bw + 6, 14); L.annot(ctx, pal.sub); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.fillText(bt, (xP + xS) / 2, yb - 3);
+    /* particle motion */
+    var x0 = w - 14 - hw, y0 = 16, S2 = Math.min(hw, H - 14), n = Math.round(1.2 * RATE), pm = 1e-9;
+    L.panelLabel(ctx, 'Particle motion · last 1.2 s', x0, 2, null, S2);
+    ctx.lineWidth = 1; ctx.strokeStyle = pal.tick; ctx.strokeRect(x0 + 0.5, y0 + 0.5, S2 - 1, S2 - 1);
+    ctx.strokeStyle = pal.grid; ctx.beginPath(); ctx.moveTo(x0 + S2 / 2, y0); ctx.lineTo(x0 + S2 / 2, y0 + S2); ctx.moveTo(x0, y0 + S2 / 2); ctx.lineTo(x0 + S2, y0 + S2 / 2); ctx.stroke();
+    for (i = rec.len - n; i < rec.len; i++) pm = Math.max(pm, Math.abs(rec.get(0, i, 0)), Math.abs(rec.get(0, i, 1)));
+    var PX = function (i) { return x0 + S2 / 2 + rec.get(0, i, 1) / pm * (S2 / 2 - 6); }, PZ = function (i) { return y0 + S2 / 2 - rec.get(0, i, 0) / pm * (S2 / 2 - 6); };
+    for (i = rec.len - n + 1; i < rec.len; i++) { var a = (i - (rec.len - n)) / n; ctx.strokeStyle = L.rgba(pal.pos, 0.12 + 0.85 * a); ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(PX(i - 1), PZ(i - 1)); ctx.lineTo(PX(i), PZ(i)); ctx.stroke(); }
+    ctx.lineCap = 'butt'; ctx.beginPath(); ctx.arc(PX(rec.len - 1), PZ(rec.len - 1), 3, 0, 6.2832); ctx.fillStyle = L.rgba(pal.pos, 1); ctx.fill();
+    L.axisTitle(ctx); ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillText('X →', x0 + S2 - 3, y0 + S2 / 2 - 2); ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('Z ↑', x0 + S2 / 2 + 3, y0 + 2);
+  }
+  /* ---------- i · cross-section overlay ---------- */
+  function drawI() {
+    var f = L.fit(document.getElementById('v-i')), ctx = f.ctx, pal = L.pal; L.view(f.w, f.h, 400);
+    var m = new WM.Model(L.nx, L.ny); m.setPreset('layered', 4); L.drawWash(ctx, m);
+    L.edges(ctx, 'free');
+    L.star(ctx, L.sx(250), L.sy(78), 6, pal.neg, 0.85, true);
+    var P = []; for (k = 0; k < L.ny - L.B - 4 - 4; k++) P.push([288, 4 + k]);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); P.forEach(function (q, j) { if (j) ctx.lineTo(L.sx(q[0]), L.sy(q[1])); else ctx.moveTo(L.sx(q[0]), L.sy(q[1])); });
+    ctx.strokeStyle = pal.halo; ctx.lineWidth = 4.5; ctx.stroke(); ctx.strokeStyle = L.rgba(pal.pos, 0.95); ctx.lineWidth = 2; ctx.stroke();
+    for (k = 40; k < P.length; k += 40) { ctx.beginPath(); ctx.arc(L.sx(P[k][0]), L.sy(P[k][1]), 2, 0, 6.2832); ctx.fillStyle = L.rgba(pal.ink, 0.9); ctx.fill(); }
+    ctx.beginPath(); ctx.arc(L.sx(P[0][0]), L.sy(P[0][1]), 4, 0, 6.2832); ctx.fillStyle = L.rgba(pal.pos, 1); ctx.fill();
+    var sy0 = L.sy(P[0][1]); L.label(ctx, '0 km', L.sx(P[0][0]) + 4, sy0 < 24 ? sy0 + 18 : sy0 - 9, 'left');
+    L.stations(ctx, [{ x: 130, y: 0.5, code: 'YW01' }]);
+    L.scaleBar(ctx);
+    var key = document.getElementById('k-i');
+    key.querySelector('.legend').innerHTML = L.legendAcoustic() + '<span>' + L.glyph('fibre') + 'fibre · dot = 1 km</span>';
+    key.querySelector('.facts').innerHTML = L.facts('free');
+    window.__fitI = L.fitKey(key);
+  }
+  /* ---------- j · inspector fragments ---------- */
+  function frags() {
+    var el = L.steps([
+      { t: 'Click just below the surface', k: 'observe', d: 'Look for the slow, strong wave hugging the top edge: a <b>Rayleigh wave</b>. The ground under the station moves in ellipses (particle-motion plot, bottom right).', done: true },
+      { t: 'Click deep below the station', k: 'interpret', d: '<b>P</b> arrives first, <b>S</b> later; the gap grows with distance.', eq: 'd ≈ Δt<sub>S−P</sub> · V<sub>P</sub>V<sub>S</sub> / (V<sub>P</sub> − V<sub>S</sub>)',
+        c: '<div id="spLive"><p class="res-big"><b>3.6 km</b><span>distance from the predicted S − P time · check that P and S arrive on the dashed lines</span></p><dl class="kv"><dt>S − P time, predicted</dt><dd>1.06 s</dd><dt>× V<sub>P</sub> / (√3 − 1)</dt><dd>3.42 km/s</dd><dt>Mean V<sub>P</sub> on the path</dt><dd>2.50 km/s</dd></dl></div>', done: true },
+      { t: 'Change the source', k: 'explore', d: 'An explosion radiates P only. A shear dislocation (a small fault) radiates mostly S, in four lobes. A vertical force is a hammer blow, the classic Lamb problem.', c: L.seg('kind', [['0', 'Explosion'], ['1', 'Shear'], ['2', 'Vertical force']], '0') },
+      { t: 'Try a layered crust', k: 'explore', d: 'At every interface part of the P energy converts into S, and back: the extra arrivals in the seismogram.', c: '<div class="grid2" style="margin-bottom:4px">' + L.opt('p', 'h', 'Half-space', true) + '</div><p class="st-d" style="margin:.55rem 0 .3rem">Cross-sections · top edge = the surface</p><div class="grid2">' + L.opt('p', 'l', 'Folded &amp; faulted layers') + L.opt('p', 'b', 'Sedimentary basin') + L.opt('p', 's', 'Subduction zone') + L.opt('p', 'd', 'Salt dome') + '</div>' }
+    ]);
+    var noiseRes = '<div class="res" id="nRes"><h3>Interferometry</h3>' + (vEst ? '<p class="res-big"><b>' + L.fmt(vEst, 2) + ' km/s</b><span>velocity between A and B from the peak lag · true 2.50 km/s</span></p>' : '<p class="res-big"><b>SNR ' + L.fmt(snrNow, 1) + '</b><span>not above the noise yet: keep stacking</span></p>') +
+      '<dl class="kv"><dt>Windows stacked</dt><dd>40 (120 s of noise)</dd><dt>Predicted t<sub>AB</sub></dt><dd>' + L.fmt(tAB, 2) + ' s</dd>' + (vEst ? '<dt>Measured lag</dt><dd>+' + L.fmt(lagP, 2) + ' s · −' + L.fmt(-lagN, 2) + ' s</dd>' : '') + '<dt>Signal-to-noise ratio</dt><dd>' + L.fmt(snrNow, 1) + '</dd></dl></div>';
+    var trRes = '<div class="res"><h3>Refocusing</h3><p class="res-big"><b>0.41 λ</b><span>focal spot width, FWHM of p² · theory for a perfect ring: 0.36 λ</span></p><dl class="kv"><dt>Focus vs. true source</dt><dd>0.02 km · 0.05 λ</dd><dt>Spot width (FWHM), x</dt><dd>0.42 λ</dd><dt>Spot width (FWHM), z</dt><dd>0.40 λ</dd><dt>Wavelength λ</dt><dd>0.33 km</dd></dl><p>A full ring reaches the diffraction limit: a spot about λ/2 wide in pressure, 0.36 λ at half maximum of p².</p></div>';
+    document.getElementById('frags').innerHTML = '<div class="insp frag">' + el + '</div><div class="insp frag">' + noiseRes + '</div><div class="insp frag">' + trRes + '</div>';
+    document.getElementById('g-kpi').outerHTML = (vEst ? '<span class="kpi"><b>' + L.fmt(vEst, 2) + ' km/s</b>from the lag</span>' : '') + '<span class="kpi dim"><b>SNR ' + L.fmt(snrNow, 1) + '</b>' + nW + ' windows</span>';
+  }
+  frags();
+  if (ONLY && ONLY.split(',').indexOf('j1') >= 0 && ONLY.split(',').indexOf('j') < 0) [].slice.call(document.querySelectorAll('.frag'), 1).forEach(function (e) { e.style.display = 'none'; });
+
+  var DRAW = { a: drawA, b: drawB, c: drawC, d: drawD, e: drawE, g: drawG, h: drawH };
+  function drawAll() {
+    L.setPal();
+    var vis = function (el) { return el.clientWidth > 0; };   /* ?only= hides the other items */
+    Object.keys(DRAW).forEach(function (id) { var c = document.getElementById('c-' + id); if (!vis(c)) return; var f = L.fit(c); DRAW[id](f.ctx, f.w, f.h); });
+    if (vis(document.getElementById('v-f'))) drawF(); if (vis(document.getElementById('v-i'))) drawI();
+  }
+  L.initTheme(document.getElementById('themeBtn'), drawAll);
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(function () { drawAll(); window.__info = { shortened: L.shortened, vEst: vEst, snr: snrNow, lagP: lagP, lagN: lagN, fanC: window.__fanC, fanD: window.__fanD, fitF: window.__fitF, fitI: window.__fitI }; document.documentElement.dataset.ready = '1'; });
+})();
+</script>
+</body>
+</html>
