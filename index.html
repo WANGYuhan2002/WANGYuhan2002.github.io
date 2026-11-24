@@ -8,51 +8,129 @@
 <title>Yuhan Wang · 主页设计稿</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2316181d'/%3E%3Cpath d='M8 34h12l4-8 5 16 6-24 6 26 4-14 3 4h8' fill='none' stroke='%23fff' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <style>
-:root{--bg:#f4f2ee; --card:#fff; --ink:#16181d; --muted:#6b6f76; --line:#e3e0da; --accent:#d9472f}
-@media (prefers-color-scheme:dark){:root{--bg:#0f1115; --card:#171a20; --ink:#eef0f3; --muted:#9097a1; --line:#262a31; --accent:#ff7a5c}}
+:root{--bg:#f4f2ee; --card:#fff; --ink:#16181d; --ink2:#3d424b; --muted:#6b6f76; --line:#e3e0da; --accent:#d9472f; --chip:#f1eee8}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1115; --card:#171a20; --ink:#eef0f3; --ink2:#c3c8d0; --muted:#9097a1; --line:#262a31; --accent:#ff7a5c; --chip:#1f232b}}
 *{box-sizing:border-box}
-body{margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 system-ui,-apple-system,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif; -webkit-font-smoothing:antialiased}
-.wrap{max-width:1180px; margin:0 auto; padding:clamp(2rem,6vw,4.5rem) clamp(1rem,4vw,2.5rem)}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto} *{transition:none !important}}
+body{margin:0; background:var(--bg); color:var(--ink); font:16px/1.65 system-ui,-apple-system,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif; -webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{max-width:1280px; margin:0 auto; padding:clamp(2rem,6vw,4.5rem) clamp(1rem,4vw,2.5rem)}
 .eyebrow{margin:0; font:600 .76rem/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.18em; text-transform:uppercase; color:var(--accent)}
-h1{margin:.8rem 0 .6rem; font-size:clamp(1.9rem,5vw,3rem); line-height:1.15; letter-spacing:-.02em}
-.lede{margin:0; max-width:62ch; color:var(--muted)}
-.grid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1.2rem; margin-top:2.4rem}
-.card{display:flex; flex-direction:column; background:var(--card); border:1px solid var(--line); border-radius:18px; overflow:hidden; color:inherit; text-decoration:none; transition:transform .2s, box-shadow .2s}
-a.card:hover{transform:translateY(-4px); box-shadow:0 18px 40px -20px rgba(0,0,0,.35)}
+h1{margin:.8rem 0 .6rem; font-size:clamp(1.9rem,5vw,3.1rem); line-height:1.15; letter-spacing:-.02em}
+.lede{margin:0; max-width:68ch; color:var(--muted)}
+.real{display:flex; flex-wrap:wrap; gap:.5rem; margin:1.4rem 0 0; padding:0; list-style:none}
+.real li{padding:.38rem .7rem; border-radius:999px; background:var(--chip); border:1px solid var(--line); font-size:.82rem; color:var(--ink2)}
+.real b{font-weight:600; color:var(--ink)}
+h2.round{display:flex; align-items:baseline; gap:.8rem; margin:3rem 0 1.1rem; font-size:1.05rem; letter-spacing:.02em}
+h2.round span{font:600 .72rem/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
+h2.round::after{content:""; flex:1; height:1px; background:var(--line)}
+.grid{display:grid; gap:1.3rem; grid-template-columns:repeat(6,minmax(0,1fr))}
+.card{grid-column:span 3; display:flex; flex-direction:column; background:var(--card); border:1px solid var(--line); border-radius:20px; overflow:hidden; color:inherit; text-decoration:none; transition:transform .25s cubic-bezier(.2,.7,.2,1), box-shadow .25s}
+.card.wide{grid-column:span 6; flex-direction:row}
+.card.wide .shot{flex:1.5; aspect-ratio:auto; min-height:340px}
+.card.wide .body{flex:1; justify-content:center; padding:clamp(1.4rem,3vw,2.4rem)}
+.card.third{grid-column:span 2}
+.card.wide.flip{flex-direction:row-reverse}
+a.card:hover{transform:translateY(-4px); box-shadow:0 22px 48px -22px rgba(0,0,0,.4)}
 a.card:focus-visible{outline:3px solid var(--accent); outline-offset:3px}
-.shot{aspect-ratio:16/10; background:#222; overflow:hidden}
-.shot img{display:block; width:100%; height:100%; object-fit:cover}
-.body{display:flex; flex-direction:column; gap:.45rem; flex:1; padding:1.1rem 1.2rem 1.3rem}
-.tag{align-self:flex-start; padding:.35rem .55rem; border:1px solid var(--line); border-radius:999px; font:600 .72rem/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.08em; color:var(--muted)}
-.card h2{margin:0; font-size:1.22rem}
+.shot{position:relative; aspect-ratio:16/10; background:#15171c; overflow:hidden}
+.shot img{display:block; width:100%; height:100%; object-fit:cover; object-position:50% 0; transition:transform .8s cubic-bezier(.2,.7,.2,1)}
+a.card:hover .shot img{transform:scale(1.035)}
+.body{display:flex; flex-direction:column; gap:.5rem; flex:1; padding:1.15rem 1.25rem 1.3rem}
+.tagrow{display:flex; align-items:center; gap:.5rem}
+.tag{padding:.35rem .55rem; border:1px solid var(--line); border-radius:999px; font:600 .72rem/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.08em; color:var(--muted)}
+.tag.new{color:#fff; background:var(--accent); border-color:var(--accent)}
+.card h3{margin:.1rem 0 0; font-size:1.28rem; line-height:1.3; letter-spacing:-.01em}
+.card.wide h3{font-size:clamp(1.4rem,2.4vw,1.9rem)}
 .card p{margin:0; font-size:.95rem; color:var(--muted)}
-.go{margin-top:auto; padding-top:.6rem; font-weight:600; color:var(--accent)}
-.wip .shot{display:grid; place-items:center; background:repeating-linear-gradient(45deg,var(--line) 0 10px,transparent 10px 20px)}
-.wip .shot span{font:600 .85rem ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--muted)}
-footer{margin-top:2.4rem; font-size:.9rem; color:var(--muted)}
-@media (max-width:860px){.grid{grid-template-columns:1fr}}
+.pts{margin:.35rem 0 0; padding:0; list-style:none; display:grid; gap:.3rem; font-size:.88rem; color:var(--ink2)}
+.pts li{padding-left:1.05rem; position:relative}
+.pts li::before{content:""; position:absolute; left:0; top:.62em; width:.42rem; height:.42rem; border-radius:50%; background:var(--accent)}
+.go{margin-top:auto; padding-top:.7rem; font-weight:600; color:var(--accent)}
+.note{margin:2.6rem 0 0; padding:1.1rem 1.25rem; border:1px dashed var(--line); border-radius:16px; font-size:.92rem; color:var(--ink2)}
+.note b{color:var(--ink)}
+.note ul{margin:.5rem 0 0; padding-left:1.2rem}
+footer{margin-top:2.2rem; font-size:.88rem; color:var(--muted)}
+@media (max-width:980px){.card,.card.third{grid-column:span 6} .card.wide, .card.wide.flip{flex-direction:column} .card.wide .shot{min-height:0; aspect-ratio:16/10}}
 </style>
 </head>
 <body>
 <main class="wrap">
-  <p class="eyebrow">Yuhan Wang · homepage drafts</p>
-  <h1>主页设计稿：挑一个你喜欢的</h1>
-  <p class="lede">几个方向都放在这里，可以直接点开试玩（手机上也可以）。选定之后，这个页面会换成正式主页，草稿目录随之删除。</p>
+  <p class="eyebrow">Yuhan Wang · homepage drafts · round 3</p>
+  <h1>主页设计稿：第三轮，六个新方向</h1>
+  <p class="lede">这一轮不再用占位文字：内容来自你的 ORCID、论文、GitHub 仓库和旧主页，画面里跑的是真实数据。每一稿都可以直接点开试玩，手机上也可以。</p>
+  <ul class="real" aria-label="这一轮用到的真实素材">
+    <li><b>真实地震图</b> · 2025 年堪察加 M 8.8，瑞士 CH.SULZ 台</li>
+    <li><b>实时地震目录</b> · USGS 过去 7 天</li>
+    <li><b>你的海缆</b> · Kefalonia–Ithaca，1872 道</li>
+    <li><b>你的论文数字</b> · 17 325 对 893</li>
+    <li><b>你的印章、肖像和摄影</b></li>
+  </ul>
+
+  <h2 class="round">第三轮 <span>v3 · 2026-11-22</span></h2>
   <div class="grid">
-    <a class="card" href="drafts/v2a/">
-      <div class="shot"><img src="drafts/thumbs/v2a.webp" width="1200" height="750" alt="v2a 暗色交互版的首屏截图"></div>
-      <div class="body"><span class="tag">v2a</span><h2>暗色交互 · 点击即地震</h2><p>实时二维波动方程（支持时用 GPU）：点哪里，哪里就"发生地震"，台站 YW01 实时记录。附带 <a href="drafts/v2a/lab/" style="color:inherit">Wave Lab</a>：台阵与 DAS、时间反转、层析、背景噪声、弹性波六个实验。</p><span class="go">打开 →</span></div>
+    <a class="card wide" href="drafts/v3a/">
+      <div class="shot"><img src="drafts/thumbs/v3a.webp" width="1440" height="900" alt="v3a FIBRE 的首屏截图"></div>
+      <div class="body"><div class="tagrow"><span class="tag new">v3a</span><span class="tag">FIBRE</span></div><h3>这一页就是那根光缆</h3><p>夜色里的 Kefalonia–Ithaca 海峡，海缆按真实走向铺在海底。整页的滚动位置就是沿光纤的距离：道号 0000 → 1872。</p>
+        <ul class="pts"><li>点一下就是一次地震：P、S 波扫过光纤</li><li>下方实时画出 1872 道的 DAS 瀑布图</li><li>893 对 17 325 的点阵，20 倍一眼可见</li></ul><span class="go">打开 →</span></div>
     </a>
-    <a class="card" href="drafts/v2b/">
-      <div class="shot"><img src="drafts/thumbs/v2b.webp" width="1200" height="750" alt="v2b 温暖手账版的首屏截图"></div>
-      <div class="body"><span class="tag">v2b</span><h2>温暖手账 · 生活感</h2><p>纸张、拍立得、胶带、便利贴；研讨会是一张票根，联系方式是一张明信片，学术链接做成贴纸。</p><span class="go">打开 →</span></div>
+    <a class="card" href="drafts/v3b/">
+      <div class="shot"><img src="drafts/thumbs/v3b.webp" width="1440" height="900" alt="v3b PLAKAT 的首屏截图"></div>
+      <div class="body"><div class="tagrow"><span class="tag new">v3b</span><span class="tag">PLAKAT</span></div><h3>被真实地震摇动的瑞士海报</h3><p>苏黎世的国际主义平面风格：米白纸、黑字、一个红。名字的每个字母跟着真实地面运动一起动。</p>
+        <ul class="pts"><li>堪察加 M 8.8 的真实记录画成滚筒地震图</li><li>P 波轻颤、S 波摇晃、面波缓慢摆动</li><li>点任意位置，整张海报"地震"一次</li></ul><span class="go">打开 →</span></div>
     </a>
-    <a class="card" href="drafts/v2c/" id="v2c">
-      <div class="shot"><img src="drafts/thumbs/v2c.webp" width="1200" height="750" alt="v2c 简洁博客版的首屏截图"></div>
-      <div class="body"><span class="tag">v2c</span><h2>简洁博客 · 参考 kaichu.io</h2><p>复刻 kaichu.io（Hugo LoveIt 主题）的结构：顶栏导航、Posts 归档、标签云、About、带目录的文章页、站内搜索、明暗切换。</p><span class="go">打开 →</span></div>
+    <a class="card" href="drafts/v3c/">
+      <div class="shot"><img src="drafts/thumbs/v3c.webp" width="1440" height="900" alt="v3c 地听 的首屏截图"></div>
+      <div class="body"><div class="tagrow"><span class="tag new">v3c</span><span class="tag">地听</span></div><h3>水墨长卷：山脊就是地震图</h3><p>横向展开的手卷。程序画出的水墨山水，水下一根朱红光纤贯穿全卷，卷首盖着你自己的印章。</p>
+        <ul class="pts"><li>山脊线由真实地震记录调制</li><li>点水面，墨晕散开，光纤随之闪动</li><li>摄影作品装裱成册页</li></ul><span class="go">打开 →</span></div>
+    </a>
+    <a class="card" href="drafts/v3d/">
+      <div class="shot"><img src="drafts/thumbs/v3d.webp" width="1440" height="900" alt="v3d LIVE EARTH 的首屏截图"></div>
+      <div class="body"><div class="tagrow"><span class="tag new">v3d</span><span class="tag">LIVE EARTH</span></div><h3>实时地球观测台</h3><p>Bento 网格，每一块都是一台小仪器。主角是一颗实时地球：USGS 过去 7 天的真实地震，每天打开都不一样。</p>
+        <ul class="pts"><li>选一个地震，算出 P、S 波多久到苏黎世</li><li>波前在球面上回放</li><li>明暗两套主题</li></ul><span class="go">打开 →</span></div>
+    </a>
+    <a class="card" href="drafts/v3e/">
+      <div class="shot"><img src="drafts/thumbs/v3e.webp" width="1440" height="900" alt="v3e INVISIBLE 的首屏截图"></div>
+      <div class="body"><div class="tagrow"><span class="tag new">v3e</span><span class="tag">INVISIBLE</span></div><h3>星空之上，大地之下</h3><p>从你的星轨照片出发：实时长曝光的星空，地平线是真实地震图。往下滚，镜头沉入地下；再回到地面，看你的摄影。</p>
+        <ul class="pts"><li>星轨边看边累积</li><li>天空到地下的连续转场</li><li>最个人的一稿：照片、阅读、音乐</li></ul><span class="go">打开 →</span></div>
+    </a>
+    <a class="card wide flip" href="drafts/v3f/">
+      <div class="shot"><img src="drafts/thumbs/v3f.webp" width="1440" height="900" alt="v3f WIGGLE 的首屏截图"></div>
+      <div class="body"><div class="tagrow"><span class="tag new">v3f</span><span class="tag">WIGGLE</span></div><h3>名字就是一张地震道集</h3><p>极简、画廊感。七十道实时绘制的变面积地震道，振幅随字形变化，你的名字从波形里"抖"出来。黑底荧光绿，按 I 反色。</p>
+        <ul class="pts"><li>点首屏放一炮：P、S 波两圈扫过道集</li><li>右侧细条把你的滚动记录成地震图</li><li>六稿里最克制、最快的一稿</li></ul><span class="go">打开 →</span></div>
     </a>
   </div>
-  <footer>草稿均已设置 noindex，不会被搜索引擎收录 · 2026-11-04</footer>
+
+  <h2 class="round">上一轮 <span>v2 · 2026-11-04</span></h2>
+  <div class="grid">
+    <a class="card third" href="drafts/v2a/">
+      <div class="shot"><img src="drafts/thumbs/v2a.webp" width="1200" height="750" loading="lazy" alt="v2a 暗色交互版的首屏截图"></div>
+      <div class="body"><span class="tag" style="align-self:flex-start">v2a</span><h3>暗色交互 · 点击即地震</h3><p>实时二维波动方程，附带 <span style="text-decoration:underline">Wave Lab</span> 六个实验。新稿都保留了通往 Wave Lab 的入口。</p><span class="go">打开 →</span></div>
+    </a>
+    <a class="card third" href="drafts/v2b/">
+      <div class="shot"><img src="drafts/thumbs/v2b.webp" width="1200" height="750" loading="lazy" alt="v2b 温暖手账版的首屏截图"></div>
+      <div class="body"><span class="tag" style="align-self:flex-start">v2b</span><h3>温暖手账 · 生活感</h3><p>纸张、拍立得、胶带、便利贴；研讨会是一张票根，联系方式是一张明信片。</p><span class="go">打开 →</span></div>
+    </a>
+    <a class="card third" href="drafts/v2c/" id="v2c">
+      <div class="shot"><img src="drafts/thumbs/v2c.webp" width="1200" height="750" loading="lazy" alt="v2c 简洁博客版的首屏截图"></div>
+      <div class="body"><span class="tag" style="align-self:flex-start">v2c</span><h3>简洁博客 · 参考 kaichu.io</h3><p>顶栏导航、Posts 归档、标签云、About、带目录的文章页、站内搜索、明暗切换。</p><span class="go">打开 →</span></div>
+    </a>
+  </div>
+
+  <div class="note">
+    <b>需要你确认的几处</b>（都写在 <code>CONTENT.md</code> 里）：
+    <ul>
+      <li>中文名「王雨寒」取自旧主页里的 LinkedIn 链接；v3b、v3c 用到了它，v3c 还用了你的印章。</li>
+      <li>2023–2025 在 ETH 的学位名称，稿子里写的是 MSc, Earth and Planetary Sciences。</li>
+      <li>肖像、摄影和兴趣爱好（阅读、音乐）来自 2021–22 年的旧主页。</li>
+      <li>那张安徽照片上的字是「鷂落坪」（Yaoluoping），之前误读成「鹤落坪」，六稿都已改正。</li>
+      <li>v3f 两张示意图的说明写了常识性的 DAS 物理（积分测量是沿光纤的叠加；光纤平行于波前时几乎记录不到），你的材料里没有原话，请看措辞是否合适。</li>
+      <li>v3b 的“地面起伏约 1.7 mm”是对真实记录积分算出来的，页面上注明了算法。</li>
+      <li>v2 稿里的 ETH 个人页链接已失效，新稿换成了组里人员列表上的那个。</li>
+    </ul>
+  </div>
+  <footer>六稿都经过三视角评审（艺术指导、QA、事实核对）、修改和独立复验 · 草稿均已设置 noindex，不会被搜索引擎收录 · 选定之后，这个页面会换成正式主页，草稿目录随之删除。</footer>
 </main>
 </body>
 </html>

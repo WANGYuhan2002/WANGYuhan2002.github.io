@@ -1,0 +1,304 @@
+<!doctype html>
+<!-- v3a · FIBRE. The page is the cable: one luminous fibre runs down the left edge and the scroll position is the
+     distance along it (channel 0000 → 1872). The hero is the Kefalonia–Ithaca cable in 3-D with its DAS waterfall.
+     Real: the cable geometry and every number in the text. Synthetic: terrain, earthquakes, traffic, ocean waves. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Yuhan Wang — fibre-optic seismology · ETH Zürich</title>
+<meta name="description" content="Yuhan Wang, doctoral student in the Seismology &amp; Wave Physics group at ETH Zürich. Fibre-optic seismology: telecom cables as dense seismic arrays, on the seafloor and under cities, and open tools around them.">
+<meta name="theme-color" content="#04070d">
+<script>document.documentElement.className = 'js';</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2304070d'/%3E%3Cpath d='M10 20c14 0 12 26 24 26s8-18 20-18' fill='none' stroke='%23ffb454' stroke-width='4' stroke-linecap='round'/%3E%3Ccircle cx='54' cy='28' r='5' fill='%23ffe2b8'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/site.css">
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js" crossorigin>
+</head>
+<body>
+<a class="skip" href="#about">Skip to content</a>
+
+<!-- the fibre: fixed spine, a dot for the scroll position, and a channel readout -->
+<div class="depth" id="depth" aria-hidden="true"></div>
+<div class="spine" id="spine" aria-hidden="true"><i></i></div>
+<div class="spine-dot" id="spineDot" aria-hidden="true"></div>
+<div class="readout" id="readout" aria-hidden="true"><b id="roCh">CH 0000</b><span id="roKm">0.00 km</span><em id="roSeg">interrogator</em><svg id="roProf" viewBox="0 0 112 34" width="112" height="34"></svg></div>
+<a class="draft" href="../../index.html"><span>draft v3a</span><span>← all drafts</span></a>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- ================================================= HERO ================================================= -->
+<section class="hero" id="hero" data-ch="0" aria-label="Introduction, with an interactive model of a seafloor fibre-optic cable">
+  <canvas id="scene" aria-hidden="true"></canvas>
+  <div class="labels" id="labels" aria-hidden="true"></div>
+  <svg class="link" id="link" aria-hidden="true"><line x1="0" y1="0" x2="0" y2="0"/><circle cx="0" cy="0" r="5"/></svg>
+  <span class="ev-tag" id="evTag" aria-hidden="true"></span>
+
+  <header class="top">
+    <a class="mark" href="#hero"><i></i>Yuhan Wang</a>
+    <nav aria-label="Sections"><a href="#about">About</a><a href="#seafloor">Research</a><a class="opt" href="#tools">Tools</a><a class="opt" href="../v2a/lab/">Wave Lab</a><a href="#contact">Contact</a></nav>
+  </header>
+
+  <div class="hero-copy">
+    <p class="kicker">Fibre-optic seismology · ETH Zürich</p>
+    <h1>Yuhan <em>Wang</em></h1>
+    <p class="tagline">I turn telecom cables into <em>seismometers</em>.</p>
+    <p class="sub">Doctoral student in the Seismology &amp; Wave Physics group. This is a real cable: 15&nbsp;km between Kefalonia and Ithaca, read as 1872 channels.</p>
+    <div class="cta">
+      <button class="btn quake" id="quakeBtn" type="button"><span class="pulse" aria-hidden="true"></span><span class="long">Click the seabed to make an earthquake</span><span class="short">Tap the seabed for a quake</span></button>
+      <a class="btn ghost" href="#about">Follow the cable <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
+    </div>
+  </div>
+
+  <div class="wf-panel" id="wfPanel">
+    <div class="wf-head">
+      <span class="wf-title"><b>DAS waterfall</b><span class="long"> · strain rate along the fibre</span></span>
+      <span class="wf-legend" aria-hidden="true">−<i></i>+</span>
+      <span class="wf-count">quakes since you arrived <b id="evCount">00</b></span>
+    </div>
+    <div class="wf-segs" id="wfSegs" aria-hidden="true"></div>
+    <div class="wf-wrap" id="wfWrap" role="img" aria-label="Synthetic strain-rate record of the cable: channel number across, time running down. Earthquakes draw curved arrivals, vehicles draw slanted tracks on the road, ocean waves a slow texture at sea.">
+      <canvas id="wf" aria-hidden="true"></canvas>
+      <span class="wf-t wf-past" aria-hidden="true">10 s ago</span><span class="wf-t wf-now" aria-hidden="true">now</span>
+      <i class="wf-cursor" id="wfCursor" aria-hidden="true"></i><i class="wf-pulse" id="wfPulse" aria-hidden="true"></i>
+      <span class="wf-tip" id="wfTip" aria-hidden="true"></span>
+    </div>
+    <div class="wf-axis" id="wfAxis" aria-hidden="true"></div>
+    <p class="wf-note"><span class="long">Channel number across, time down. Synthetic earthquakes, traffic and ocean waves on the real channel layout (approximate route); schematic terrain, not to time scale. </span><span class="short">Synthetic signals on the real channel layout. </span><i class="k"></i> spare-fibre coils</p>
+  </div>
+</section>
+
+<main>
+<!-- ================================================= ABOUT ================================================ -->
+<section class="sec wrap" id="about">
+  <header class="station rv" data-ch="0"><span class="st-ch">CH 0000</span><span class="st-name">Interrogator</span><span class="st-km">0.00 km</span></header>
+  <div class="about">
+    <div class="about-txt">
+      <h2 class="h2 rv">A telecom cable on the seafloor records earthquakes. <em>I work on reading it.</em></h2>
+      <p class="lede rv" style="--d:.08s">I'm a doctoral student in the <a href="https://cos.ethz.ch/" target="_blank" rel="noopener">Seismology &amp; Wave Physics group</a> at ETH Zürich, supervised by Andreas Fichtner. My field is fibre-optic seismology: distributed acoustic sensing (DAS) turns an ordinary telecom fibre into a dense seismic array, with one channel every few metres.</p>
+      <p class="body rv" style="--d:.14s">I use such cables on the seafloor and under cities, and I build open tools around them: detection and picking codes for DAS, a channel-mapping method, and a literature hub for seismology.</p>
+      <div class="chips rv" style="--d:.2s">
+        <span class="chip">Zürich, Switzerland</span>
+        <a class="chip" href="https://cos.ethz.ch/people/person-detail.MzMzOTkx.TGlzdC8xNDQwLC0xMzkxMTI4OTM0.html" target="_blank" rel="noopener">ETH profile ↗</a>
+        <a class="chip" href="https://scholar.google.com/citations?user=DLRFdHEAAAAJ&amp;hl=en" target="_blank" rel="noopener">Google Scholar ↗</a>
+      </div>
+    </div>
+    <figure class="portrait rv" style="--d:.1s">
+      <img src="../v3-shared/portrait.webp" width="1200" height="1500" alt="Portrait of Yuhan Wang" loading="lazy">
+      <figcaption><span>Yuhan Wang</span><span>ETH Zürich</span></figcaption>
+    </figure>
+  </div>
+  <ol class="tl rv" aria-label="Education and research so far">
+    <li><span class="y">2025 –</span><span class="w">Doctoral student<small>ETH Zürich, Department of Earth and Planetary Sciences · Seismology &amp; Wave Physics, with Andreas Fichtner</small></span></li>
+    <li><span class="y">2023 – 2025</span><span class="w">MSc, Earth and Planetary Sciences<small>ETH Zürich</small></span></li>
+    <li><span class="y">Summer 2022</span><span class="w">Summer research with the SWP group<small>Athens roadside DAS: ambient-noise tomography and site amplification, with Andreas Fichtner and Daniel Bowden</small></span></li>
+    <li><span class="y">2019 – 2023</span><span class="w">BSc in geophysics, minor in mathematics<small>University of Science and Technology of China, School of the Gifted Young · DAS work with Huajian Yao's group from 2021</small></span></li>
+  </ol>
+</section>
+
+<!-- ============================================== HOW DAS WORKS ============================================ -->
+<section class="sec wrap" id="das">
+  <header class="station rv" data-ch="900"><span class="st-ch">CH 0900</span><span class="st-name">Beach manhole</span><span class="st-km">how DAS works</span></header>
+  <h2 class="h2 rv">How one fibre becomes <em>1872 seismometers</em></h2>
+  <figure class="plate diagram rv" style="--d:.08s" role="img" aria-label="Animated diagram: a laser pulse travels along a fibre, light scatters back from every point, and a passing seismic wave stretches the fibre, which shows as strain rate on each channel.">
+    <canvas id="dasDiagram" aria-hidden="true"></canvas>
+  </figure>
+  <ol class="steps">
+    <li class="rv"><span class="n">01</span><h3>Light goes in</h3><p>An interrogator on land sends short laser pulses down an ordinary telecom fibre.</p></li>
+    <li class="rv" style="--d:.08s"><span class="n">02</span><h3>The glass answers</h3><p>Tiny irregularities in the glass scatter a little of each pulse back, from every point along the cable.</p></li>
+    <li class="rv" style="--d:.16s"><span class="n">03</span><h3>The ground writes on it</h3><p>When a wave stretches the fibre, the returning light changes. Comparing pulse with pulse gives the strain rate along the cable: here one channel every 8.17&nbsp;m, 1872 channels over 15&nbsp;km.</p></li>
+  </ol>
+
+  <div class="coilrow">
+    <div class="coil-txt">
+      <h3 class="h3 rv">Channel number is not position</h3>
+      <p class="body rv" style="--d:.06s">Installers store spare fibre in coils, so a fibre is longer than its route. On this cable the fibre from the interrogator to the beach manhole is <b>7.32&nbsp;km</b> long. The ground under it is <b>6.44&nbsp;km</b>. Of the difference, 0.71&nbsp;km sits at eight points, in coils of 16 to 172&nbsp;m.</p>
+      <p class="body rv" style="--d:.12s">I find them with three signals: tap tests, earthquake amplitudes and passing vehicles. The result is a position, with its uncertainty, for every channel.</p>
+      <a class="more rv" style="--d:.18s" href="https://github.com/WANGYuhan2002/das-channel-mapping-skill" target="_blank" rel="noopener">das-channel-mapping-skill on GitHub <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+    </div>
+    <figure class="coil-fig rv" style="--d:.1s">
+      <div id="coilFig" role="img" aria-label="Schematic: the fibre from the interrogator to the beach manhole is 7.32 km long with eight coils of spare fibre; the ground under it is 6.44 km, so channels drift away from their naive positions."></div>
+      <figcaption>Fibre against ground, interrogator to beach manhole. Each loop is stored fibre; the slanted lines show how far every hundredth channel sits from where its number suggests. Schematic.</figcaption>
+    </figure>
+  </div>
+  <div class="plates two">
+    <figure class="plate rv"><img src="../v3-shared/figs/cm-fig4.webp" width="1800" height="1211" style="--ar:1800/1211" loading="lazy" alt="Figure: one hour of DAS on the land part of the cable. Every vehicle draws a slanted track across the channels; earthquakes appear as vertical lines; red bars mark coils of excess fibre."><figcaption>One hour on the land part of the cable: every vehicle draws a track across the channels. Figure from the channel-mapping repository.</figcaption></figure>
+    <figure class="plate rv" style="--d:.08s"><img src="../v3-shared/figs/cm-kefalonia.webp" width="1800" height="1604" style="--ar:1800/1604" loading="lazy" alt="Figure: map of the Kefalonia–Ithaca cable with all 1872 channels coloured by segment, the tap-test anchors on land, the excess fibre summed along the cable and the position uncertainty of each channel."><figcaption>The delivered channel map: 1872 channels on land, across the strait and on Ithaca, with the blocks of excess fibre. Figure from the same repository; roads © OpenStreetMap contributors.</figcaption></figure>
+  </div>
+</section>
+
+<!-- ================================================ SEAFLOOR =============================================== -->
+<section class="sec wrap" id="seafloor">
+  <div class="sealevel" aria-hidden="true"><span>Sea level</span></div>
+  <header class="station rv" data-ch="925"><span class="st-ch">CH 0925</span><span class="st-name">Into the sea</span><span class="st-km">Kefalonia Transform Fault</span></header>
+  <h2 class="h2 wide rv">Five templates, one&nbsp;cable, <em><span id="nBig">17,325</span></em>&nbsp;earthquakes</h2>
+  <div class="ktf">
+    <p class="lede rv">The Kefalonia Transform Fault breaks in an earthquake above magnitude 6 every 10 to 20 years, but land networks resolve its small earthquakes poorly. In 2024 we recorded two months of DAS, from 24 April to 22 June, on a seafloor telecom cable between Kefalonia and Ithaca.</p>
+    <p class="body rv" style="--d:.08s">A matched filter with only five template events found 17,325 microearthquakes: nearly 20 times the 893 in the regional catalogue for the same period. They come in episodic swarms, and one cluster holds over 72&nbsp;% of them. Near the template clusters, the magnitude of completeness drops by about 2 units.</p>
+  </div>
+  <div class="dots" id="dots">
+    <figure class="dots-a rv" role="img" aria-label="893 dots: the events in the regional catalogue for the two months.">
+      <figcaption><b class="num cold" id="nA">893</b><span>regional catalogue<small>land network, same two months</small></span></figcaption>
+      <canvas id="dotsA" aria-hidden="true"></canvas>
+    </figure>
+    <figure class="dots-b rv" style="--d:.1s" role="img" aria-label="17,325 dots: the events found with the matched filter on the seafloor cable, nearly twenty times as many. More than 72 percent belong to one cluster.">
+      <figcaption><b class="num" id="nB">17,325</b><span>matched filter on the seafloor cable<small>five templates · one dot is one earthquake</small></span></figcaption>
+      <canvas id="dotsB" aria-hidden="true"></canvas>
+      <p class="key"><i class="a"></i>one cluster: over 72&nbsp;% of all detections<i class="b"></i>all other detections</p>
+    </figure>
+  </div>
+  <ul class="stats">
+    <li class="rv"><b>5</b><span>template events for the matched filter</span></li>
+    <li class="rv" style="--d:.08s"><b>≈&nbsp;2</b><span>units lower magnitude of completeness, near the template clusters</span></li>
+  </ul>
+  <div class="cite rv">
+    <p><span class="tag">Preprint · 2026</span><b>Persistent Faulting Activity Along the Kefalonia Transform Fault Revealed by Seafloor DAS.</b> Yuhan Wang, Men-Andrin Meier, Adonis Bogris, Christos Simos, Iraklis Simos, Nikolaos S. Melis, Andreas Fichtner. ESS Open Archive.</p>
+    <p class="links"><a href="https://doi.org/10.22541/essoar.15006791/v1" target="_blank" rel="noopener">doi:10.22541/essoar.15006791/v1 ↗</a><a href="https://doi.org/10.5194/egusphere-egu25-2886" target="_blank" rel="noopener">EGU 2025 abstract ↗</a><a href="https://doi.org/10.5281/zenodo.20715241" target="_blank" rel="noopener">Code archive ↗</a></p>
+  </div>
+</section>
+
+<!-- ============================================== MORE RESEARCH ============================================ -->
+<section class="sec wrap" id="research">
+  <header class="station rv" data-ch="1250"><span class="st-ch">CH 1250</span><span class="st-name">Mid-strait</span><span class="st-km">more research</span></header>
+  <h2 class="h2 rv">The same glass, <em>other&nbsp;questions</em></h2>
+  <div class="pubs">
+    <article class="pub rv" data-ch="1290">
+      <figure class="viz" aria-hidden="true"><canvas id="vizSrl"></canvas></figure>
+      <div class="pb">
+        <p class="meta"><span class="tag">Paper · 2026</span>Seismological Research Letters</p>
+        <h3>Calibrating Microwave-Frequency Fiber Interferometry Against Collocated DAS: Earthquakes, Ocean Waves, and Traffic</h3>
+        <p class="au">Yuhan Wang, Adonis Bogris, Christos Simos, Iraklis Simos, Nikolaos S. Melis, Stavros Deligiannidis, Andreas Fichtner</p>
+        <p class="bl">The same Kefalonia cable, measured two ways: one integrated fibre measurement compared with the DAS channels beside it, for earthquakes, ocean waves and&nbsp;traffic.</p>
+        <p class="links"><a href="https://doi.org/10.1785/0220260220" target="_blank" rel="noopener">doi:10.1785/0220260220 ↗</a><a href="https://doi.org/10.5281/zenodo.20553635" target="_blank" rel="noopener">Code and data ↗</a></p>
+      </div>
+    </article>
+    <article class="pub rv" data-ch="1350">
+      <figure class="viz" aria-hidden="true"><canvas id="vizArc"></canvas></figure>
+      <div class="pb">
+        <p class="meta"><span class="tag">Preprint · 2026</span>Zenodo</p>
+        <h3>Geometric Filtering in Curved Fibre-Optic Sensing — I. Planar-Arc Response and a Deployment Decision&nbsp;Map</h3>
+        <p class="au">Yuhan Wang, Andreas Fichtner</p>
+        <p class="bl">How the curvature of a cable filters the wavefield it records, and what that means for laying out a deployment.</p>
+        <p class="links"><a href="https://doi.org/10.5281/zenodo.23354895" target="_blank" rel="noopener">doi:10.5281/zenodo.23354895 ↗</a></p>
+      </div>
+    </article>
+    <article class="pub rv" data-ch="1410">
+      <figure class="viz" aria-hidden="true"><canvas id="vizAthens"></canvas><span class="vl" style="left:12px; bottom:11px">Athens · fibre along the streets</span></figure>
+      <div class="pb">
+        <p class="meta"><span class="tag">Data and code · 2026</span>Co-author</p>
+        <h3>Shallow Subsurface Imaging for Seismic Hazard using Dark Fibers in Athens, Greece</h3>
+        <p class="au">Daniel C. Bowden, Lu Tian, Yuhan Wang, Krystyna T. Smolinski, Konstantinos Lentas, Nikolaos S. Melis, Adonis Bogris, Christos Simos, et al.</p>
+        <p class="bl">This started as my summer project in 2022: ambient-noise tomography and site amplification from roadside DAS under the city.</p>
+        <p class="links"><a href="https://doi.org/10.5281/zenodo.24190285" target="_blank" rel="noopener">doi:10.5281/zenodo.24190285 ↗</a><a href="https://agu.confex.com/agu/fm22/meetingapp.cgi/Paper/1081677" target="_blank" rel="noopener">AGU 2022 abstract ↗</a></p>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- ================================================== TOOLS ================================================ -->
+<section class="sec wrap" id="tools">
+  <header class="station rv" data-ch="1500"><span class="st-ch">CH 1500</span><span class="st-name">Seafloor, rising towards Ithaca</span><span class="st-km">open tools</span></header>
+  <h2 class="h2 rv">Tools I build <em>and&nbsp;share</em></h2>
+  <div class="hub">
+    <div class="hub-txt">
+      <p class="meta rv"><span class="tag">Literature</span>English / <span lang="zh">中文</span></p>
+      <h3 class="h3 big rv">SeismoHub</h3>
+      <p class="body rv" style="--d:.06s">A self-hosted, local-first literature hub for seismology. It tracks new papers, reads them with AI using paragraph-anchored citations, and harvests full-text PDFs within their licences. One FastAPI process, one SQLite file.</p>
+      <p class="links rv" style="--d:.12s"><a href="https://github.com/WANGYuhan2002/seismohub" target="_blank" rel="noopener">SeismoHub on GitHub ↗</a><a href="https://wangyuhan2002.github.io/seismohub-lite/" target="_blank" rel="noopener">SeismoHub Lite, the public daily snapshot ↗</a></p>
+    </div>
+    <figure class="screen rv" style="--d:.1s">
+      <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span>seismohub · localhost</span></div>
+      <img id="hubShot" src="../v3-shared/figs/sh-library.webp" width="1800" height="1125" loading="lazy" alt="SeismoHub screenshot: the library view, with trackers on the left and paper cards.">
+      <div class="tabs" role="group" aria-label="SeismoHub screenshots">
+        <button type="button" aria-pressed="true" data-src="../v3-shared/figs/sh-library.webp" data-alt="SeismoHub screenshot: the library view, with trackers on the left and paper cards.">Library</button>
+        <button type="button" aria-pressed="false" data-src="../v3-shared/figs/sh-paper.webp" data-alt="SeismoHub screenshot: a paper opened next to its PDF.">Paper</button>
+        <button type="button" aria-pressed="false" data-src="../v3-shared/figs/sh-analysis.webp" data-alt="SeismoHub screenshot: the AI analysis of a paper beside the PDF.">AI analysis</button>
+      </div>
+    </figure>
+  </div>
+  <ul class="repos">
+    <li class="rv"><a href="https://wangyuhan2002.github.io/seismohub-lite/" target="_blank" rel="noopener"><b>SeismoHub Lite</b><span>Public, read-only daily snapshot: new seismology and wave-physics papers on one searchable page.</span><i>↗</i></a></li>
+    <li class="rv"><a href="https://github.com/WANGYuhan2002/paper-pdf-harvest" target="_blank" rel="noopener"><b>paper-pdf-harvest</b><span>Verified, licence-aware full-text PDFs for a reading list, from about twenty open channels.</span><i>↗</i></a></li>
+    <li class="rv"><a href="https://github.com/WANGYuhan2002/yuhan-mfdas" target="_blank" rel="noopener"><b>yuhan-mfdas</b><span>Matched-filter earthquake detection for the Kefalonia seafloor cable: templates, stacked cross-correlation, MAD triggering, magnitudes.</span><i>↗</i></a></li>
+    <li class="rv"><a href="https://github.com/WANGYuhan2002/yuhan_das_spectra" target="_blank" rel="noopener"><b>yuhan_das_spectra</b><span>Spectra of seafloor DAS: noise PSD/PPSD, earthquake spectra by magnitude, noise against ERA5 wind and waves.</span><i>↗</i></a></li>
+    <li class="rv"><a href="https://github.com/WANGYuhan2002/das_wavefront_picker" target="_blank" rel="noopener"><b>das_wavefront_picker</b><span>STA/LTA wavefront detection and interactive picking on raw DAS waterfalls, with bad-channel rejection.</span><i>↗</i></a></li>
+    <li class="rv"><a href="https://github.com/WANGYuhan2002/das-channel-mapping-skill" target="_blank" rel="noopener"><b>das-channel-mapping-skill</b><span>A Claude Code skill that finds the excess fibre along a cable and delivers the channel map with uncertainties.</span><i>↗</i></a></li>
+  </ul>
+  <div class="plates one">
+    <figure class="plate rv"><img src="../v3-shared/figs/sp-ppsd.webp" width="1800" height="1070" loading="lazy" alt="Figure: median probabilistic power spectral density of the DAS noise, by distance along the cable (0 to 15 km) and frequency."><figcaption>yuhan_das_spectra · median noise spectrum along the cable, by frequency</figcaption></figure>
+  </div>
+</section>
+
+<!-- ============================================ WAVE LAB · WORKSHOP ======================================== -->
+<section class="sec wrap" id="lab">
+  <header class="station rv" data-ch="1700"><span class="st-ch">CH 1700</span><span class="st-name">Ithaca in sight</span><span class="st-km">play · meet</span></header>
+  <div class="duo">
+    <a class="tile rv" href="../v2a/lab/">
+      <div class="tile-img"><canvas id="labCanvas" aria-hidden="true"></canvas></div>
+      <div class="tile-b">
+        <p class="meta"><span class="tag">In your browser</span>six experiments</p>
+        <h3 class="h3 big">Wave Lab</h3>
+        <p class="body">One finite-difference solver, six things to try: a playground, arrays &amp; DAS, time reversal, tomography, ambient noise and elastic waves.</p>
+        <span class="more">Open the Wave Lab <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </div>
+    </a>
+    <a class="tile rv" style="--d:.1s" href="https://wangyuhan2002.github.io/2026-tomo-workshop/" target="_blank" rel="noopener">
+      <div class="tile-img"><img src="../v2a/assets/tsc-2026.webp" width="960" height="540" loading="lazy" alt="Workshop illustration: a seismogram crossing a globe shaded by seismic velocity anomalies beneath Europe."></div>
+      <div class="tile-b">
+        <p class="meta"><span class="tag">Workshop · co-organiser</span>30–31 July 2026</p>
+        <h3 class="h3 big">Tomographic Summer&nbsp;Chill</h3>
+        <p class="body">A workshop on multi-scale tomography of the Earth, at ETH Zürich and online. Co-organised with Andreas Fichtner and hosted by the Seismology &amp; Wave Physics group.</p>
+        <span class="more">Visit the workshop site <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </div>
+    </a>
+  </div>
+  <div class="off">
+    <p class="off-t rv">Away from the cable I photograph night skies and landscapes. <a href="https://500px.com.cn/wangyuhan" target="_blank" rel="noopener">More on 500px ↗</a></p>
+    <div class="off-g">
+      <figure class="rv"><img src="../v3-shared/photos/star-trails-sm.webp" width="800" height="599" loading="lazy" alt="Star trails circling above a hillside at night."></figure>
+      <figure class="rv" style="--d:.06s"><img src="../v3-shared/photos/heluoping-sm.webp" width="800" height="450" loading="lazy" alt="A wooden walkway along a stream in the hills of Yaoluoping, Anhui."></figure>
+      <figure class="rv" style="--d:.12s"><img src="../v3-shared/photos/guilin-karst-sm.webp" width="800" height="450" loading="lazy" alt="Karst hills behind a meadow of flowers in Guilin."></figure>
+      <figure class="rv" style="--d:.18s"><img src="../v3-shared/photos/xiuning-bridge-sm.webp" width="800" height="450" loading="lazy" alt="A stone arch bridge reflected in a river at Xiuning, Anhui."></figure>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================= CONTACT =============================================== -->
+<section class="sec wrap end" id="contact">
+  <div class="sealevel" aria-hidden="true"><span>Sea level · ashore on Ithaca</span></div>
+  <header class="station rv" data-ch="1872"><span class="st-ch">CH 1872</span><span class="st-name">Ithaca, last channel</span><span class="st-km">15.29 km</span></header>
+  <h2 class="h1b rv">End of <em>fibre.</em></h2>
+  <div class="end-grid">
+    <p class="lede rv">The fibre ends here, on Ithaca, 15.29&nbsp;km from the interrogator. If you would like to talk about fibres, faults or tools, write to me.</p>
+    <a class="mail rv" style="--d:.08s" data-mail href="https://cos.ethz.ch/people/person-detail.MzMzOTkx.TGlzdC8xNDQwLC0xMzkxMTI4OTM0.html"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><span data-mail-text>Contact details on my ETH profile</span></a>
+  </div>
+  <ul class="links-grid rv" style="--d:.12s">
+    <li><a href="https://github.com/WANGYuhan2002" target="_blank" rel="noopener"><b>GitHub</b><span>@WANGYuhan2002 ↗</span></a></li>
+    <li><a href="https://scholar.google.com/citations?user=DLRFdHEAAAAJ&amp;hl=en" target="_blank" rel="noopener"><b>Google Scholar</b><span>publications ↗</span></a></li>
+    <li><a href="https://orcid.org/0000-0001-6451-1166" target="_blank" rel="noopener"><b>ORCID</b><span>0000-0001-6451-1166 ↗</span></a></li>
+    <li><a href="https://www.linkedin.com/in/yuhan-wang-aa2564214/" target="_blank" rel="noopener"><b>LinkedIn</b><span>profile ↗</span></a></li>
+    <li><a href="https://cos.ethz.ch/people/person-detail.MzMzOTkx.TGlzdC8xNDQwLC0xMzkxMTI4OTM0.html" target="_blank" rel="noopener"><b>ETH profile</b><span>Seismology &amp; Wave Physics ↗</span></a></li>
+    <li><a href="https://cos.ethz.ch/" target="_blank" rel="noopener"><b>The group</b><span>cos.ethz.ch ↗</span></a></li>
+  </ul>
+</section>
+</main>
+
+<footer class="foot wrap">
+  <span>© 2026 Yuhan Wang · Sonneggstrasse 5, 8092 Zürich</span>
+  <span>The hero shows synthetic earthquakes, traffic and ocean waves on the real channel layout of the Kefalonia–Ithaca cable (1872 channels, 8.17&nbsp;m apart), drawn along an approximate route. The terrain is schematic and the time scale is not real: waves are slowed down, traffic is sped up.</span>
+  <a href="../../index.html">draft v3a · all drafts</a>
+</footer>
+
+<script src="../v3-shared/data/cable.js"></script>
+<script src="js/hero.js" defer></script>
+<script src="js/site.js" defer></script>
+<script type="module">
+  /* three.js as an ES module; if it cannot load, the hero falls back to a 2-D map view */
+  import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js')
+    .then(function (m) { if (window.__fibreInit) window.__fibreInit(m); }, function () { if (window.__fibreInit) window.__fibreInit(null); });
+</script>
+<script nomodule>window.addEventListener('load', function () { if (window.__fibreInit) window.__fibreInit(null); });</script>
+</body>
+</html>

@@ -1,0 +1,853 @@
+<!doctype html>
+<!-- v3e · INVISIBLE. Stars above, the Earth below.
+     The first screen is a live long exposure of the night sky; its horizon is a real seismogram. Scrolling tilts the
+     view down into a cross-section of the ground (about, the fibre, the fault, more work), then comes back up to the
+     photographs. All text is plain HTML; the canvases (js/scene.js) and the small instruments (js/app.js) are extras. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Yuhan Wang — fibre-optic seismology, ETH Zürich</title>
+<meta name="description" content="Yuhan Wang, doctoral student in the Seismology &amp; Wave Physics group at ETH Zürich. Fibre-optic seismology: telecom cables as dense seismic arrays, on the seafloor and under cities. And photographs of the night sky.">
+<meta name="theme-color" content="#060817">
+<script>document.documentElement.className += ' js';</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1026'/%3E%3Cpath d='M12 26a22 22 0 0 1 30-12M10 38a34 34 0 0 1 44-26' fill='none' stroke='%23f1e9d8' stroke-width='2.4' stroke-linecap='round' opacity='.85'/%3E%3Cpath d='M0 64V50l10-1 5-7 6 9 7-16 6 13 6-5 8 6 16-2v17z' fill='%2305060f'/%3E%3Ccircle cx='46' cy='22' r='2.6' fill='%23e2543a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,200..500;1,6..72,200..500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night-0:#060817; --night-1:#0b1026; --night-2:#171a36; --ink:#05060f;
+  --cream:#f1e9d8; --cream-2:rgba(241,233,216,.76); --cream-3:rgba(241,233,216,.5); --cream-4:rgba(241,233,216,.3);
+  --line:rgba(241,233,216,.14); --line-2:rgba(241,233,216,.26);
+  --amber:#f0b46a; --tungsten:#ffd9a3; --ember:#e2543a;
+  --serif:"Newsreader","Iowan Old Style","Palatino Linotype",Palatino,"Songti SC","Noto Serif CJK SC",Georgia,serif;
+  --sans:"Inter",system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --pad:clamp(1.25rem,5vw,4.5rem);
+  --ease:cubic-bezier(.16,.72,.14,1);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%; text-size-adjust:100%}
+body{margin:0; color:var(--cream); font:400 1.02rem/1.68 var(--sans); -webkit-font-smoothing:antialiased;
+  background:linear-gradient(#050818,#0b1026 40%,#171a36 78%,#2a2140) fixed, #0b1026; overflow-x:hidden; overflow-x:clip}
+html{overflow-x:clip}
+img{display:block; max-width:100%; height:auto}
+a{color:inherit}
+p{margin:0}
+h1,h2,h3,h4{margin:0; font-weight:300}
+em{font-style:italic}
+::selection{background:rgba(240,180,106,.32)}
+:focus-visible{outline:2px solid var(--amber); outline-offset:4px; border-radius:3px}
+[tabindex="-1"]:focus{outline:none}   /* a section that the skip link or the nav moved the focus to */
+.vh{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap}
+.skip{position:absolute; left:-9999px; top:0; z-index:200; background:var(--cream); color:#0b1026; padding:.6rem 1rem; font:500 .85rem var(--sans)}
+.skip:focus{left:1rem; top:1rem}
+
+/* ---------- the scene: three fixed canvases behind everything ---------- */
+#sky,#ground,#fx{position:fixed; left:0; top:0; width:100%; height:100vh; height:100lvh; display:block; pointer-events:none}
+#sky{z-index:0} #ground{z-index:1} #fx{z-index:2}
+main{position:relative; z-index:3}
+.grain{position:fixed; inset:0; z-index:60; pointer-events:none; opacity:.055; mix-blend-mode:screen}
+
+/* ---------- top bar ---------- */
+.top{position:fixed; left:0; right:0; top:0; z-index:40; display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  padding:1.05rem var(--pad); pointer-events:none; transition:transform .5s var(--ease), opacity .4s}
+.top::before{content:""; position:absolute; inset:0 0 -34px 0; z-index:-1; background:linear-gradient(rgba(5,6,18,.62),rgba(5,6,18,0)); pointer-events:none}
+.top.away{transform:translateY(-110%); opacity:0}
+.top a{pointer-events:auto; text-decoration:none}
+.brand{display:inline-flex; align-items:center; gap:.6rem; font:400 1.12rem/1 var(--serif); letter-spacing:.005em}
+.brand i{width:7px; height:7px; border-radius:50%; background:var(--ember); box-shadow:0 0 12px rgba(226,84,58,.8)}
+.top nav{display:flex; align-items:center; gap:clamp(.7rem,1.9vw,1.9rem)}
+.top nav a{font:500 .66rem/1 var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--cream-2); padding:.5rem 0; position:relative; transition:color .25s}
+.top nav a::after{content:""; position:absolute; left:0; right:0; bottom:.15rem; height:1px; background:currentColor; transform:scaleX(0); transform-origin:left; transition:transform .45s var(--ease)}
+.top nav a:hover{color:var(--cream)} .top nav a:hover::after{transform:scaleX(1)}
+.top nav a.draft{color:var(--cream-4); letter-spacing:.1em; text-transform:none; font-weight:400}
+.top nav a.draft:hover{color:var(--cream-2)}
+
+/* ---------- hero: the sky ---------- */
+.hero{position:relative; height:100vh; height:100svh; min-height:600px; overflow:hidden}
+/* the left side of the sky is kept darker, so the words can be read */
+.hero::before, .contact::after{content:""; position:absolute; inset:0; pointer-events:none}
+.hero::before{background:linear-gradient(90deg,rgba(5,7,22,.88),rgba(5,7,22,.74) 30%,rgba(5,7,22,.36) 54%,rgba(5,7,22,0) 70%), linear-gradient(rgba(5,7,22,.5),rgba(5,7,22,0) 20%); -webkit-mask-image:linear-gradient(#000 52%,transparent 76%); mask-image:linear-gradient(#000 52%,transparent 76%)}
+.hero-copy{position:absolute; left:var(--pad); top:clamp(5.2rem,19vh,11rem); width:min(46rem,calc(100% - 2*var(--pad))); will-change:transform,opacity}
+.kicker{font:500 .7rem/1 var(--mono); letter-spacing:.2em; text-transform:uppercase; color:var(--cream-2); display:flex; align-items:center; gap:.85rem}
+.kicker::before{content:""; width:34px; height:1px; background:var(--cream-3)}
+.hero h1{margin:1.4rem 0 0 -.04em; white-space:nowrap; font:200 clamp(3.4rem,min(8.7vw,16.5vh),8.8rem)/.92 var(--serif); font-variation-settings:"opsz" 72; letter-spacing:-.032em; text-shadow:0 2px 40px rgba(6,8,23,.7)}
+.hero h1 span{display:inline-block}
+.epi{margin:clamp(1.3rem,3.4vh,2.2rem) 0 0; padding:0; max-width:31rem}
+.epi p{font:300 italic clamp(1.28rem,2.15vw,1.82rem)/1.24 var(--serif); font-variation-settings:"opsz" 36; color:var(--cream)}
+.epi footer{margin-top:.6rem; font:400 .72rem/1.5 var(--mono); letter-spacing:.1em; color:rgba(241,233,216,.78)}
+.epi cite{font-style:normal}
+.what{margin-top:clamp(1rem,2.6vh,1.6rem); max-width:31.5rem; font-size:clamp(.95rem,1.12vw,1.04rem); line-height:1.62; color:var(--cream-2)}
+.epi footer, .what{text-shadow:0 0 8px rgba(5,7,22,.95), 0 0 2px rgba(5,7,22,.95)}
+
+.hud{position:absolute; right:var(--pad); bottom:1.25rem; width:19.5rem; font:400 .66rem/1.55 var(--mono); letter-spacing:.06em; color:var(--cream-3); text-align:right}
+.hud-l{display:flex; justify-content:flex-end; align-items:center; gap:.55rem; text-transform:uppercase; letter-spacing:.18em; color:var(--cream-2)}
+.rec{width:6px; height:6px; border-radius:50%; background:var(--ember); box-shadow:0 0 10px rgba(226,84,58,.9); animation:rec 2.4s ease-in-out infinite}
+@keyframes rec{50%{opacity:.25}}
+.hud.fast .rec{animation-duration:.45s}
+.hud.fast .hud-l{color:var(--tungsten)}
+.hud-v, .hud-h{text-wrap:balance}
+.hud-v{margin-top:.5rem}
+.hud-v b{font-weight:500; color:var(--cream); white-space:nowrap}
+.hud-c{display:none}
+.hud button{margin-top:.6rem; font:500 .64rem/1 var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--cream); background:rgba(11,16,38,.5); border:1px solid var(--line-2); border-radius:999px; padding:.62rem .95rem .58rem; cursor:pointer; -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); transition:border-color .3s, background .3s, color .3s}
+.hud button:hover{border-color:var(--amber); color:var(--tungsten); background:rgba(240,180,106,.08)}
+.hud-h{margin-top:.55rem; color:rgba(241,233,216,.62)}
+.hud-l, .hud-v, .hud-h{text-shadow:0 0 8px rgba(5,7,22,.95), 0 0 2px rgba(5,7,22,.95)}
+/* the note stops 1.5rem short of the read-out (19.5rem wide, at the right padding); % = of the hero, like left */
+.ridge-note{position:absolute; left:39%; bottom:1.25rem; width:min(24rem,30%,calc(61% - var(--pad) - 21rem)); font:400 .64rem/1.6 var(--mono); letter-spacing:.05em; color:rgba(241,233,216,.56)}
+.ridge-note b{font-weight:500; color:rgba(241,233,216,.85)}
+.cue{position:absolute; left:var(--pad); bottom:1.05rem; display:inline-flex; align-items:center; gap:.7rem; font:500 .64rem/1 var(--mono); letter-spacing:.18em; text-transform:uppercase; color:var(--cream-2); text-decoration:none}
+.cue i{position:relative; width:1px; height:26px; background:var(--cream-4); overflow:hidden}
+.cue i::after{content:""; position:absolute; left:0; top:-10px; width:1px; height:10px; background:var(--cream); animation:drop 2.4s var(--ease) infinite}
+@keyframes drop{to{transform:translateY(38px)}}
+
+/* the first screen arrives quietly */
+.js .hero-copy > *{animation:rise 1.25s var(--ease) both}
+.js .hero-copy > :nth-child(2){animation-delay:.08s} .js .hero-copy > :nth-child(3){animation-delay:.2s} .js .hero-copy > :nth-child(4){animation-delay:.3s}
+.js .hud, .js .cue, .js .ridge-note{animation:fadein 1.4s .35s ease both}
+@keyframes rise{from{opacity:0; transform:translateY(22px)}}
+@keyframes fadein{from{opacity:0}}
+html.lenis, html.lenis body{height:auto}
+.lenis.lenis-smooth{scroll-behavior:auto !important}
+.lenis.lenis-stopped{overflow:hidden}
+
+/* ---------- underground ---------- */
+#underground{position:relative}
+.sec{position:relative; width:min(1160px,calc(100% - 2*var(--pad))); margin:0 auto; padding:clamp(6rem,19vh,11rem) 0 clamp(4rem,12vh,8rem)}
+#about{padding-top:clamp(7rem,24vh,13rem)}
+.mark{display:flex; align-items:baseline; gap:.95rem; margin-bottom:clamp(2.2rem,6vh,3.8rem); font:500 .68rem/1 var(--mono); letter-spacing:.2em; text-transform:uppercase; color:var(--cream-3)}
+.mark b{font:300 italic 1.55rem/1 var(--serif); letter-spacing:0; text-transform:none; color:var(--amber); min-width:1.6rem}
+.mark::after{content:""; flex:1; height:1px; background:linear-gradient(90deg,var(--line-2),rgba(241,233,216,0))}
+h2{font:250 clamp(2.15rem,4.9vw,4.35rem)/1.03 var(--serif); font-variation-settings:"opsz" 72; letter-spacing:-.02em; text-wrap:balance}
+h2 em{font-weight:250; color:var(--tungsten)}
+h3{font:300 clamp(1.5rem,2.4vw,2.05rem)/1.12 var(--serif); letter-spacing:-.01em; text-wrap:balance}
+.lead{font:300 clamp(1.18rem,1.62vw,1.42rem)/1.5 var(--serif); font-variation-settings:"opsz" 24; color:var(--cream)}
+.body{color:var(--cream-2); max-width:38rem}
+.body + .body{margin-top:1rem}
+.tx a, .fine a, .p-links a, .time a{text-decoration:underline; text-decoration-color:var(--cream-4); text-underline-offset:.22em; text-decoration-thickness:1px; transition:text-decoration-color .25s, color .25s}
+.tx a:hover, .fine a:hover, .p-links a:hover, .time a:hover{color:var(--tungsten); text-decoration-color:var(--amber)}
+.fine{font:400 .68rem/1.6 var(--mono); letter-spacing:.04em; color:var(--cream-3)}
+/* a soft dark halo so text stays readable over the strata lines */
+.halo{position:relative}
+.halo::before{content:""; position:absolute; inset:-2.2rem -2.6rem; z-index:-1; background:radial-gradient(closest-side,rgba(6,7,17,.74),rgba(6,7,17,.5) 62%,rgba(6,7,17,0)); pointer-events:none}
+
+/* reveal on scroll (only when JS is running) */
+.js .rv{opacity:0; transform:translateY(26px); transition:opacity 1.25s var(--ease), transform 1.25s var(--ease); transition-delay:var(--d,0s)}
+.js .rv.in{opacity:1; transform:none}
+
+/* I · about */
+.about-grid{display:grid; grid-template-columns:minmax(0,4fr) minmax(0,7fr); gap:clamp(2rem,6.5vw,6.5rem); align-items:start}
+.portrait{position:sticky; top:clamp(5rem,15vh,9rem); margin:0; padding:10px; border:1px solid var(--line); background:rgba(8,9,22,.6)}
+/* a daylight office portrait, toned down to lamplight so it sits in the night */
+.portrait > img:first-child{width:100%; aspect-ratio:4/5; object-fit:cover; filter:saturate(.6) sepia(.24) brightness(.7) contrast(1.1)}
+.portrait::after{content:""; position:absolute; left:10px; right:10px; top:10px; aspect-ratio:4/5; pointer-events:none; background:radial-gradient(80% 70% at 50% 38%,rgba(11,16,38,0) 28%,rgba(11,16,38,.88) 100%); mix-blend-mode:multiply}
+.portrait figcaption{padding:.7rem 3.2rem .1rem .15rem; font:400 .64rem/1.4 var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--cream-3)}
+.portrait .seal{position:absolute; z-index:2; right:-22px; bottom:-24px; width:58px; height:58px; transform:rotate(-3deg); opacity:.95}
+.about-text h2{margin-top:-.12em}
+.about-text .lead{margin-top:1.7rem; max-width:35rem}
+.about-text .body{margin-top:1.1rem}
+.time{list-style:none; margin:clamp(2.2rem,5vh,3.2rem) 0 0; padding:0; border-top:1px solid var(--line)}
+.time li{display:grid; grid-template-columns:7.6rem 1fr; gap:1.2rem; padding:1.02rem 0; border-bottom:1px solid var(--line)}
+.time .y{font:400 .7rem/1.7 var(--mono); letter-spacing:.1em; color:var(--amber)}
+.time .w{font:400 1.12rem/1.3 var(--serif); color:var(--cream)}
+.time .s{display:block; margin-top:.25rem; font:400 .86rem/1.5 var(--sans); color:var(--cream-3)}
+
+/* II · the fibre */
+.fibre-head{display:grid; grid-template-columns:minmax(0,7fr) minmax(0,5fr); gap:clamp(1.5rem,5vw,5rem); align-items:end}
+.fibre-head .lead{max-width:31rem}
+.band{position:relative; margin:clamp(2.4rem,7vh,4.5rem) calc(50% - 50vw) 0; width:100vw}
+#fibreBand{display:block; width:100%; height:clamp(300px,50vh,460px); cursor:crosshair; touch-action:pan-y; -webkit-mask-image:linear-gradient(transparent,#000 9%,#000 90%,transparent); mask-image:linear-gradient(transparent,#000 9%,#000 90%,transparent)}
+.band-cap{width:min(1160px,calc(100% - 2*var(--pad))); margin:.2rem auto 0; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.8rem 2rem}
+.band-cap .fine{max-width:60ch}
+.band-cap button, .pill{font:500 .64rem/1 var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--cream); background:rgba(11,16,38,.45); border:1px solid var(--line-2); border-radius:999px; padding:.66rem 1rem .62rem; cursor:pointer; text-decoration:none; transition:border-color .3s, color .3s, background .3s}
+.band-cap button:hover, .pill:hover{border-color:var(--amber); color:var(--tungsten); background:rgba(240,180,106,.08)}
+.steps{list-style:none; margin:clamp(3rem,8vh,5rem) 0 0; padding:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:clamp(1.4rem,3.4vw,3.2rem); counter-reset:s}
+.steps li{counter-increment:s; padding-top:1.15rem; border-top:1px solid var(--line-2)}
+.steps li::before{content:"0" counter(s); font:400 .68rem/1 var(--mono); letter-spacing:.16em; color:var(--amber)}
+.steps h3{margin:.8rem 0 .55rem}
+.steps p{color:var(--cream-2); font-size:.97rem}
+.where{margin-top:clamp(3.5rem,10vh,6.5rem); display:grid; grid-template-columns:minmax(0,6fr) minmax(0,5fr); gap:clamp(2rem,6vw,6rem); align-items:center}
+.where h3{margin-bottom:1rem}
+.where .fine{margin-top:1.3rem}
+.map{margin:0; justify-self:end; width:min(100%,25rem)}
+.map svg{display:block; width:100%; height:auto; overflow:visible}
+.map figcaption{margin-top:.8rem}
+
+/* the long way down */
+.descent{position:relative; height:clamp(480px,80vh,800px); display:grid; place-items:center; text-align:center; padding:0 var(--pad)}
+.descent p{font:250 clamp(1.7rem,3.5vw,3.1rem)/1.16 var(--serif); font-variation-settings:"opsz" 60; letter-spacing:-.012em; color:var(--cream); max-width:22ch; text-wrap:balance}
+.descent em{color:var(--tungsten)}
+
+/* III · the fault */
+#fault h2{max-width:17ch}
+.lights{margin-top:clamp(2.4rem,7vh,4.2rem); display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:clamp(.9rem,2vw,1.6rem)}
+.field{position:relative; margin:0; border:1px solid var(--line); background:rgba(5,6,16,.72); overflow:hidden}
+.field canvas{display:block; width:100%; height:clamp(230px,43vh,400px)}
+.field canvas + canvas{position:absolute; left:0; top:0; pointer-events:none}
+.field figcaption{position:absolute; left:1.15rem; right:1.15rem; bottom:1rem; display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; pointer-events:none}
+.field .num{font:200 clamp(2.5rem,5.4vw,4.9rem)/.82 var(--serif); font-variation-settings:"opsz" 72; letter-spacing:-.03em; font-variant-numeric:tabular-nums; text-shadow:0 0 30px rgba(5,6,16,1), 0 0 10px rgba(5,6,16,1)}
+.field .lbl{max-width:13.5rem; text-align:right; font:400 .64rem/1.5 var(--mono); letter-spacing:.07em; text-transform:uppercase; color:var(--cream-2); text-shadow:0 0 12px rgba(5,6,16,1), 0 0 4px rgba(5,6,16,1); text-wrap:balance}
+.field .tag{position:absolute; left:1.15rem; top:1rem; font:500 .62rem/1 var(--mono); letter-spacing:.2em; text-transform:uppercase; color:var(--cream-3)}
+/* the one cluster, pointed out once the count is complete (the hairline is drawn by js/app.js) */
+.field .cl{position:absolute; right:1.15rem; top:1rem; font:400 .64rem/1.5 var(--mono); letter-spacing:.07em; text-transform:uppercase; color:var(--cream-2); text-shadow:0 0 12px rgba(5,6,16,1), 0 0 4px rgba(5,6,16,1); opacity:0; transition:opacity 1.2s var(--ease); pointer-events:none}
+.field .cl.on{opacity:1}
+.lights + .fine{margin-top:.9rem}
+.fault-grid{margin-top:clamp(2.6rem,7vh,4.5rem); display:grid; grid-template-columns:minmax(0,7fr) minmax(0,4fr); gap:clamp(2rem,6vw,6rem); align-items:start}
+.stats{list-style:none; margin:0; padding:0; border-top:1px solid var(--line-2)}
+.stats li{display:flex; align-items:baseline; justify-content:space-between; gap:1.2rem; padding:.82rem 0; border-bottom:1px solid var(--line)}
+.stats b{font:250 clamp(1.7rem,2.6vw,2.3rem)/1 var(--serif); letter-spacing:-.02em; color:var(--tungsten); white-space:nowrap}
+.stats span{font:400 .66rem/1.45 var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--cream-3); text-align:right}
+.cite{margin-top:clamp(2.4rem,6vh,3.6rem); padding:1.5rem 0 0; border-top:1px solid var(--line); display:grid; grid-template-columns:7.6rem 1fr; gap:1.2rem}
+.cite .k{font:400 .68rem/1.7 var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--amber)}
+.cite h3{font-size:clamp(1.25rem,1.9vw,1.6rem); line-height:1.2}
+.cite h3 a{text-decoration:none; background:linear-gradient(var(--amber),var(--amber)) 0 100%/0 1px no-repeat; transition:background-size .5s var(--ease)}
+.cite h3 a:hover{background-size:100% 1px}
+.p-auth{margin-top:.55rem; font-size:.9rem; color:var(--cream-2)}
+.p-links{margin-top:.6rem; font:400 .68rem/1.9 var(--mono); letter-spacing:.04em; color:var(--cream-3)}
+
+/* IV · deeper */
+.papers{list-style:none; margin:clamp(2.2rem,6vh,3.6rem) 0 0; padding:0; border-top:1px solid var(--line-2)}
+.paper{display:grid; grid-template-columns:7.6rem minmax(0,1fr); gap:1.2rem; padding:1.55rem 0 1.6rem; border-bottom:1px solid var(--line)}
+.paper .k{font:400 .68rem/1.7 var(--mono); letter-spacing:.1em; text-transform:uppercase; color:var(--amber)}
+.paper .k small{display:block; font-size:inherit; color:var(--cream-3)}
+.paper h3{font-size:clamp(1.22rem,1.85vw,1.58rem); line-height:1.2; max-width:44rem}
+.paper h3 a{text-decoration:none; background:linear-gradient(var(--amber),var(--amber)) 0 100%/0 1px no-repeat; transition:background-size .5s var(--ease)}
+.paper h3 a:hover{background-size:100% 1px}
+.p-note{margin-top:.55rem; max-width:40rem; font-size:.95rem; color:var(--cream-2)}
+.sub{margin-top:clamp(4rem,11vh,7rem); display:flex; align-items:baseline; justify-content:space-between; gap:1rem 2rem; flex-wrap:wrap}
+.sub h3{font-size:clamp(1.7rem,3vw,2.6rem)}
+.sub p{font:400 .68rem/1.6 var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--cream-3)}
+.tools{margin-top:clamp(1.6rem,4vh,2.4rem); display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:clamp(1rem,2.2vw,1.8rem)}
+.tool{position:relative; display:flex; flex-direction:column; border:1px solid var(--line); background:rgba(9,10,24,.78)}
+/* the screenshots are white-background plots: shown as a night duotone (inverted grey, lit amber), uncropped */
+.tool .shot{position:relative; isolation:isolate; display:block; margin:12px 12px 0; overflow:hidden; background:#080a1a; aspect-ratio:16/10}
+.tool .shot img{width:100%; height:100%; object-fit:contain; object-position:50% 50%; filter:grayscale(1) invert(1) contrast(1.15) brightness(.8); mix-blend-mode:screen; opacity:.9; transition:opacity .7s var(--ease), transform 1.4s var(--ease)}
+.tool .shot::after{content:""; position:absolute; inset:0; background:var(--amber); mix-blend-mode:multiply; pointer-events:none}
+/* cm-fig4 is a dark plot on a white page: not inverted, and only its plot area is shown (clip-path
+   cuts away the white margins; the numbers place that area, 1276 x 1008 px of 1800 x 1211, in the card) */
+.tool .shot.plot img{position:absolute; top:-8.53%; left:-2.7%; width:auto; height:120.1%; max-width:none; object-fit:fill; clip-path:inset(7.1% 17.33% 9.66% 11.78%); filter:grayscale(1) contrast(1.25) brightness(1.08)}
+.tool:hover .shot img{opacity:1; transform:scale(1.025)}
+.tool .tb{display:flex; flex-direction:column; gap:.5rem; padding:1.15rem 1.25rem 1.3rem; flex:1}
+.tool h4{font:300 1.5rem/1.1 var(--serif)}
+.tool h4 a{text-decoration:none}
+.tool h4 a::after{content:""; position:absolute; inset:0}
+.tool p{font-size:.93rem; color:var(--cream-2)}
+.tool .go{margin-top:auto; padding-top:.5rem; font:500 .62rem/1 var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--cream-3); transition:color .3s}
+.tool:hover .go{color:var(--tungsten)}
+.tool:focus-within{border-color:var(--line-2)}
+.more{list-style:none; margin:clamp(2rem,4.4vw,3rem) 0 0; padding:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:clamp(1.4rem,3.4vw,3.2rem)}
+.more li{position:relative; padding:1.1rem 0 0; border-top:1px solid var(--line-2); display:flex; flex-direction:column; gap:.45rem}
+.more h4{font:300 1.3rem/1.15 var(--serif)}
+.more h4 a{text-decoration:none} .more h4 a::after{content:""; position:absolute; inset:0}
+.more p{font-size:.9rem; color:var(--cream-2)}
+.more .go{margin-top:auto; padding-top:.45rem; font:500 .62rem/1 var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--cream-3)}
+.more li:hover .go{color:var(--tungsten)}
+.pair{margin-top:clamp(4rem,11vh,7rem); display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:clamp(1rem,2.2vw,1.8rem)}
+.big{position:relative; display:flex; flex-direction:column; justify-content:flex-end; min-height:clamp(360px,56vh,520px); padding:1.5rem 1.6rem 1.6rem; border:1px solid var(--line); background:rgba(9,10,24,.8); overflow:hidden}
+.big .k{font:500 .64rem/1.5 var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--amber)}
+.big h3{margin:.7rem 0 .6rem; font-size:clamp(1.8rem,3vw,2.6rem)}
+.big h3 a{text-decoration:none} .big h3 a::after{content:""; position:absolute; inset:0; z-index:2}
+.big p{position:relative; max-width:30rem; color:var(--cream-2); font-size:.96rem}
+.big .go{position:relative; margin-top:1.1rem; font:500 .62rem/1 var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--cream-2)}
+.big:hover .go{color:var(--tungsten)}
+.big > img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:62% 50%; opacity:.62; transition:opacity .8s var(--ease), transform 1.6s var(--ease)}
+.big:hover > img{opacity:.8; transform:scale(1.03)}
+.big.pic::before{content:""; position:absolute; inset:0; z-index:1; background:linear-gradient(rgba(6,7,17,.1),rgba(6,7,17,.72) 40%,rgba(6,7,17,.94))}
+.big.pic > *:not(img){position:relative; z-index:1}
+.big.pic .k{text-shadow:0 0 6px #060711, 0 0 2px #060711, 0 0 12px #060711}
+.big.pic h3 a::after{z-index:3}
+/* Wave Lab: a source and the rings it sends out */
+.lab-rings{position:absolute; right:-130px; top:-160px; width:520px; height:520px; opacity:.7}
+.lab-rings circle{fill:none; stroke:var(--amber); stroke-width:.6; transform-origin:50% 50%; animation:ring 6s linear infinite}
+.lab-rings circle:nth-child(2){animation-delay:-1.2s} .lab-rings circle:nth-child(3){animation-delay:-2.4s} .lab-rings circle:nth-child(4){animation-delay:-3.6s} .lab-rings circle:nth-child(5){animation-delay:-4.8s}
+.lab-rings .src{fill:var(--ember); stroke:none; animation:none}
+@keyframes ring{from{transform:scale(.06); opacity:.95}to{transform:scale(1); opacity:0}}
+.ascent{height:clamp(260px,36vh,340px); display:grid; place-items:end center; padding:0 var(--pad) clamp(2.4rem,7vh,4.5rem); text-align:center}
+.ascent p{font:300 italic clamp(1.4rem,2.4vw,2rem)/1.2 var(--serif); font-variation-settings:"opsz" 36; color:var(--cream)}
+
+/* depth readout (the ruler itself is drawn on the #fx canvas) */
+.depth{position:fixed; z-index:30; left:1.05rem; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:.3rem; padding:.5rem .65rem .5rem .8rem; font:400 .6rem/1 var(--mono); letter-spacing:.18em; text-transform:uppercase; color:var(--cream-3); pointer-events:none; opacity:0; transition:opacity .6s; border-left:1px solid var(--amber); background:linear-gradient(90deg,rgba(5,6,16,.86),rgba(5,6,16,.55) 70%,rgba(5,6,16,0))}
+.depth.on{opacity:1}
+.depth b{font:300 1.32rem/1 var(--serif); letter-spacing:0; text-transform:none; color:var(--cream); font-variant-numeric:tabular-nums; white-space:nowrap}
+.depth small{font-size:.56rem; letter-spacing:.14em; color:rgba(241,233,216,.62)}
+
+/* ---------- back at the surface ---------- */
+.surface{position:relative; background:var(--ink)}
+.js .surface{height:300vh}
+.stage{position:relative}
+.js .stage{position:sticky; top:0; height:100vh; height:100svh; overflow:hidden}
+.plate{margin:0; position:relative}
+.js .plate{position:absolute; inset:0; opacity:0; will-change:opacity}
+.js .plate.first{opacity:1}
+.plate img{width:100%; height:auto}
+.js .plate img{height:100%; object-fit:cover; will-change:transform}
+/* the photo's own lettering (bottom right, from 76 % of its height down) stays below the frame, clear of the caption:
+   anchored at the top and, on desktop, a little closer; the squarer the screen, the more of the photo's height
+   would show, so the closer (the individual scale property composes with the scroll zoom set in js/app.js) */
+.js .plate.first img{object-position:50% 0}
+@media (min-width:861px){ .js .plate.first img{transform-origin:50% 0; scale:1.12} }
+@media (min-width:861px) and (max-aspect-ratio:1599/1000){ .js .plate.first img{scale:1.2} }
+@media (min-width:861px) and (max-aspect-ratio:3/2){ .js .plate.first img{scale:1.28} }
+@media (min-width:861px) and (max-aspect-ratio:7/5){ .js .plate.first img{scale:1.34} }
+@media (min-width:861px) and (max-aspect-ratio:1/1){ .js .plate.first img{object-position:0 0; scale:1} }   /* a tall screen: the left part, as on tablets */
+/* a little night at the foot of every photograph, under its caption */
+.js .plate::after{content:""; position:absolute; left:0; right:0; bottom:0; height:24%; background:linear-gradient(rgba(5,6,15,0),rgba(5,6,15,.46)); pointer-events:none}
+.plate figcaption{padding:.6rem var(--pad) 1.4rem; font:400 .66rem/1.5 var(--mono); letter-spacing:.1em; text-transform:uppercase; color:var(--cream-2)}
+.js .plate figcaption{display:none}
+.plate-cap{display:none}
+.js .plate-cap{display:block; position:absolute; z-index:3; right:var(--pad); bottom:1.5rem; font:400 .66rem/1.5 var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--cream); text-align:right; text-shadow:0 1px 10px rgba(0,0,0,.95), 0 0 3px rgba(0,0,0,.9); transition:opacity .5s}
+.js .stage::before{content:""; position:absolute; inset:0 0 auto 0; height:38%; z-index:2; background:linear-gradient(var(--ink),rgba(5,6,15,0)); pointer-events:none; opacity:var(--veil,1)}
+/* the words sit in the dark top left of the star-trail photo, away from its bright pole */
+.js .stage::after{content:""; position:absolute; inset:0; z-index:2; background:radial-gradient(95% 85% at 0% 0%,rgba(5,6,15,.9),rgba(5,6,15,.55) 38%,rgba(5,6,15,0) 66%), linear-gradient(rgba(5,6,15,0) 80%,rgba(5,6,15,.5)); pointer-events:none; opacity:var(--shade,1)}
+.narrow{display:none}
+@media (max-width:700px){.wide{display:none} .narrow{display:inline}}
+/* plates 2 and 3 show a portrait photograph on portrait screens (the <source> media), and its caption */
+.plate .pn{display:none}
+@media (max-aspect-ratio:1/1){.plate .pw{display:none} .plate .pn{display:inline} .js .plate:nth-of-type(2) img{object-position:50% 0}}   /* keeps the night-house poem, top right, in the frame */
+/* the night house has pale brickwork bottom left and dark trees and road bottom right: its caption goes right */
+@media (max-width:860px) and (max-aspect-ratio:1/1){ .js .plate-cap[data-p="1"]{left:auto; right:var(--pad); text-align:right} }
+.surface-copy{padding:3rem var(--pad)}
+.js .surface-copy{position:absolute; z-index:3; left:var(--pad); top:clamp(6rem,15vh,9rem); padding:0; max-width:36rem}
+.js .surface-copy .mark, .js .surface-copy .lead{text-shadow:0 0 8px rgba(5,7,22,.95), 0 0 2px rgba(5,7,22,.95)}
+.surface-copy .mark{margin-bottom:1.6rem}
+.surface-copy .mark::after{display:none}
+.surface-copy p.lead{margin-top:1.3rem; max-width:30rem}
+
+/* photographs */
+.photos{position:relative; background:linear-gradient(var(--ink),#0b1026 30%,#0b1026); padding:clamp(4rem,12vh,8rem) 0 clamp(1.5rem,4vh,3rem)}
+.photos-head{width:min(1160px,calc(100% - 2*var(--pad))); margin:0 auto; display:flex; align-items:flex-end; justify-content:space-between; gap:1.5rem 3rem; flex-wrap:wrap}
+.photos-head p{max-width:27rem; color:var(--cream-2); font-size:.95rem}
+.strip{list-style:none; margin:clamp(2rem,6vh,3.6rem) 0 0; padding:0 var(--pad) 1.4rem; display:flex; gap:clamp(.7rem,1.4vw,1.2rem); overflow-x:auto; overscroll-behavior-x:contain; scroll-snap-type:x proximity; scrollbar-width:thin; scrollbar-color:rgba(241,233,216,.25) transparent; cursor:grab}
+.strip.drag{cursor:grabbing; scroll-snap-type:none}
+.strip::-webkit-scrollbar{height:6px} .strip::-webkit-scrollbar-thumb{background:rgba(241,233,216,.22); border-radius:6px}
+.strip li{flex:none; scroll-snap-align:center}
+.ph{display:block; text-decoration:none; -webkit-user-drag:none}
+.ph img{height:clamp(240px,46vh,440px); width:auto; max-width:none; -webkit-user-drag:none; user-select:none; filter:brightness(.9); transition:filter .6s var(--ease)}
+.ph:hover img, .ph:focus-visible img{filter:none}
+.ph .cap{display:flex; justify-content:flex-start; gap:.6rem; padding-top:.7rem; font:400 .64rem/1.4 var(--mono); letter-spacing:.14em; text-transform:uppercase; color:var(--cream-3)}
+.ph .cap i{font-style:normal; letter-spacing:.06em; color:var(--cream-3)}
+
+/* liner notes */
+.notes{position:relative; background:#0b1026; padding:clamp(2.5rem,8vh,5.5rem) 0 clamp(5rem,14vh,9rem)}
+.notes-in{width:min(1160px,calc(100% - 2*var(--pad))); margin:0 auto; display:grid; grid-template-columns:minmax(0,4fr) minmax(0,4fr) minmax(0,4fr); gap:clamp(2rem,5vw,5rem); border-top:1px solid var(--line-2); padding-top:clamp(1.6rem,4vh,2.4rem)}
+.side h3{display:flex; align-items:baseline; gap:.9rem; font:500 .66rem/1 var(--mono); letter-spacing:.2em; text-transform:uppercase; color:var(--cream-3)}
+.side h3 b{font:300 italic 1.5rem/1 var(--serif); letter-spacing:0; text-transform:none; color:var(--amber)}
+.side h3 .how{margin-left:-.35rem; font:300 italic .95rem/1 var(--serif); letter-spacing:0; text-transform:none; color:var(--cream-3)}
+.tracks{list-style:none; margin:1.1rem 0 0; padding:0; counter-reset:t}
+.tracks li{counter-increment:t; display:flex; align-items:baseline; gap:.9rem; padding:.5rem 0; border-bottom:1px solid var(--line); font:400 1.14rem/1.3 var(--serif); color:var(--cream)}
+.tracks li::before{content:counter(t,decimal-leading-zero); font:400 .6rem/1 var(--mono); letter-spacing:.12em; color:var(--cream-4); min-width:1.3rem}
+.tracks li span{margin-left:auto; font-size:.98rem; color:var(--cream-3); white-space:nowrap}
+
+/* contact: the sky again */
+.contact{position:relative; min-height:100vh; min-height:100svh; display:flex; flex-direction:column; justify-content:space-between}
+.contact::before{content:""; position:absolute; inset:0 0 auto 0; height:34vh; background:linear-gradient(#0b1026,rgba(11,16,38,0)); pointer-events:none}
+/* the footer sky has the longest trails of the page: a stronger, taller shade behind the words */
+.contact::after{z-index:0; background:linear-gradient(90deg,rgba(5,7,22,.9),rgba(5,7,22,.8) 32%,rgba(5,7,22,.42) 56%,rgba(5,7,22,0) 74%); -webkit-mask-image:linear-gradient(#000 70%,transparent 94%); mask-image:linear-gradient(#000 70%,transparent 94%)}
+.contact-in{position:relative; z-index:1; width:min(1160px,calc(100% - 2*var(--pad))); margin:0 auto; padding:clamp(6rem,19vh,11rem) 0 clamp(14rem,36vh,22rem)}
+.contact h2{font-size:clamp(3rem,8.4vw,7.6rem); line-height:.95}
+.contact .lead{margin-top:1.4rem; max-width:27rem; color:var(--cream-2)}
+.mail{display:inline-flex; align-items:center; gap:.85rem; margin-top:2.1rem; padding:1rem 1.5rem .95rem; border:1px solid var(--cream-3); border-radius:999px; background:rgba(11,16,38,.4); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); font:400 clamp(1.05rem,1.7vw,1.35rem)/1 var(--serif); text-decoration:none; transition:background .35s, border-color .35s, color .35s, transform .5s var(--ease)}
+.mail:hover{background:var(--cream); color:#0b1026; border-color:var(--cream); transform:translateY(-2px)}
+.mail svg{width:1.1em; height:1.1em}
+.links{list-style:none; margin:2.6rem 0 0; padding:0; display:flex; flex-wrap:wrap; gap:.55rem 1.7rem; max-width:44rem}
+.links a{display:inline-block; padding:.3rem 0; font:500 .68rem/1 var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--cream-2); text-decoration:none; border-bottom:1px solid var(--cream-4); transition:color .25s, border-color .25s}
+.links a:hover{color:var(--tungsten); border-color:var(--amber)}
+.contact address{margin-top:2.2rem; font:400 .68rem/1.75 var(--mono); letter-spacing:.06em; font-style:normal}
+.contact address, .links a{color:var(--cream); text-shadow:0 0 2px #050716, 0 0 4px #050716, 0 0 9px #050716, 0 0 18px rgba(5,7,22,.9)}
+.foot{position:relative; z-index:1; display:flex; flex-wrap:wrap; justify-content:space-between; gap:.5rem 2rem; padding:0 var(--pad) 1.2rem; font:400 .62rem/1.7 var(--mono); letter-spacing:.06em; color:rgba(241,233,216,.5)}
+.foot a{color:rgba(241,233,216,.72)}
+.foot .cr{max-width:46rem}
+
+/* lightbox */
+.lb{position:fixed; inset:0; z-index:100; display:grid; grid-template-rows:1fr auto; background:rgba(4,5,14,.985); opacity:0; visibility:hidden; transition:opacity .45s, visibility 0s .45s}
+.lb.open{opacity:1; visibility:visible; transition:opacity .45s}
+/* minmax(0,1fr): the track takes the stage's height, so max-height:100% on the photo can resolve */
+.lb-stage{position:relative; min-height:0; display:grid; grid-template-rows:minmax(0,1fr); grid-template-columns:minmax(0,1fr); place-items:center; padding:clamp(3.2rem,7vh,4.5rem) clamp(.8rem,6vw,5rem) .6rem}
+.lb-stage img{max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain; opacity:0; transform:scale(.985); transition:opacity .5s, transform .9s var(--ease)}
+.lb-stage img.ok{opacity:1; transform:none}
+.lb-bar{display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.7rem var(--pad) 1.3rem; font:400 .66rem/1.4 var(--mono); letter-spacing:.14em; text-transform:uppercase; color:var(--cream-2)}
+.lb button{font:500 .66rem/1 var(--mono); letter-spacing:.16em; text-transform:uppercase; white-space:nowrap; color:var(--cream); background:none; border:1px solid var(--line-2); border-radius:999px; padding:.7rem 1rem .66rem; cursor:pointer; transition:border-color .3s, color .3s}
+.lb button:hover{border-color:var(--amber); color:var(--tungsten)}
+.lb-x{position:absolute; right:var(--pad); top:1rem; z-index:2}
+.lb-nav{display:flex; flex:none; gap:.5rem}
+body.locked{overflow:hidden}
+
+/* ---------- responsive ---------- */
+@media (max-width:1399px){
+  /* no room for the ruler: the read-out becomes a vertical label in the left gutter, clear of the text */
+  .depth{left:.5rem; top:50%; transform:translateY(-50%) rotate(180deg); writing-mode:vertical-rl; flex-direction:row; align-items:baseline; gap:.45rem; padding:0; border:0; background:none; text-shadow:0 0 6px rgba(5,6,16,.95), 0 0 2px rgba(5,6,16,.95)}
+  .depth b{font-size:.95rem}
+}
+@media (max-width:1180px){
+  .hud-v, #hudL{display:none}
+  .hud-c{display:inline}
+  /* up in the sky, among the tightest trails: a soft shade behind the read-out */
+  .hud{isolation:isolate}
+  .hud::before{content:""; position:absolute; z-index:-1; inset:-1.5rem -1.6rem -1.4rem -2.4rem; background:radial-gradient(closest-side,rgba(5,7,22,.6),rgba(5,7,22,.36) 58%,rgba(5,7,22,0)); pointer-events:none}
+  .hud-h{color:rgba(241,233,216,.72)}
+}
+@media (min-width:861px) and (max-width:1180px){
+  /* the compact read-out goes up under the bar, as on tablets, and leaves the foot of the screen to the ridge note */
+  .hud{bottom:auto; top:clamp(4.2rem,9.5vh,5.2rem); width:auto}
+  .ridge-note{width:min(27rem,calc(61% - var(--pad)))}
+}
+@media (max-width:1080px){
+  .top nav a.nd{display:none}
+}
+@media (max-width:860px){
+  .about-grid, .fibre-head, .where, .fault-grid, .pair{grid-template-columns:1fr}
+  .portrait{position:relative; top:auto; max-width:20rem}
+  .steps{grid-template-columns:1fr; gap:1.6rem}
+  .map{justify-self:start}
+  .tools{grid-template-columns:1fr}
+  .more{grid-template-columns:1fr}
+  .notes-in{grid-template-columns:1fr; gap:2.6rem}
+  .ridge-note{left:var(--pad); right:var(--pad); width:auto; bottom:3.1rem; font-size:.6rem; line-height:1.5}
+  .hero::before{background:linear-gradient(rgba(5,7,22,.7),rgba(5,7,22,.62) 55%,rgba(5,7,22,0) 78%); -webkit-mask-image:none; mask-image:none}
+  .contact::after{background:linear-gradient(rgba(5,7,22,.72),rgba(5,7,22,.66) 62%,rgba(5,7,22,0) 88%); -webkit-mask-image:none; mask-image:none}
+  .kicker{font-size:.6rem; letter-spacing:.15em; gap:.6rem} .kicker::before{width:22px}
+  .hud{right:var(--pad); bottom:auto; top:clamp(4.2rem,9.5vh,5.2rem); width:auto; text-align:right}
+  .hud button{margin-top:.6rem}
+  .hero-copy{top:clamp(8.2rem,21vh,11rem)}
+  .time li, .paper, .cite{grid-template-columns:1fr; gap:.3rem}
+  .stats li:last-child{border-bottom:0}             /* the citation's rule follows: no empty row between two lines */
+  .lights{grid-template-columns:1fr}
+  .field canvas{height:clamp(200px,34vh,300px)}
+  .ph img{height:clamp(170px,47vw,300px)}
+  .js .plate-cap{left:var(--pad); right:auto; bottom:.9rem; text-align:left}
+}
+@media (min-width:701px) and (max-width:860px){
+  .js .plate.first img{object-position:0 0}        /* a tall frame: the left part, with the pole and without the lettering */
+}
+@media (max-width:700px){
+  .js .plate.first img{object-position:35% 50%}   /* keeps the photo's own lettering out of the frame */
+  .js .surface-copy{right:var(--pad)}
+  /* on a phone the words fill the top of the photo from edge to edge: the shade does too, as in the hero */
+  .js .stage::after{background:linear-gradient(rgba(5,6,15,.84),rgba(5,6,15,.72) 40%,rgba(5,6,15,0) 64%), linear-gradient(rgba(5,6,15,0) 80%,rgba(5,6,15,.5))}
+  .descent{place-items:center start}                /* the fault runs down the right tenth of the screen here */
+  .descent p{text-align:left; max-width:min(11em,74vw)}
+}
+@media (max-width:699px){
+  .rn-ps{display:none}                            /* scene.js draws the P and S marks from 700 px up */
+}
+@media (max-width:520px){
+  .top nav{gap:1rem}
+  .top nav a.nm{display:none}
+  .top nav a.draft{display:none}
+  .brand{font-size:1.02rem}
+  .field .lbl{max-width:9.5rem}
+  .field .cl{top:2.4rem}                             /* under the tag, which takes the top row */
+  .hero h1{font-size:clamp(3.3rem,17.5vw,5rem)}
+  .depth{left:2px} .depth b{font-size:.78rem} .depth span{display:none}   /* fits the 20 px gutter */
+}
+@media (max-height:640px) and (min-width:861px){
+  .hero-copy{top:4.6rem}
+  .what{display:none}
+}
+@media (max-width:860px), (hover:none), (pointer:coarse){
+  .hud-h{display:none}                               /* holding to expose works with a mouse only */
+}
+@media (prefers-reduced-motion:reduce){
+  .rec, .cue i::after, .lab-rings circle, .js .hero-copy > *, .js .hud, .js .cue, .js .ridge-note{animation:none}
+  .hud-h, #newExp{display:none}                      /* the sky is held still: nothing to re-expose */
+  .lab-rings circle{opacity:.5} .lab-rings circle:nth-child(1){transform:scale(.2)} .lab-rings circle:nth-child(2){transform:scale(.4)} .lab-rings circle:nth-child(3){transform:scale(.6)} .lab-rings circle:nth-child(4){transform:scale(.8)}
+  .js .rv{opacity:1; transform:none; transition:none}
+  .tool .shot img, .big > img, .mail, .field .cl{transition:none}
+}
+/* without JavaScript there is no sky and no ridge to talk about */
+html:not(.js) .hud, html:not(.js) .ridge-note{display:none}
+@media print{ #sky,#ground,#fx,.grain,.top,.depth,.hud,.cue{display:none} body{background:#fff; color:#111} }
+</style>
+</head>
+<body>
+<a class="skip" href="#about">Skip to the content</a>
+<canvas id="sky" aria-hidden="true"></canvas>
+<canvas id="ground" aria-hidden="true"></canvas>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div class="grain" id="grain" aria-hidden="true"></div>
+
+<header class="top" id="topbar">
+  <a class="brand" href="#top"><i aria-hidden="true"></i>Yuhan Wang</a>
+  <nav aria-label="Sections">
+    <a class="nd" href="#about">About</a>
+    <a class="nm" href="#fibre">The fibre</a>
+    <a class="nd" href="#fault">The fault</a>
+    <a class="nd" href="#deeper">Work</a>
+    <a href="#photos">Photographs</a>
+    <a href="#contact">Contact</a>
+    <a class="draft" href="../../index.html" title="Back to the list of design drafts">draft v3e · all drafts</a>
+  </nav>
+</header>
+
+<div class="depth" id="depth" aria-hidden="true"><span>Depth</span><b id="depthV">0 m</b><small>not to scale</small></div>
+
+<main id="main">
+
+<!-- ============================== THE SKY ============================== -->
+<section class="hero" id="top" aria-label="Introduction">
+  <div class="hero-copy" id="heroCopy">
+    <p class="kicker">Fibre-optic seismology · ETH Zürich</p>
+    <h1>Yuhan Wang</h1>
+    <blockquote class="epi">
+      <p>“What is essential is invisible to the eyes.”</p>
+      <footer>Antoine de Saint-Exupéry, <cite>The Little Prince</cite></footer>
+    </blockquote>
+    <p class="what">I photograph star trails. For work I study the part of the Earth nobody can see, by turning telecom cables into seismic arrays.</p>
+  </div>
+
+  <div class="hud" id="hud">
+    <p class="hud-l"><span class="rec" aria-hidden="true"></span><span id="hudL">Long exposure, live</span><span class="hud-c" id="hudC">Long exposure, live</span></p>
+    <p class="hud-v">Shutter open <b id="hudT">0:00</b>. Trails <b id="hudA">9°</b> long: <b id="hudR">36 min</b> under a real sky.</p>
+    <button type="button" id="newExp">New exposure</button>
+    <p class="hud-h">Press and hold on the sky to expose faster.</p>
+  </div>
+
+  <p class="ridge-note" id="ridgeNote"><b>The ridgeline is drawn from real ground motion.</b> M&nbsp;8.8 Kamchatka, 29 July 2025, recorded 8609&nbsp;km away in Switzerland (SED, ETH Zürich).<span class="rn-ps"> P and S: iasp91 times.</span></p>
+  <a class="cue" href="#about"><i aria-hidden="true"></i>Scroll: under the horizon</a>
+</section>
+
+<!-- ============================ UNDER THE GROUND ============================ -->
+<div id="underground">
+
+  <!-- I -->
+  <section class="sec" id="about" aria-labelledby="h-about" data-depth="0.8">
+    <p class="mark"><b>I</b><span>Just under the surface</span></p>
+    <div class="about-grid">
+      <figure class="portrait rv">
+        <img src="../v3-shared/portrait-sm.webp" srcset="../v3-shared/portrait-sm.webp 480w, ../v3-shared/portrait.webp 1200w" sizes="(max-width:860px) 20rem, 380px" width="1200" height="1500" alt="Portrait of Yuhan Wang" loading="lazy" decoding="async">
+        <img class="seal" src="img/seal-128.webp" width="128" height="128" alt="Yuhan Wang’s personal seal, stamped in vermilion" loading="lazy" decoding="async">
+        <figcaption>Yuhan Wang · ETH Zürich</figcaption>
+      </figure>
+      <div class="about-text halo">
+        <h2 id="h-about" class="rv">I’m Yuhan.<br>I record earthquakes<br>with <em>glass fibres</em>.</h2>
+        <p class="lead rv" style="--d:.08s">I’m a doctoral student in the Seismology &amp; Wave Physics group at ETH Zürich, supervised by Andreas Fichtner.</p>
+        <p class="body tx rv" style="--d:.14s">My field is fibre-optic seismology: turning telecom cables into dense seismic arrays, on the seafloor and under cities. I also build open tools around that work, from earthquake detection on fibre data to a literature hub for seismology.</p>
+        <ol class="time rv" style="--d:.2s">
+          <li><span class="y">2025 –</span><span class="w">Doctoral student, ETH Zürich<span class="s">Department of Earth and Planetary Sciences · <a href="https://cos.ethz.ch/" target="_blank" rel="noopener">Seismology &amp; Wave Physics group</a>, Andreas Fichtner</span></span></li>
+          <!-- confirm the exact degree name with Yuhan (CONTENT.md) -->
+          <li><span class="y">2023 – 2025</span><span class="w">MSc, ETH Zürich<span class="s">Earth and Planetary Sciences</span></span></li>
+          <li><span class="y">Summer 2022</span><span class="w">Summer research with the same group<span class="s">With Andreas Fichtner and Daniel Bowden: roadside fibre in Athens, ambient-noise tomography, site amplification</span></span></li>
+          <li><span class="y">2019 – 2023</span><span class="w">University of Science and Technology of China<span class="s">School of the Gifted Young · BSc in geophysics, minor in mathematics · fibre sensing with Huajian Yao’s group from 2021</span></span></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- II -->
+  <section class="sec" id="fibre" aria-labelledby="h-fibre" data-depth="3">
+    <p class="mark"><b>II</b><span>The fibre</span></p>
+    <div class="fibre-head halo">
+      <h2 id="h-fibre" class="rv">One telecom cable, <em>1872</em> seismometers.</h2>
+      <p class="lead rv" style="--d:.1s">Distributed acoustic sensing (DAS) reads the strain along an optical fibre that is already in the ground. The cable drawn below runs between the Greek islands of Kefalonia and Ithaca: land, seafloor, land.</p>
+    </div>
+
+    <div class="band rv">
+      <canvas id="fibreBand" role="img" aria-label="Drawing of the cable as a line of 1872 channels. Waves from a source below reach the fibre at different times, and the fibre lights up where they cross it."></canvas>
+      <div class="band-cap">
+        <p class="fine"><span class="wide">Click</span><span class="narrow">Tap</span> below the fibre to start an earthquake. The curve it draws above the cable is what a DAS record looks like: the wave arrives first where the cable is closest.</p>
+        <button type="button" id="quakeBtn">Start an earthquake</button>
+      </div>
+    </div>
+
+    <ol class="steps">
+      <li class="rv"><h3>Send light.</h3><p>An interrogator at one end of the cable sends laser pulses down a single glass fibre.</p></li>
+      <li class="rv" style="--d:.1s"><h3>Read the echo.</h3><p>Tiny flaws in the glass scatter a little light back. Where the ground stretches or squeezes the fibre, the phase of that echo changes.</p></li>
+      <li class="rv" style="--d:.2s"><h3>Sort it by distance.</h3><p>The arrival time of each echo tells where on the cable it came from. On this cable that gives a strain reading every 8.17&nbsp;m: 1872 channels along 15.29&nbsp;km of fibre.</p></li>
+    </ol>
+
+    <div class="where">
+      <div class="halo rv">
+        <h3>Where exactly is channel 1000?</h3>
+        <p class="body tx">A channel number is a distance along the fibre, not a place on the ground. Between the interrogator and the beach manhole this fibre is 7.32&nbsp;km long; the ground under it is 6.44&nbsp;km. Of the difference, 0.71&nbsp;km is spare fibre stored at eight points, in coils of 16 to 172&nbsp;m.</p>
+        <p class="body tx">I find the coils with three signals: tap tests, earthquake amplitudes and passing vehicles. The method is packaged as <a href="https://github.com/WANGYuhan2002/das-channel-mapping-skill" target="_blank" rel="noopener">das-channel-mapping-skill</a>.</p>
+        <p class="fine">The fibre recorded as a DAS array from 24 April to 22 June 2024.</p>
+      </div>
+      <figure class="map rv" style="--d:.12s">
+        <div id="map" role="img" aria-label="Map of Kefalonia and Ithaca in the Ionian Sea. The cable crosses the strait between the north of Kefalonia and Ithaca."></div>
+        <figcaption class="fine">Kefalonia and Ithaca, Ionian Sea, Greece. Cable route drawn by eye from my channel map; coastline from Natural Earth.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- the way down -->
+  <div class="descent" data-depth="5000">
+    <p class="rv">The cable stays at the surface. <em>The earthquakes it records start kilometres below.</em></p>
+  </div>
+
+  <!-- III -->
+  <section class="sec" id="fault" aria-labelledby="h-fault" data-depth="12000">
+    <p class="mark"><b>III</b><span>The fault</span></p>
+    <h2 id="h-fault" class="rv halo">893 earthquakes seen from land. <em>17,325</em> seen from the cable.</h2>
+
+    <div class="lights">
+      <figure class="field rv">
+        <canvas id="lightsLand" aria-hidden="true"></canvas>
+        <span class="tag">From land</span>
+        <figcaption><span class="num" data-count="893">893</span><span class="lbl">earthquakes in the regional catalogue</span></figcaption>
+      </figure>
+      <figure class="field rv" style="--d:.12s">
+        <canvas id="lightsCable" aria-hidden="true"></canvas>
+        <span class="tag">From the seafloor cable</span>
+        <span class="cl" aria-hidden="true">One cluster: over 72&nbsp;%</span>
+        <figcaption><span class="num" data-count="17325">17,325</span><span class="lbl">found in the same two months</span></figcaption>
+      </figure>
+    </div>
+    <p class="fine">Each light is one earthquake. The counts are real; the arrangement is a drawing, not a map.</p>
+
+    <div class="fault-grid">
+      <div class="halo">
+        <p class="lead rv">The Kefalonia Transform Fault breaks in earthquakes above magnitude&nbsp;6 every 10&nbsp;to&nbsp;20&nbsp;years. Its small earthquakes are poorly resolved by the stations on land.</p>
+        <p class="body tx rv" style="--d:.08s; margin-top:1.2rem">For two months in 2024, a seafloor telecom cable between Kefalonia and Ithaca recorded them as DAS data. I scanned that record with a matched filter built from only five template events. The detections come in episodic swarms.</p>
+      </div>
+      <ul class="stats rv" style="--d:.1s">
+        <li><b>5</b><span>template events</span></li>
+        <li><b>≈ 20×</b><span>the regional catalogue, for the same period</span></li>
+        <li><b>&gt; 72&nbsp;%</b><span>of detections in one cluster</span></li>
+        <li><b>≈ 2</b><span>units lower magnitude of completeness, near the template clusters</span></li>
+      </ul>
+    </div>
+
+    <div class="cite rv">
+      <p class="k">Preprint · 2026</p>
+      <div>
+        <h3><a href="https://doi.org/10.22541/essoar.15006791/v1" target="_blank" rel="noopener">Persistent Faulting Activity Along the Kefalonia Transform Fault Revealed by Seafloor DAS</a></h3>
+        <p class="p-auth">Yuhan Wang, Men-Andrin Meier, Adonis Bogris, Christos Simos, Iraklis Simos, Nikolaos S. Melis, Andreas Fichtner · ESS Open Archive</p>
+        <p class="p-links"><a href="https://doi.org/10.22541/essoar.15006791/v1" target="_blank" rel="noopener">doi:10.22541/essoar.15006791/v1</a> · code: <a href="https://github.com/WANGYuhan2002/yuhan-mfdas" target="_blank" rel="noopener">yuhan-mfdas</a>, <a href="https://github.com/WANGYuhan2002/yuhan_das_spectra" target="_blank" rel="noopener">yuhan_das_spectra</a>, <a href="https://github.com/WANGYuhan2002/das_wavefront_picker" target="_blank" rel="noopener">das_wavefront_picker</a> · archive <a href="https://doi.org/10.5281/zenodo.20715241" target="_blank" rel="noopener">doi:10.5281/zenodo.20715241</a></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- IV -->
+  <section class="sec" id="deeper" aria-labelledby="h-deeper" data-depth="30000">
+    <p class="mark"><b>IV</b><span>Deeper</span></p>
+    <h2 id="h-deeper" class="rv halo">More papers, the tools, <em>and a workshop</em>.</h2>
+
+    <ol class="papers">
+      <li class="paper rv">
+        <p class="k">2026<small>Journal article</small></p>
+        <div>
+          <h3><a href="https://doi.org/10.1785/0220260220" target="_blank" rel="noopener">Calibrating Microwave-Frequency Fiber Interferometry Against Collocated DAS: Earthquakes, Ocean Waves, and Traffic</a></h3>
+          <p class="p-auth">Yuhan Wang, Adonis Bogris, Christos Simos, Iraklis Simos, Nikolaos S. Melis, Stavros Deligiannidis, Andreas Fichtner · <em>Seismological Research Letters</em></p>
+          <p class="p-note">The same cable in 2024: one integrated fibre measurement compared with the DAS channels beside it, for earthquakes, ocean waves and traffic.</p>
+          <p class="p-links"><a href="https://doi.org/10.1785/0220260220" target="_blank" rel="noopener">doi:10.1785/0220260220</a> · code and data <a href="https://doi.org/10.5281/zenodo.20553635" target="_blank" rel="noopener">doi:10.5281/zenodo.20553635</a></p>
+        </div>
+      </li>
+      <li class="paper rv">
+        <p class="k">2026<small>Preprint</small></p>
+        <div>
+          <h3><a href="https://doi.org/10.5281/zenodo.23354895" target="_blank" rel="noopener">Geometric Filtering in Curved Fibre-Optic Sensing — I. Planar-Arc Response and a Deployment Decision Map</a></h3>
+          <p class="p-auth">Yuhan Wang, Andreas Fichtner</p>
+          <p class="p-note">How the curvature of a cable filters the wavefield it records, and what that means for laying out a deployment.</p>
+          <p class="p-links"><a href="https://doi.org/10.5281/zenodo.23354895" target="_blank" rel="noopener">doi:10.5281/zenodo.23354895</a></p>
+        </div>
+      </li>
+      <li class="paper rv">
+        <p class="k">2026<small>Data and code · co-author</small></p>
+        <div>
+          <h3><a href="https://doi.org/10.5281/zenodo.24190285" target="_blank" rel="noopener">Shallow Subsurface Imaging for Seismic Hazard using Dark Fibers in Athens, Greece</a></h3>
+          <p class="p-auth">Daniel C. Bowden, Lu Tian, Yuhan Wang, Krystyna T. Smolinski, Konstantinos Lentas, Nikolaos S. Melis, Adonis Bogris, Christos Simos, et al.</p>
+          <p class="p-note">This started as my 2022 summer project: ambient-noise tomography and site amplification from roadside DAS, presented at the <a href="https://agu.confex.com/agu/fm22/meetingapp.cgi/Paper/1081677" target="_blank" rel="noopener">AGU Fall Meeting 2022</a>.</p>
+          <p class="p-links"><a href="https://doi.org/10.5281/zenodo.24190285" target="_blank" rel="noopener">doi:10.5281/zenodo.24190285</a></p>
+        </div>
+      </li>
+      <li class="paper rv">
+        <p class="k">2025<small>Conference abstract</small></p>
+        <div>
+          <h3><a href="https://doi.org/10.5194/egusphere-egu25-2886" target="_blank" rel="noopener">Mapping fault dynamics: very high seismicity detected along the Kefalonia Transform Fault with DAS and template matching</a></h3>
+          <p class="p-auth">Yuhan Wang, Andreas Fichtner · EGU General Assembly 2025, Vienna</p>
+          <p class="p-links"><a href="https://doi.org/10.5194/egusphere-egu25-2886" target="_blank" rel="noopener">doi:10.5194/egusphere-egu25-2886</a></p>
+        </div>
+      </li>
+    </ol>
+
+    <div class="sub rv"><h3>Tools I build</h3><p>All open, on GitHub, in English and <span lang="zh">中文</span></p></div>
+    <div class="tools">
+      <article class="tool rv">
+        <span class="shot"><img src="../v3-shared/figs/sh-library.webp" width="1800" height="1125" alt="SeismoHub in the browser: a list of paper trackers on the left and cards of new papers with relevance scores." loading="lazy" decoding="async"></span>
+        <div class="tb"><h4><a href="https://github.com/WANGYuhan2002/seismohub" target="_blank" rel="noopener">SeismoHub</a></h4><p>A self-hosted, local-first literature hub for seismology: paper trackers, AI reading with paragraph-anchored citations, licence-aware PDF harvesting. One FastAPI process, one SQLite file.</p><span class="go">GitHub ↗</span></div>
+      </article>
+      <article class="tool rv" style="--d:.1s">
+        <span class="shot"><img src="../v3-shared/figs/sp-ppsd.webp" width="1800" height="1070" alt="Median noise spectrum of every channel of the seafloor cable, frequency against distance along the cable." loading="lazy" decoding="async"></span>
+        <div class="tb"><h4><a href="https://github.com/WANGYuhan2002/yuhan_das_spectra" target="_blank" rel="noopener">yuhan_das_spectra</a></h4><p>Spectra of seafloor DAS: noise PSD and PPSD, earthquake spectra by magnitude, noise against ERA5 wind and waves.</p><span class="go">GitHub ↗</span></div>
+      </article>
+      <article class="tool rv">
+        <span class="shot"><img src="../v3-shared/figs/wp-main.webp" width="1648" height="942" alt="The wavefront picker: a DAS waterfall with one picked wavefront drawn as a green line." loading="lazy" decoding="async"></span>
+        <div class="tb"><h4><a href="https://github.com/WANGYuhan2002/das_wavefront_picker" target="_blank" rel="noopener">das_wavefront_picker</a></h4><p>STA/LTA wavefront detection and interactive picking on raw DAS waterfalls, with bad-channel rejection.</p><span class="go">GitHub ↗</span></div>
+      </article>
+      <article class="tool rv" style="--d:.1s">
+        <span class="shot plot"><img src="../v3-shared/figs/cm-fig4.webp" width="1800" height="1211" alt="One hour of DAS on the land part of the cable: every passing vehicle draws a slanted track across the channels." loading="lazy" decoding="async"></span>
+        <div class="tb"><h4><a href="https://github.com/WANGYuhan2002/das-channel-mapping-skill" target="_blank" rel="noopener">das-channel-mapping-skill</a></h4><p>A Claude Code skill that finds the excess fibre along a cable and delivers the channel map with uncertainties.</p><span class="go">GitHub ↗</span></div>
+      </article>
+    </div>
+    <ul class="more">
+      <li class="rv"><h4><a href="https://wangyuhan2002.github.io/seismohub-lite/" target="_blank" rel="noopener">SeismoHub Lite</a></h4><p>A public, read-only daily snapshot: new seismology and wave-physics papers on one searchable page.</p><span class="go">Open the site ↗</span></li>
+      <li class="rv" style="--d:.08s"><h4><a href="https://github.com/WANGYuhan2002/paper-pdf-harvest" target="_blank" rel="noopener">paper-pdf-harvest</a></h4><p>Verified, licence-aware full-text PDFs for a reading list, from about twenty open channels.</p><span class="go">GitHub ↗</span></li>
+      <li class="rv" style="--d:.16s"><h4><a href="https://github.com/WANGYuhan2002/yuhan-mfdas" target="_blank" rel="noopener">yuhan-mfdas</a></h4><p>Matched-filter earthquake detection for the Kefalonia seafloor cable: templates, stacked cross-correlation, MAD triggering, magnitudes.</p><span class="go">GitHub ↗</span></li>
+    </ul>
+
+    <div class="pair">
+      <article class="big rv">
+        <svg class="lab-rings" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="98"/><circle cx="100" cy="100" r="98"/><circle cx="100" cy="100" r="98"/><circle cx="100" cy="100" r="98"/><circle cx="100" cy="100" r="98"/><circle class="src" cx="100" cy="100" r="1.6"/></svg>
+        <p class="k">In your browser</p>
+        <h3><a href="../v2a/lab/">Wave Lab</a></h3>
+        <p>Six experiments on one finite-difference solver: a playground, arrays and DAS, time reversal, tomography, ambient noise and elastic waves.</p>
+        <span class="go">Open the Wave Lab →</span>
+      </article>
+      <article class="big pic rv" style="--d:.1s">
+        <img src="../v2a/assets/tsc-2026.webp" width="960" height="540" alt="Workshop illustration: a seismogram crossing a globe shaded by seismic velocity anomalies beneath Europe." loading="lazy" decoding="async">
+        <p class="k">Workshop · 30–31 July 2026 · ETH Zürich &amp; online</p>
+        <h3><a href="https://wangyuhan2002.github.io/2026-tomo-workshop/" target="_blank" rel="noopener">Tomographic Summer Chill</a></h3>
+        <p>A workshop on multi-scale tomography of the Earth. I co-organised it with Andreas Fichtner; the Seismology &amp; Wave Physics group hosted it.</p>
+        <span class="go">Visit the workshop site ↗</span>
+      </article>
+    </div>
+  </section>
+
+  <div class="ascent" data-depth="0"><p>Up again, into the night.</p></div>
+</div>
+
+<!-- ============================ BACK AT THE SURFACE ============================ -->
+<section class="surface" id="surface" aria-labelledby="h-surface">
+  <div class="stage" id="stage">
+    <figure class="plate first">
+      <img src="../v3-shared/photos/star-trails.webp" width="2000" height="1498" alt="Long-exposure photograph: star trails circling over a dark hillside, with a utility pole and its wires in the foreground." loading="lazy" decoding="async">
+      <figcaption>Star trails · 星辰流转 · the photograph the first screen imitates</figcaption>
+    </figure>
+    <figure class="plate">
+      <picture>
+        <source media="(max-aspect-ratio:1/1)" srcset="../v3-shared/photos/night-house.webp" width="1269" height="2000">
+        <img src="../v3-shared/photos/heluoping.webp" width="2000" height="1125" alt="" loading="lazy" decoding="async">
+      </picture>
+      <figcaption><span class="pw">Yaoluoping, Anhui · 鹞落坪</span><span class="pn">A house at night</span></figcaption>
+    </figure>
+    <figure class="plate">
+      <picture>
+        <source media="(max-aspect-ratio:1/1)" srcset="../v3-shared/photos/zhanjiang-bridge.webp" width="1125" height="2000">
+        <img src="../v3-shared/photos/dusk.webp" width="2000" height="923" alt="" loading="lazy" decoding="async">
+      </picture>
+      <figcaption><span class="pw">Dusk</span><span class="pn">Zhanjiang</span></figcaption>
+    </figure>
+    <p class="plate-cap" id="plateCap" aria-hidden="true"></p>
+    <div class="surface-copy">
+      <p class="mark"><b>0 m</b><span>Back at the surface</span></p>
+      <h2 id="h-surface">What I can see, <em>I photograph</em>.</h2>
+      <p class="lead">Night skies and star trails, landscapes, postcards. I&nbsp;used to paint, too: Chinese ink wash and oil.</p>
+    </div>
+  </div>
+</section>
+
+<section class="photos" id="photos" aria-labelledby="h-photos">
+  <div class="photos-head">
+    <h2 id="h-photos" class="rv">Photographs</h2>
+    <p class="tx rv" style="--d:.1s">Drag the strip, or open a picture. More on <a href="https://500px.com.cn/wangyuhan" target="_blank" rel="noopener">500px</a> and <a href="https://space.bilibili.com/325684069/video" target="_blank" rel="noopener">Bilibili</a>.</p>
+  </div>
+  <ul class="strip" id="strip" tabindex="0" aria-label="Photographs by Yuhan Wang; scroll sideways">
+    <li><a class="ph" href="../v3-shared/photos/xiuning-bridge.webp" data-cap="Xiuning, Anhui"><img src="../v3-shared/photos/xiuning-bridge-sm.webp" srcset="../v3-shared/photos/xiuning-bridge-sm.webp 800w, ../v3-shared/photos/xiuning-bridge.webp 2000w" sizes="(max-width:860px) 84vw, 82vh" width="2000" height="1125" alt="A stone arch bridge and its reflection in a calm river, below a wooded hill." loading="lazy" decoding="async"><span class="cap">Xiuning, Anhui</span></a></li>
+    <li><a class="ph" href="../v3-shared/photos/night-house.webp" data-cap="A house at night"><img src="../v3-shared/photos/night-house-sm.webp" srcset="../v3-shared/photos/night-house-sm.webp 508w, ../v3-shared/photos/night-house.webp 1269w" sizes="(max-width:860px) 30vw, 30vh" width="1269" height="2000" alt="A two-storey house among trees under a sky full of stars." loading="lazy" decoding="async"><span class="cap">A house at night</span></a></li>
+    <li><a class="ph" href="../v3-shared/photos/waterfall.webp" data-cap="Waterfall"><img src="../v3-shared/photos/waterfall-sm.webp" srcset="../v3-shared/photos/waterfall-sm.webp 800w, ../v3-shared/photos/waterfall.webp 2000w" sizes="(max-width:860px) 84vw, 82vh" width="2000" height="1125" alt="A low, wide waterfall between boulders in a green mountain valley." loading="lazy" decoding="async"><span class="cap">Waterfall</span></a></li>
+    <li><a class="ph" href="../v3-shared/photos/heluoping.webp" data-cap="Yaoluoping, Anhui · 鹞落坪"><img src="../v3-shared/photos/heluoping-sm.webp" srcset="../v3-shared/photos/heluoping-sm.webp 800w, ../v3-shared/photos/heluoping.webp 2000w" sizes="(max-width:860px) 84vw, 82vh" width="2000" height="1125" alt="A rocky mountain stream under a footbridge, with a wooden boardwalk and a white building beside it, and misty wooded hills behind." loading="lazy" decoding="async"><span class="cap">Yaoluoping, Anhui <i lang="zh">鹞落坪</i></span></a></li>
+    <li><a class="ph" href="../v3-shared/photos/guilin-church.webp" data-cap="Guilin"><img src="../v3-shared/photos/guilin-church-sm.webp" srcset="../v3-shared/photos/guilin-church-sm.webp 450w, ../v3-shared/photos/guilin-church.webp 1125w" sizes="(max-width:860px) 27vw, 26vh" width="1125" height="2000" alt="A dark church spire against evening clouds." loading="lazy" decoding="async"><span class="cap">Guilin</span></a></li>
+    <li><a class="ph" href="../v3-shared/photos/guilin-karst.webp" data-cap="Guilin"><img src="../v3-shared/photos/guilin-karst-sm.webp" srcset="../v3-shared/photos/guilin-karst-sm.webp 800w, ../v3-shared/photos/guilin-karst.webp 2000w" sizes="(max-width:860px) 84vw, 82vh" width="2000" height="1126" alt="Karst peaks under a blue sky with clouds, wild flowers in the foreground." loading="lazy" decoding="async"><span class="cap">Guilin</span></a></li>
+    <li><a class="ph" href="../v3-shared/photos/guilin-river.webp" data-cap="Guilin"><img src="../v3-shared/photos/guilin-river-sm.webp" srcset="../v3-shared/photos/guilin-river-sm.webp 800w, ../v3-shared/photos/guilin-river.webp 2000w" sizes="(max-width:860px) 84vw, 82vh" width="2000" height="1125" alt="A river with boats and a bridge, beside a rocky hill with a natural arch." loading="lazy" decoding="async"><span class="cap">Guilin</span></a></li>
+    <li><a class="ph" href="../v3-shared/photos/guilin-tower.webp" data-cap="Guilin"><img src="../v3-shared/photos/guilin-tower-sm.webp" srcset="../v3-shared/photos/guilin-tower-sm.webp 800w, ../v3-shared/photos/guilin-tower.webp 2000w" sizes="(max-width:860px) 52vw, 51vh" width="2000" height="1811" alt="An illuminated tower above a road with light trails at night." loading="lazy" decoding="async"><span class="cap">Guilin</span></a></li>
+    <li><a class="ph" href="../v3-shared/photos/chaohu-bridge.webp" data-cap="Chaohu, Anhui"><img src="../v3-shared/photos/chaohu-bridge-sm.webp" srcset="../v3-shared/photos/chaohu-bridge-sm.webp 450w, ../v3-shared/photos/chaohu-bridge.webp 1125w" sizes="(max-width:860px) 27vw, 26vh" width="1125" height="2000" alt="A lit bridge along a lakeshore at night." loading="lazy" decoding="async"><span class="cap">Chaohu, Anhui</span></a></li>
+    <li><a class="ph" href="../v3-shared/photos/dusk.webp" data-cap="Dusk"><img src="../v3-shared/photos/dusk-sm.webp" srcset="../v3-shared/photos/dusk-sm.webp 800w, ../v3-shared/photos/dusk.webp 2000w" sizes="(max-width:860px) 102vw, 100vh" width="2000" height="923" alt="A lone tree on a dark horizon under a deep blue sky after sunset." loading="lazy" decoding="async"><span class="cap">Dusk</span></a></li>
+    <li><a class="ph" href="../v3-shared/photos/zhanjiang-sea.webp" data-cap="Zhanjiang"><img src="../v3-shared/photos/zhanjiang-sea-sm.webp" srcset="../v3-shared/photos/zhanjiang-sea-sm.webp 800w, ../v3-shared/photos/zhanjiang-sea.webp 2000w" sizes="(max-width:860px) 84vw, 82vh" width="2000" height="1125" alt="Palm trees and a seaside park under orange evening clouds." loading="lazy" decoding="async"><span class="cap">Zhanjiang</span></a></li>
+    <li><a class="ph" href="../v3-shared/photos/zhanjiang-bridge.webp" data-cap="Zhanjiang"><img src="../v3-shared/photos/zhanjiang-bridge-sm.webp" srcset="../v3-shared/photos/zhanjiang-bridge-sm.webp 450w, ../v3-shared/photos/zhanjiang-bridge.webp 1125w" sizes="(max-width:860px) 27vw, 26vh" width="1125" height="2000" alt="A cable-stayed bridge with yellow pylons over the water at dusk." loading="lazy" decoding="async"><span class="cap">Zhanjiang</span></a></li>
+    <li><a class="ph" href="../v3-shared/photos/zhanjiang-window.webp" data-cap="Zhanjiang"><img src="../v3-shared/photos/zhanjiang-window-sm.webp" srcset="../v3-shared/photos/zhanjiang-window-sm.webp 533w, ../v3-shared/photos/zhanjiang-window.webp 1332w" sizes="(max-width:860px) 32vw, 31vh" width="1332" height="2000" alt="An open red-framed window in a warm-toned room, sunlight on the floor." loading="lazy" decoding="async"><span class="cap">Zhanjiang</span></a></li>
+    <li><a class="ph" href="../v3-shared/photos/birds-on-wires.webp" data-cap="Birds on wires · a postcard I made"><img src="../v3-shared/photos/birds-on-wires-sm.webp" srcset="../v3-shared/photos/birds-on-wires-sm.webp 800w, ../v3-shared/photos/birds-on-wires.webp 2000w" sizes="(max-width:860px) 84vw, 82vh" width="2000" height="1125" alt="A postcard: two birds on wires in front of a pink cloud, with handwritten words." loading="lazy" decoding="async"><span class="cap">Birds on wires <i>a postcard I made</i></span></a></li>
+    <li><a class="ph" href="../v3-shared/photos/street-dusk.webp" data-cap="Street at dusk"><img src="../v3-shared/photos/street-dusk-sm.webp" srcset="../v3-shared/photos/street-dusk-sm.webp 800w, ../v3-shared/photos/street-dusk.webp 2000w" sizes="(max-width:860px) 70vw, 69vh" width="2000" height="1333" alt="Street lamps glowing orange under a pink and grey evening sky." loading="lazy" decoding="async"><span class="cap">Street at dusk</span></a></li>
+    <li><a class="ph" href="../v3-shared/photos/star-trails.webp" data-cap="Star trails · 星辰流转"><img src="../v3-shared/photos/star-trails-sm.webp" srcset="../v3-shared/photos/star-trails-sm.webp 800w, ../v3-shared/photos/star-trails.webp 2000w" sizes="(max-width:860px) 63vw, 62vh" width="2000" height="1498" alt="Star trails circling over a dark hillside, with a utility pole in the foreground." loading="lazy" decoding="async"><span class="cap">Star trails <i lang="zh">星辰流转</i></span></a></li>
+  </ul>
+</section>
+
+<section class="notes" id="notes" aria-labelledby="h-notes">
+  <div class="photos-head" style="margin-bottom:clamp(1.6rem,4vh,2.4rem)"><h2 id="h-notes" class="rv">Liner notes</h2></div>
+  <div class="notes-in">
+    <div class="side rv">
+      <h3><b>A</b>Reading</h3>
+      <ol class="tracks">
+        <li>Shen Congwen <span lang="zh">沈从文</span></li>
+        <li>Yu Hua <span lang="zh">余华</span></li>
+        <li>Su Shi <span lang="zh">苏轼</span></li>
+        <li>Tao Yuanming <span lang="zh">陶渊明</span></li>
+        <li>Bertrand Russell</li>
+        <li>Thoreau</li>
+        <li>Hermann Hesse</li>
+        <li>Kafka</li>
+      </ol>
+    </div>
+    <div class="side rv" style="--d:.1s">
+      <h3><b>B</b>Listening <span class="how">· folk and soundtracks</span></h3>
+      <ol class="tracks">
+        <li>Li Zhi <span lang="zh">李志</span></li>
+        <li>Yao Shisan <span lang="zh">尧十三</span></li>
+        <li>Li Jian <span lang="zh">李健</span></li>
+        <li>Coldplay</li>
+        <li>Bob Dylan</li>
+        <li>Ludovico Einaudi</li>
+        <li>Ennio Morricone</li>
+        <li>Hans Zimmer</li>
+        <li>Howard Shore</li>
+      </ol>
+    </div>
+    <div class="side rv" style="--d:.2s">
+      <h3><b>C</b>Otherwise</h3>
+      <ol class="tracks">
+        <li>Travelling</li>
+        <li>Cycling</li>
+        <li>Photographs and postcards</li>
+        <li>Once: ink wash and oil paint</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== THE SKY AGAIN ============================== -->
+<section class="contact" id="contact" aria-labelledby="h-contact">
+  <div class="contact-in">
+    <h2 id="h-contact" class="rv">Write to me.</h2>
+    <p class="lead rv" style="--d:.08s">About fibre-optic seismology, DAS data, the tools, or a photograph.</p>
+    <a class="mail rv" style="--d:.14s" data-mail href="https://cos.ethz.ch/people/person-detail.MzMzOTkx.TGlzdC8xNDQwLC0xMzkxMTI4OTM0.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+      <span data-mail-text>My address is on my ETH profile</span>
+    </a>
+    <ul class="links rv" style="--d:.2s">
+      <li><a href="https://github.com/WANGYuhan2002" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://scholar.google.com/citations?user=DLRFdHEAAAAJ&amp;hl=en" target="_blank" rel="noopener">Google Scholar</a></li>
+      <li><a href="https://orcid.org/0000-0001-6451-1166" target="_blank" rel="noopener">ORCID</a></li>
+      <li><a href="https://www.linkedin.com/in/yuhan-wang-aa2564214/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a href="https://cos.ethz.ch/people/person-detail.MzMzOTkx.TGlzdC8xNDQwLC0xMzkxMTI4OTM0.html" target="_blank" rel="noopener">ETH profile</a></li>
+      <li><a href="https://cos.ethz.ch/" target="_blank" rel="noopener">Seismology &amp; Wave Physics</a></li>
+    </ul>
+    <address class="rv" style="--d:.26s">Seismology &amp; Wave Physics group · Institute of Geophysics · ETH Zürich<br>Sonneggstrasse 5, 8092 Zürich, Switzerland</address>
+  </div>
+  <footer class="foot" id="foot">
+    <span>© 2026 Yuhan Wang · Zürich</span>
+    <span class="cr">Sky: a simulated long exposure. Both ridgelines: drawn from the same real seismogram (CH.SULZ, Swiss Seismological Service at ETH Zürich)<span class="rn-ps">; P and S marked at iasp91 travel times</span>. · <a href="../../index.html">draft v3e · all drafts</a></span>
+  </footer>
+</section>
+</main>
+
+<div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="Photograph" aria-hidden="true">
+  <button type="button" class="lb-x" id="lbX">Close</button>
+  <div class="lb-stage" id="lbStage"><img id="lbImg" alt=""></div>
+  <div class="lb-bar">
+    <span id="lbCap"></span>
+    <span class="lb-nav"><button type="button" id="lbPrev" aria-label="Previous photograph">← Prev</button><button type="button" id="lbNext" aria-label="Next photograph">Next →</button></span>
+  </div>
+</div>
+
+<script src="../v3-shared/data/seismogram.js"></script>
+<script src="../v3-shared/data/geo.js"></script>
+<script src="../v3-shared/data/cable.js"></script>
+<script src="js/scene.js"></script>
+<script src="js/app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js" async onload="window.YWApp&&window.YWApp.lenis()"></script>
+</body>
+</html>

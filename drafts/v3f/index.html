@@ -1,0 +1,1155 @@
+<!doctype html>
+<!-- v3f · WIGGLE. The name is a variable-area wiggle plot: seventy seismic traces whose amplitude follows the letters.
+     Click to fire a shot (P and S fronts cross the gather). The strip at the right edge records your scrolling,
+     and the contact section plays the whole record of your visit back as one trace. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Yuhan Wang — fibre-optic seismology · ETH Zürich</title>
+<meta name="description" content="Yuhan Wang, doctoral student in the Seismology &amp; Wave Physics group at ETH Zürich. Fibre-optic seismology: telecom cables as seismic arrays, on the seafloor and under cities.">
+<meta name="theme-color" content="#0b0b0c">
+<script>(function(){var d=document.documentElement,t=null,c=null;d.classList.add('js');try{c=document.createElement('canvas');c=c.getContext&&c.getContext('2d')}catch(e){c=null}if(!c)d.classList.add('nocanvas');try{t=localStorage.getItem('yw-v3f-theme')}catch(e){}if(t!=='light'&&t!=='dark')t='dark';d.setAttribute('data-theme',t)})();</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230b0b0c'/%3E%3Cpath d='M4 32h14l4-9 5 20 6-30 6 34 5-22 4 7h12' fill='none' stroke='%23c6ff3d' stroke-width='4' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0b0c; --fg:#f2f0ea; --dim:#8d8b85; --line:rgba(242,240,234,.16); --soft:rgba(242,240,234,.06);
+  --accent:#c6ff3d; --on-accent:#0b0b0c; --paper:#f2f0ea;
+  --disp:"Bricolage Grotesque","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --mono:"DM Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --pad:clamp(1.1rem,4vw,3.4rem); --strip:44px; --ease:cubic-bezier(.2,.7,.1,1);
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#f2f0ea; --fg:#0b0b0c; --dim:#6b6964; --line:rgba(11,11,12,.18); --soft:rgba(11,11,12,.05);
+  --accent:#1b2cff; --on-accent:#ffffff; --paper:#ffffff; color-scheme:light;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0; background:var(--bg); color:var(--fg); font:400 clamp(1rem,.95rem + .2vw,1.12rem)/1.6 var(--disp); font-optical-sizing:auto; -webkit-font-smoothing:antialiased; transition:background-color .35s, color .35s}
+a{color:inherit}
+img{display:block; max-width:100%; height:auto}
+h2,h3{margin:0; font:inherit}
+::selection{background:var(--accent); color:var(--on-accent)}
+:focus-visible{outline:2px solid var(--accent); outline-offset:4px}
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+.mono{font:400 .78rem/1.5 var(--mono); letter-spacing:.09em; text-transform:uppercase}
+.dim{color:var(--dim)}
+body{text-wrap:pretty}   /* no one-word last lines; headings that need it set balance */
+/* dotted mono lines: a line breaks between items rather than inside one (an item wraps only when it is wider than
+   the column), and a separator that would start a new line falls outside the box and is clipped away */
+.dots{display:flex; flex-wrap:wrap; column-gap:2.07em; overflow:hidden}   /* 2.07em = " · " in DM Mono with its tracking */
+.dots > span{position:relative}
+.dots > span + span::before{content:"·"; position:absolute; right:100%; width:2.07em; text-align:center; letter-spacing:0}
+/* without JS, or without a 2-D canvas, nothing can be drawn: the name is set as type and the empty frames are dropped */
+html:not(.js), html.nocanvas{--strip:0px}
+html:not(.js) .needs-cv, .nocanvas .needs-cv, html:not(.js) .needs-js{display:none !important}
+
+/* ---------------- scroll seismograph (right edge) ---------------- */
+.strip{position:fixed; z-index:30; top:0; right:0; bottom:0; width:var(--strip); border-left:1px solid var(--line); background:var(--bg); transition:background-color .35s}
+.strip canvas{display:block; width:100%; height:100%}
+/* the label panel spans the whole strip, so the trace ends above it instead of zig-zagging beside the letters
+   (physical paddings: the 180° turn puts padding-top at the bottom) */
+.strip span{position:absolute; z-index:1; left:0; right:0; bottom:0; display:flex; align-items:center; padding:1.7rem 0 .8rem; transform:rotate(180deg); writing-mode:vertical-rl; white-space:nowrap; color:var(--dim); background:var(--bg); transition:background-color .35s}
+main, footer{margin-right:var(--strip)}
+
+/* ---------------- hero ---------------- */
+.hero{position:relative; height:100svh; min-height:560px; overflow:hidden; cursor:crosshair; -webkit-user-select:none; user-select:none; margin-right:var(--strip)}
+#gather{position:absolute; inset:0; width:100%; height:100%; display:block}
+.hero .tl, .hero .tr, .hero .bl, .hero .br{position:absolute; z-index:2}
+.hero .tl{top:1.2rem; left:var(--pad); display:flex; flex-direction:column; gap:.35rem}
+.brand{font:700 1.02rem/1 var(--disp); letter-spacing:-.01em; text-decoration:none}
+.hero .tr{top:.85rem; right:var(--pad); display:flex; align-items:center; gap:.2rem}
+.nav a{display:inline-block; padding:.5rem .7rem; text-decoration:none}
+.nav a:hover{color:var(--accent)}
+.tbtn{display:grid; place-items:center; width:34px; height:34px; margin-left:.3rem; border:1px solid var(--line); border-radius:50%; background:none; color:inherit; cursor:pointer}
+.tbtn:hover{border-color:var(--accent); color:var(--accent)}
+.tbtn svg{width:16px; height:16px}
+.hero .bl{left:var(--pad); bottom:1.5rem; max-width:min(44rem,70%)}
+.hero .bl p{margin:0}
+.hero .what{font:500 clamp(1.25rem,2.3vw,2.05rem)/1.12 var(--disp); letter-spacing:-.02em; text-wrap:balance}
+.hero .bl .mono{margin-top:.55rem}
+.hero .br{right:var(--pad); bottom:1.5rem; text-align:right}
+.hint{display:inline-flex; align-items:center; gap:.6rem; padding:.35rem 0; border:0; background:none; color:inherit; font:inherit; letter-spacing:inherit; text-transform:inherit; cursor:pointer}
+.hint:hover{color:var(--accent)}
+.hint i{width:8px; height:8px; border-radius:50%; background:var(--accent); animation:blink 1.6s infinite}
+@keyframes blink{50%{opacity:.25}}
+/* the veils quieten the corners: the page colour, shaped by a mask, so they follow a theme flip with the page. The bottom
+   one fades in only below the name and is solid from just above the statement, so no trace runs through a line of it and
+   no letter is dimmed: the hero script publishes both edges (--name-bottom, --stmt-top) from its layout, and --from is
+   where the fade would start on a tall screen */
+.veil{position:absolute; left:0; right:0; top:0; z-index:1; pointer-events:none; background:var(--bg); transition:background-color .35s; -webkit-mask-image:var(--fade); mask-image:var(--fade)}
+.veil.t{height:16%; --fade:linear-gradient(to bottom,#000,transparent)}
+.veil.b{--from:66%; bottom:0; --fade:linear-gradient(to bottom,transparent max(var(--from),var(--name-bottom,0px)),#000 calc(var(--stmt-top,100%) - .75rem))}
+/* the h1 is read out, not seen, while the wiggle plot draws the name; without JS or canvas it is set in Anton instead */
+html:not(.js) .hname, .nocanvas .hname{position:absolute; z-index:1; left:var(--pad); right:var(--pad); top:44%; width:auto; height:auto; overflow:visible; clip:auto; white-space:normal; transform:translateY(-50%); margin:0; text-align:center; font:400 clamp(3.2rem,17vw,20rem)/.9 Anton,Impact,"Arial Narrow Bold",sans-serif; letter-spacing:.012em; text-transform:uppercase}
+html:not(.js) .hname span, .nocanvas .hname span{display:inline-block}
+@media (max-aspect-ratio:6/5){   /* two lines, as the plot does when the screen is narrower than 1.2 : 1 */
+  html:not(.js) .hname, .nocanvas .hname{font-size:min(34vw,22svh)}
+  html:not(.js) .hname span, .nocanvas .hname span{display:block}
+}
+html:not(.js) .hero, .nocanvas .hero{cursor:auto}
+
+/* ---------------- sections ---------------- */
+.sec{padding:clamp(4.5rem,12vh,8.5rem) var(--pad) 0}
+.label{display:flex; align-items:center; gap:1rem; margin:0 0 clamp(1.8rem,4vh,3rem); color:var(--dim)}
+.label b{color:var(--accent); font-weight:500}
+.label::after{content:""; flex:1; height:1px; background:var(--line)}
+.big{margin:0; max-width:19ch; font:500 clamp(2.3rem,6.6vw,6.2rem)/.98 var(--disp); letter-spacing:-.04em; text-wrap:balance}
+.big em{font-style:normal; color:var(--accent)}
+.ln{display:block; overflow:hidden; padding-bottom:.08em; margin-bottom:-.08em}
+.ln > span{display:block; transition:transform .9s var(--ease)}
+.js .ln > span{transform:translateY(108%)}
+.js .in .ln > span{transform:none}
+.ln:nth-child(2) > span{transition-delay:.07s} .ln:nth-child(3) > span{transition-delay:.14s} .ln:nth-child(4) > span{transition-delay:.21s}
+[data-r]{transition:opacity .8s var(--ease), transform .8s var(--ease)}
+.js [data-r]{opacity:0; transform:translateY(22px)}
+.js [data-r].in{opacity:1; transform:none}
+[data-stagger] > * > *{transition:opacity .8s var(--ease), transform .8s var(--ease)}
+.js [data-stagger] > * > *{opacity:0; transform:translateY(18px)}
+.js [data-stagger].in > * > *{opacity:1; transform:none}
+[data-stagger] > :nth-child(2) > *{transition-delay:.08s} [data-stagger] > :nth-child(3) > *{transition-delay:.16s} [data-stagger] > :nth-child(4) > *{transition-delay:.24s}
+
+/* 01 hello */
+.about{display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:clamp(2rem,6vw,6rem); align-items:start}
+.about-text{margin-top:clamp(2.4rem,6vh,4.5rem)}
+.about-text p{margin:0 0 1.1em; max-width:48ch; font-size:1.08em}
+.about-text a{text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:.22em}
+.about-text a:hover{text-decoration-color:var(--accent); color:var(--accent)}
+.tl-list{margin:2rem 0 0; padding:0; list-style:none; border-top:1px solid var(--line)}
+.tl-list li{display:grid; grid-template-columns:8rem 1fr; gap:1rem; padding:.85rem 0; border-bottom:1px solid var(--line)}
+.tl-list .mono{padding-top:.2rem; color:var(--dim)}
+.tl-list small{display:block; margin-top:.15rem; color:var(--dim); font-size:.9em}
+.portrait{position:sticky; top:2rem; margin:0; aspect-ratio:4/5; overflow:hidden; background:var(--soft); -webkit-tap-highlight-color:transparent}
+.portrait img{width:100%; height:100%; object-fit:cover; filter:grayscale(1) contrast(1.08); transition:filter .6s, transform 1.2s var(--ease)}
+.portrait.show img{filter:none; transform:scale(1.03)}
+/* the portrait as a variable-area wiggle plot; hover, or a click, tap, Enter or Space, lifts it off the photograph.
+   Hover only where it is real: a touch screen keeps :hover after a tap, which would block tapping back. */
+.portrait canvas{position:absolute; inset:0; width:100%; height:100%; background:var(--paper); transition:opacity .7s var(--ease)}
+.portrait.wig{cursor:pointer}
+.portrait.show canvas{opacity:0}
+@media (hover:hover){.portrait:hover img{filter:none; transform:scale(1.03)} .portrait.wig:hover canvas{opacity:0}}
+.portrait figcaption{position:absolute; left:.8rem; bottom:.7rem; padding:.25rem .5rem; background:var(--bg); color:var(--fg); transition:background-color .35s}
+
+/* 02 work list */
+.work{margin:0; padding:0; list-style:none; border-top:1px solid var(--fg)}
+.row{border-bottom:1px solid var(--line)}
+.row-h{display:grid; grid-template-columns:3.2rem minmax(0,1fr) auto 2rem; align-items:baseline; gap:1rem; width:100%; padding:clamp(1.1rem,2.6vh,1.9rem) .6rem; margin:0; border:0; background:none; color:inherit; font:inherit; text-align:left; cursor:pointer; transition:background-color .25s, color .25s, padding .35s var(--ease)}
+.row-h .t{font:500 clamp(1.45rem,3.3vw,3rem)/1.05 var(--disp); letter-spacing:-.03em; text-wrap:balance}
+.row-h .n, .row-h .v{color:var(--dim); transition:color .25s}
+.row-h .x{display:none; justify-self:end; font:300 1.9rem/1 var(--disp); transition:transform .45s var(--ease)}
+.js .row-h .x{display:block}
+@media (hover:hover){
+  .row-h:hover{background:var(--fg); color:var(--bg); padding-left:1.4rem}
+  .row-h:hover .n, .row-h:hover .v{color:inherit}
+}
+.row.open .row-h .x{transform:rotate(45deg)}
+.row-b{display:grid; grid-template-rows:1fr; transition:grid-template-rows .55s var(--ease)}
+.js .row-b{grid-template-rows:0fr}
+.js .row.open .row-b{grid-template-rows:1fr}
+.row-b > div{overflow:hidden}
+.row-in{display:grid; grid-template-columns:3.2rem minmax(0,1.25fr) minmax(0,1fr); column-gap:1rem; padding:.4rem .6rem 2.4rem}
+.row-txt{grid-column:2}
+.row-txt.wide{grid-column:2 / 4}
+.row-in p{margin:0 0 .9em; max-width:60ch}
+.row-in .cite{color:var(--dim); font-size:.93em}
+.row-in figure{grid-column:3; margin:0 0 0 clamp(.5rem,3vw,3rem)}
+.row-in figure img{width:100%; padding:14px; background:var(--paper)}
+.row-in figcaption{margin-top:.6rem; color:var(--dim)}
+.scheme canvas, .peek canvas{display:block; width:100%; aspect-ratio:4/3; background:var(--paper)}
+.peek canvas{display:none; height:100%; aspect-ratio:auto}
+.peek.sch img{display:none} .peek.sch canvas{display:block}
+.btns{display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.4rem}
+/* label and arrow are two items: on a narrow phone a long DOI breaks after a slash (<wbr>) inside the pill, the arrow
+   stays beside it, and the corners soften (the radius still makes a one-line pill fully round) */
+.doi{display:inline-flex; align-items:center; gap:.5rem; max-width:100%; padding:.55rem .9rem; border:1px solid var(--fg); border-radius:1.4rem; text-decoration:none; transition:background-color .2s, color .2s, border-color .2s}
+.doi > span{text-wrap:balance}
+.doi.sec-l{border-color:var(--line)}
+.doi:hover{background:var(--accent); border-color:var(--accent); color:var(--on-accent)}
+.facts{display:flex; flex-wrap:wrap; gap:.4rem; margin:0 0 1rem; padding:0; list-style:none}
+.facts li{padding:.3rem .6rem; border:1px solid var(--line); border-radius:999px}
+.peek{position:fixed; z-index:20; left:0; top:0; width:min(24vw,340px); aspect-ratio:4/3; padding:10px; background:var(--paper); pointer-events:none; opacity:0; transform:translate(-50%,-50%) scale(.94); transition:opacity .25s, transform .35s var(--ease); box-shadow:0 18px 50px rgba(0,0,0,.35)}
+.peek.on{opacity:1; transform:translate(-50%,-50%) scale(1)}
+.peek img{width:100%; height:100%; object-fit:contain}
+
+/* 03 one cable, two months */
+/* a grid, so the 893 panel sits in the plot's own row and its bottom edge is the plot's bottom edge */
+.count{display:grid; grid-template-columns:minmax(0,1fr) 30%; border-top:1px solid var(--fg)}
+.count canvas{grid-area:1 / 1 / 2 / 3; display:block; width:100%; height:clamp(230px,30vw,420px); cursor:crosshair; -webkit-tap-highlight-color:transparent}
+.count .fallback{grid-area:1 / 1 / 2 / 2; display:block; padding:1.5rem 0; font:600 clamp(4rem,16vw,14rem)/.9 var(--disp); letter-spacing:-.05em; color:var(--accent)}
+.js:not(.nocanvas) .count:not(.nocanvas) .fallback{display:none}
+html:not(.js) .count canvas, .nocanvas .count canvas, .count.nocanvas canvas{display:none}
+.count-cap{grid-area:2 / 1 / 3 / 3; display:flex; flex-wrap:wrap; justify-content:space-between; gap:.3rem 2rem; margin:.2rem 0 0; color:var(--dim)}
+.count-cap .hint-s{display:none}
+.js:not(.nocanvas) .count:not(.nocanvas) .hint-s{display:inline}
+.vs{grid-area:1 / 2 / 2 / 3; align-self:end; position:relative; z-index:1; padding:1.1rem 0 1.2rem 1.4rem; background:var(--bg); border-left:1px solid var(--line); transition:background-color .35s}
+.vs b{display:block; font:600 clamp(2.6rem,5vw,4.8rem)/.9 var(--disp); letter-spacing:-.04em; font-variant-numeric:tabular-nums}
+.vs span{display:block; margin-top:.7rem; color:var(--dim)}
+.facts4{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1px; margin-top:clamp(2.2rem,5vh,3.4rem); background:var(--line); border-block:1px solid var(--line)}
+.facts4 > div{padding:1.2rem 1.2rem 1.6rem; background:var(--bg); transition:background-color .35s}
+.facts4 > div:first-child{padding-left:0}
+.facts4 b{display:block; font:600 clamp(2rem,3.6vw,3.4rem)/1 var(--disp); letter-spacing:-.04em; white-space:nowrap}
+.facts4 span{display:block; margin-top:.7rem; color:var(--dim)}
+.src{margin:1.2rem 0 0; color:var(--dim)}
+.src a{text-underline-offset:.2em}
+.src a:hover{color:var(--accent)}
+
+/* 04 tools */
+.tools{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 clamp(1.5rem,4vw,4rem); margin:0; padding:0; list-style:none; border-top:1px solid var(--fg)}
+.tools a{display:grid; grid-template-columns:1fr auto; align-content:start; gap:.2rem 1rem; height:100%; padding:1.25rem .2rem; border-bottom:1px solid var(--line); text-decoration:none; transition:padding .35s var(--ease)}
+.tools h3{font:600 1.35rem/1.2 var(--disp); letter-spacing:-.02em}
+.tools p{grid-column:1; margin:0; color:var(--dim); font-size:.96em; max-width:48ch}
+.tools .ar{grid-row:1 / span 2; grid-column:2; align-self:center; font-size:1.3rem; transition:transform .35s var(--ease), color .2s}
+.tools a:hover{padding-left:.9rem}
+.tools a:hover .ar{transform:translate(4px,-4px); color:var(--accent)}
+.tools a:hover h3{color:var(--accent)}
+
+/* 05 also */
+.also{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1.2rem}
+.blk{display:grid; grid-template-rows:clamp(180px,24vw,260px) auto; overflow:hidden; border:1px solid var(--line); text-decoration:none}
+.blk .media{position:relative; overflow:hidden; border-bottom:1px solid var(--line); background:#000}
+.blk .media.paper{background:var(--bg)}
+html:not(.js) .blk .media.paper, .nocanvas .blk .media.paper{background:repeating-linear-gradient(to bottom,transparent 0 10px,var(--line) 10px 11px)}
+.blk .media img, .blk .media canvas{display:block; width:100%; height:100%; object-fit:cover; transition:transform 1.2s var(--ease)}
+.blk .media img{object-position:50% 45%}
+.blk:hover .media img{transform:scale(1.04)}
+.blk .txt{padding:1.3rem 1.6rem 1.6rem}
+.blk h3{margin:.5rem 0 .45rem; font:600 clamp(1.7rem,3vw,2.6rem)/1 var(--disp); letter-spacing:-.03em; text-wrap:balance}
+.blk p{margin:0; max-width:44ch}
+.blk .go{display:inline-block; margin-top:1rem; color:var(--accent)}
+
+/* 06 off duty */
+.off-top{display:grid; grid-template-columns:minmax(0,7fr) minmax(0,5fr); gap:clamp(2rem,5vw,5rem); align-items:end}
+.offgrid{display:grid; gap:1.4rem}
+.offgrid h3{margin:0 0 .35rem; color:var(--dim)}
+.offgrid p{margin:0; max-width:44ch}
+.reel{margin:clamp(2.4rem,6vh,4rem) calc(-1 * var(--pad)) 0; overflow-x:auto}
+.js .reel{overflow:hidden}
+.reel-track{display:flex; gap:14px; width:max-content}
+.js .reel-track{animation:reel 70s linear infinite}
+.reel:hover .reel-track, .reel:focus-within .reel-track{animation-play-state:paused}
+@keyframes reel{to{transform:translateX(calc(-50% - 7px))}}
+.reel figure{position:relative; flex:none; height:clamp(220px,38vh,380px); margin:0; overflow:hidden; background:var(--soft)}
+.reel img{height:100%; width:auto; filter:grayscale(1) contrast(1.05); transition:filter .5s}
+.reel figure:hover img{filter:none}
+.reel figcaption{position:absolute; left:.6rem; bottom:.55rem; padding:.2rem .45rem; background:var(--bg); color:var(--fg); opacity:0; transition:opacity .3s}
+.reel figure:hover figcaption{opacity:1}
+@media (hover:none){.reel img{filter:none} .reel figcaption{opacity:1}}
+
+/* 07 contact */
+.contact{padding-bottom:clamp(2rem,5vh,3.5rem)}
+.contact .big{max-width:none}
+/* the address has a row of its own and is sized to its column (about 11 em wide), so it never breaks;
+   if it ever has to, the only break point is the <wbr> after the @. Beside the links only on wide screens. */
+.reach{display:flex; flex-wrap:wrap; align-items:flex-end; gap:2rem 3rem; margin-top:clamp(1.6rem,4vh,2.8rem); container-type:inline-size}
+.mailto{flex:none; max-width:100%; font:500 min(4.2rem,calc((100vw - var(--strip) - 2 * var(--pad)) / 11.9))/1.05 var(--disp); letter-spacing:-.035em; text-decoration:none; border-bottom:.06em solid var(--line); transition:border-color .25s, color .25s}
+@supports (width:1cqi){.mailto{font-size:min(4.2rem,100cqi / 11.9)}}
+.mailto:hover{color:var(--accent); border-color:var(--accent)}
+.links{display:flex; flex-wrap:wrap; flex:1 1 100%; gap:.5rem; margin:0; padding:0; list-style:none}
+@media (min-width:1460px){.links{flex:0 1 31rem; margin-left:auto; justify-content:flex-end}}
+.links a{display:inline-flex; gap:.5rem; padding:.7rem 1.05rem; border:1px solid var(--line); border-radius:999px; text-decoration:none; transition:background-color .2s, color .2s, border-color .2s}
+.links a:hover{background:var(--fg); border-color:var(--fg); color:var(--bg)}
+/* the record of your visit: the strip's scroll seismogram, played back as one trace */
+.record{margin:clamp(3.5rem,9vh,6rem) calc(-1 * var(--pad)) 0}
+.record canvas{display:block; width:100%; height:clamp(110px,13vw,170px)}
+.record figcaption{display:flex; flex-wrap:wrap; justify-content:space-between; gap:.3rem 2rem; padding:.9rem var(--pad) 0; color:var(--dim)}
+.record figcaption b{font-weight:400; color:var(--fg)}
+.record:not(.on){display:none}
+footer{display:flex; flex-wrap:wrap; justify-content:space-between; gap:.6rem 2rem; padding:1.4rem var(--pad) 2rem; border-top:1px solid var(--line); color:var(--dim)}
+footer a:hover{color:var(--accent)}
+
+@media (max-width:1000px){
+  .hero .bl{max-width:none; right:var(--pad); bottom:4.2rem}
+  .hero .br{left:var(--pad); right:auto; text-align:left; bottom:1.3rem}
+  .veil.b{--from:calc(90% - 11rem)}   /* statement and hint stacked */
+}
+@media (max-width:900px){
+  .about, .also, .tools, .off-top{grid-template-columns:minmax(0,1fr)}
+  .tools h3{overflow-wrap:anywhere}
+  .facts4{grid-template-columns:1fr 1fr}
+  .facts4 > div:nth-child(odd){padding-left:0}
+  .facts4 > div:nth-child(even){padding-right:0}   /* the outer edges carry no padding, so the captions get the width */
+  .row-in{grid-template-columns:minmax(0,1fr); padding-left:calc(.6rem + 3.2rem + 1rem)}
+  .row-txt, .row-txt.wide{grid-column:1}
+  .row-in figure{grid-column:1; margin:1.2rem 0 0; max-width:34rem}
+  .portrait{max-width:360px}
+  .peek{display:none}
+}
+@media (max-width:760px){
+  :root{--strip:0px}
+  .strip{display:none}
+  .nav a:not(.keep){display:none}
+  .row-h{grid-template-columns:2.2rem minmax(0,1fr) 1.4rem; padding-left:0; padding-right:0}
+  .row-h .v{grid-column:2; grid-row:2}
+  .row-h .x{grid-column:3; grid-row:1}
+  .row-in{padding-left:calc(2.2rem + 1rem); padding-right:0}
+  .tl-list li{grid-template-columns:6.9rem 1fr}
+  .count{display:block}
+  .count canvas{height:clamp(170px,46vw,300px)}
+  .vs{position:static; width:auto; margin-top:1.4rem; padding:1rem 0 0; border-left:0; border-top:1px solid var(--line)}
+}
+@media (max-width:560px){
+  .plot-head .va{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .js [data-r], .js .ln > span, .js [data-stagger] > * > *{opacity:1; transform:none; transition:none}
+  .js .reel{overflow-x:auto} .js .reel-track{animation:none}
+  .hint i{animation:none}
+}
+@media print{
+  :root{--strip:0px}
+  .js [data-r], .js .ln > span, .js [data-stagger] > * > *{opacity:1 !important; transform:none !important}
+  .js .row-b{grid-template-rows:1fr}
+  .strip, .peek, .veil{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="strip needs-cv" aria-hidden="true"><canvas id="scrolltrace"></canvas><span class="mono">your scroll · recorded</span></div>
+
+<header class="hero" id="hero">
+  <canvas id="gather" class="needs-cv" aria-hidden="true"></canvas>
+  <h1 class="sr hname"><span>Yuhan</span> <span>Wang</span></h1>
+  <div class="veil t needs-cv" aria-hidden="true"></div><div class="veil b needs-cv" aria-hidden="true"></div>
+  <div class="tl">
+    <a class="brand" href="#hero">Yuhan Wang</a>
+    <span class="mono dim plot-head needs-cv" aria-hidden="true"><span id="plotHead">Gather 0001</span><span class="va"> · variable area</span></span>
+  </div>
+  <div class="tr">
+    <nav class="nav mono" aria-label="Sections"><a href="#work">Work</a><a href="#tools">Tools</a><a href="#off">Off duty</a><a class="keep" href="#contact">Contact</a></nav>
+    <button class="tbtn needs-js" id="themeBtn" type="button" aria-label="Invert colours (I)" title="Invert colours (I)" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button>
+  </div>
+  <div class="bl">
+    <p class="what">Doctoral student in fibre&#8209;optic seismology at ETH&nbsp;Zürich.</p>
+    <p class="mono dim dots"><span>Seismology &amp; Wave Physics</span><span>DAS on the seafloor and under&nbsp;cities</span></p>
+  </div>
+  <div class="br mono needs-cv">
+    <button class="hint" id="shotBtn" type="button"><i aria-hidden="true"></i><span id="hintText">Click anywhere: fire a shot</span></button>
+  </div>
+</header>
+
+<main>
+<!-- ============================ hello ============================ -->
+<section class="sec" id="about">
+  <h2 class="label mono"><b>01</b> Hello</h2>
+  <div class="about">
+    <div>
+      <p class="big" data-lines><span class="ln"><span>I turn telecom</span></span><span class="ln"><span>cables into</span></span><span class="ln"><span><em>seismic arrays.</em></span></span></p>
+      <div class="about-text" data-r>
+        <p>I’m a doctoral student in the <a href="https://cos.ethz.ch/" target="_blank" rel="noopener">Seismology &amp; Wave Physics group</a> at ETH Zürich, working with Andreas Fichtner. My instrument is distributed acoustic sensing (DAS): laser light in an ordinary glass fibre measures how the ground stretches, every few metres, along kilometres of cable.</p>
+        <p>I use it on the seafloor to find the small earthquakes that land networks resolve poorly, and under cities to image the shallow ground. Around the science I build open tools: for reading papers, mapping cables and picking wavefronts.</p>
+        <ul class="tl-list">
+          <li><span class="mono">2025 – now</span><span>Doctoral student, Earth and Planetary Sciences, ETH&nbsp;Zürich</span></li>
+          <li><span class="mono">2023 – 2025</span><span>MSc, Earth and Planetary Sciences, ETH&nbsp;Zürich</span></li>
+          <li><span class="mono">Summer 2022</span><span>Summer research with SWP at ETH&nbsp;Zürich: roadside DAS in Athens</span></li>
+          <li><span class="mono">2019 – 2023</span><span>BSc in geophysics, minor in mathematics, School of the Gifted Young, University of Science and Technology of China<small>DAS work with Huajian Yao’s group from 2021</small></span></li>
+        </ul>
+      </div>
+    </div>
+    <figure class="portrait" id="portrait" data-r>
+      <img src="../v3-shared/portrait.webp" width="1200" height="1500" loading="lazy" alt="Portrait of Yuhan Wang">
+    </figure>
+  </div>
+</section>
+
+<!-- ============================ work ============================ -->
+<section class="sec" id="work">
+  <h2 class="label mono"><b>02</b> Selected work</h2>
+  <ul class="work">
+    <li class="row">
+      <h3><button class="row-h" type="button" aria-expanded="false" aria-controls="w1" data-img="../v3-shared/figs/sp-eq.webp">
+        <span class="n mono">01</span><span class="t">17,325 small earthquakes, one seafloor cable</span><span class="v mono">Preprint · 2026</span><span class="x" aria-hidden="true">+</span>
+      </button></h3>
+      <div class="row-b" id="w1"><div><div class="row-in">
+        <div class="row-txt">
+          <ul class="facts mono"><li>Seafloor DAS</li><li>Matched filter</li><li>Kefalonia, Greece</li></ul>
+          <p>The Kefalonia Transform Fault ruptures in earthquakes above magnitude 6 every 10 to 20 years, but land networks resolve its small earthquakes poorly. For two months in 2024 we recorded DAS on a telecom cable on the seafloor between Kefalonia and Ithaca.</p>
+          <p>A matched filter with only five template events found 17,325 microearthquakes, nearly 20 times the 893 in the regional catalogue for the same period. They come in swarms, and one cluster holds more than 72&nbsp;% of them. Near the template clusters, the magnitude of completeness drops by about two units.</p>
+          <p class="cite">Wang, Meier, Bogris, C. Simos, I. Simos, Melis &amp; Fichtner. <em>Persistent Faulting Activity Along the Kefalonia Transform Fault Revealed by Seafloor DAS.</em> ESS Open Archive, 2026.</p>
+          <div class="btns">
+            <a class="doi mono" href="https://doi.org/10.22541/essoar.15006791/v1" target="_blank" rel="noopener"><span>doi:10.22541/<wbr>essoar.15006791/<wbr>v1</span>↗</a>
+            <a class="doi sec-l mono" href="https://doi.org/10.5194/egusphere-egu25-2886" target="_blank" rel="noopener"><span>EGU 2025 abstract</span>↗</a>
+            <a class="doi sec-l mono" href="https://doi.org/10.5281/zenodo.20715241" target="_blank" rel="noopener"><span>Code archive</span>↗</a>
+          </div>
+        </div>
+        <figure><img src="../v3-shared/figs/sp-eq.webp" width="1800" height="1351" loading="lazy" alt="Power spectral density of earthquakes by magnitude bin at one seafloor channel, above the ambient noise."><figcaption class="mono">Earthquake spectra by magnitude over the ambient noise, channel at 11.0&nbsp;km. From yuhan_das_spectra.</figcaption></figure>
+      </div></div></div>
+    </li>
+    <li class="row">
+      <h3><button class="row-h" type="button" aria-expanded="false" aria-controls="w2" data-scheme="sum">
+        <span class="n mono">02</span><span class="t">A second way to listen to the same cable</span><span class="v mono">Seismol. Res. Lett. · 2026</span><span class="x" aria-hidden="true">+</span>
+      </button></h3>
+      <div class="row-b" id="w2"><div><div class="row-in">
+        <div class="row-txt">
+          <ul class="facts mono"><li>Fibre interferometry</li><li>Calibration</li><li>Earthquakes · ocean waves · traffic</li></ul>
+          <p>On the same Kefalonia cable in 2024: one integrated fibre measurement, made with microwave-frequency interferometry, compared with the DAS channels beside it, for earthquakes, ocean waves and traffic.</p>
+          <p class="cite">Wang, Bogris, C. Simos, I. Simos, Melis, Deligiannidis &amp; Fichtner. <em>Calibrating Microwave-Frequency Fiber Interferometry Against Collocated DAS: Earthquakes, Ocean Waves, and Traffic.</em> Seismological Research Letters, 2026.</p>
+          <div class="btns">
+            <a class="doi mono" href="https://doi.org/10.1785/0220260220" target="_blank" rel="noopener"><span>doi:10.1785/<wbr>0220260220</span>↗</a>
+            <a class="doi sec-l mono" href="https://doi.org/10.5281/zenodo.20553635" target="_blank" rel="noopener"><span>Code and data</span>↗</a>
+          </div>
+        </div>
+        <figure class="scheme needs-cv"><canvas data-scheme="sum" aria-hidden="true"></canvas><figcaption class="mono">Schematic · one integrated fibre measurement (blue), compared with the DAS channels beside it.</figcaption></figure>
+      </div></div></div>
+    </li>
+    <li class="row">
+      <h3><button class="row-h" type="button" aria-expanded="false" aria-controls="w3" data-scheme="arc">
+        <span class="n mono">03</span><span class="t">What a bend in the cable does to the recording</span><span class="v mono">Preprint · 2026</span><span class="x" aria-hidden="true">+</span>
+      </button></h3>
+      <div class="row-b" id="w3"><div><div class="row-in">
+        <div class="row-txt">
+          <ul class="facts mono"><li>Theory</li><li>Curved fibres</li><li>Deployment design</li></ul>
+          <p>A fibre measures strain along its own direction, so its shape filters the wavefield it records. This first part works out the response of a planar arc and turns it into a decision map for laying out a deployment.</p>
+          <p class="cite">Wang &amp; Fichtner. <em>Geometric Filtering in Curved Fibre-Optic Sensing — I. Planar-Arc Response and a Deployment Decision Map.</em> 2026.</p>
+          <div class="btns"><a class="doi mono" href="https://doi.org/10.5281/zenodo.23354895" target="_blank" rel="noopener"><span>doi:10.5281/<wbr>zenodo.23354895</span>↗</a></div>
+        </div>
+        <figure class="scheme needs-cv"><canvas data-scheme="arc" aria-hidden="true"></canvas><figcaption class="mono">Schematic · a plane wave crosses a bend in the fibre, whose shape filters the wavefield it records (blue).</figcaption></figure>
+      </div></div></div>
+    </li>
+    <li class="row">
+      <h3><button class="row-h" type="button" aria-expanded="false" aria-controls="w4" data-img="../v3-shared/figs/cm-fig4.webp">
+        <span class="n mono">04</span><span class="t">Where exactly is channel&nbsp;1,000?</span><span class="v mono">Open tool · Claude Code skill</span><span class="x" aria-hidden="true">+</span>
+      </button></h3>
+      <div class="row-b" id="w4"><div><div class="row-in">
+        <div class="row-txt">
+          <ul class="facts mono"><li>Channel mapping</li><li>Tap tests · earthquakes · vehicles</li></ul>
+          <p>A DAS interrogator counts channels along the fibre, and the fibre is longer than its route: installers leave coils of spare fibre in manholes. Between the interrogator and the beach manhole of the Kefalonia cable, 7.32&nbsp;km of fibre lies on 6.44&nbsp;km of ground; 0.71&nbsp;km of the difference is spare fibre stored at eight points, in coils of 16 to 172&nbsp;m.</p>
+          <p>I find that excess with three signals (tap tests, earthquake amplitudes and passing vehicles) and deliver a position with an uncertainty for each of the 1,872 channels.</p>
+          <div class="btns"><a class="doi mono" href="https://github.com/WANGYuhan2002/das-channel-mapping-skill" target="_blank" rel="noopener"><span>das-channel-mapping-skill</span>↗</a></div>
+        </div>
+        <figure><img src="../v3-shared/figs/cm-fig1.webp" width="1800" height="1775" loading="lazy" alt="Schematic of a cable under a road with a loop and a coil of spare fibre, and how tap tests, an earthquake and passing vehicles reveal them."><figcaption class="mono">Excess fibre along a cable and the three signals that show it. From das-channel-mapping-skill.</figcaption></figure>
+      </div></div></div>
+    </li>
+    <li class="row">
+      <h3><button class="row-h" type="button" aria-expanded="false" aria-controls="w5">
+        <span class="n mono">05</span><span class="t">Dark fibre under Athens</span><span class="v mono">Co-author · 2022 – 2026</span><span class="x" aria-hidden="true">+</span>
+      </button></h3>
+      <div class="row-b" id="w5"><div><div class="row-in">
+        <div class="row-txt wide">
+          <ul class="facts mono"><li>Urban DAS</li><li>Ambient noise</li><li>Seismic hazard</li></ul>
+          <p>This began as my 2022 summer project with SWP at ETH Zürich, with Andreas Fichtner and Daniel Bowden: ambient-noise tomography and site amplification from roadside DAS in Athens. It grew into a study of the shallow subsurface for seismic hazard; Daniel Bowden is first author of the data and code.</p>
+          <p class="cite">Bowden, Tian, Wang, Smolinski, Lentas, Melis, Bogris, C. Simos et al. <em>Shallow Subsurface Imaging for Seismic Hazard using Dark Fibers in Athens, Greece</em> (data and code), 2026.</p>
+          <div class="btns">
+            <a class="doi mono" href="https://doi.org/10.5281/zenodo.24190285" target="_blank" rel="noopener"><span>doi:10.5281/<wbr>zenodo.24190285</span>↗</a>
+            <a class="doi sec-l mono" href="https://agu.confex.com/agu/fm22/meetingapp.cgi/Paper/1081677" target="_blank" rel="noopener"><span>AGU Fall Meeting 2022</span>↗</a>
+          </div>
+        </div>
+      </div></div></div>
+    </li>
+  </ul>
+</section>
+
+<!-- ============================ numbers ============================ -->
+<section class="sec" id="numbers">
+  <h2 class="label mono"><b>03</b> One cable, two months</h2>
+  <div class="count" id="countWrap">
+    <canvas id="count" aria-hidden="true"></canvas>
+    <b class="fallback" aria-hidden="true">17,325</b>
+    <p class="sr">17,325 microearthquakes found with five template events, against 893 in the regional catalogue for the same period.</p>
+    <p class="count-cap mono" aria-hidden="true"><span>Microearthquakes, found with five template events</span><span class="hint-s">Click the number: fire a shot</span></p>
+    <div class="vs" aria-hidden="true"><b>893</b><span class="mono">in the regional catalogue, same&nbsp;period</span></div>
+  </div>
+  <div class="facts4" data-stagger>
+    <div><b>&gt; 72&nbsp;%</b><span class="mono">of the detections sit in one cluster</span></div>
+    <div><b>≈ 2</b><span class="mono">units lower magnitude of completeness near the templates</span></div>
+    <div><b>1,872</b><span class="mono">channels, one every 8.17&nbsp;m</span></div>
+    <div><b>15&nbsp;km</b><span class="mono">of cable: land, sea, land</span></div>
+  </div>
+  <p class="src mono dots"><span>Kefalonia–Ithaca seafloor cable, Greece</span><span>24&nbsp;April – 22&nbsp;June&nbsp;2024</span><span>detections: <a href="https://doi.org/10.22541/essoar.15006791/v1" target="_blank" rel="noopener">preprint&nbsp;↗</a></span><span>cable: <a href="https://github.com/WANGYuhan2002/das-channel-mapping-skill" target="_blank" rel="noopener">das-channel-mapping-skill&nbsp;↗</a></span></p>
+</section>
+
+<!-- ============================ tools ============================ -->
+<section class="sec" id="tools">
+  <h2 class="label mono"><b>04</b> Tools I build</h2>
+  <ul class="tools">
+    <li><a href="https://github.com/WANGYuhan2002/seismohub" target="_blank" rel="noopener" data-img="../v3-shared/figs/sh-library.webp"><h3>SeismoHub</h3><p>A self-hosted, local-first literature hub for seismology: paper trackers, AI reading with paragraph-anchored citations, licence-aware PDF harvesting.</p><span class="ar" aria-hidden="true">↗</span></a></li>
+    <li><a href="https://wangyuhan2002.github.io/seismohub-lite/" target="_blank" rel="noopener"><h3>SeismoHub Lite</h3><p>A public, read-only daily snapshot: new seismology and wave-physics papers on one searchable page.</p><span class="ar" aria-hidden="true">↗</span></a></li>
+    <li><a href="https://github.com/WANGYuhan2002/paper-pdf-harvest" target="_blank" rel="noopener"><h3>paper-pdf-harvest</h3><p>Verified, licence-aware full-text PDFs for a reading list, from about twenty open channels.</p><span class="ar" aria-hidden="true">↗</span></a></li>
+    <li><a href="https://github.com/WANGYuhan2002/yuhan-mfdas" target="_blank" rel="noopener"><h3>yuhan-mfdas</h3><p>Matched-filter earthquake detection for the Kefalonia seafloor cable: templates, stacked cross-correlation, MAD triggering, magnitudes.</p><span class="ar" aria-hidden="true">↗</span></a></li>
+    <li><a href="https://github.com/WANGYuhan2002/das_wavefront_picker" target="_blank" rel="noopener" data-img="../v3-shared/figs/wp-wiggle.webp"><h3>das_wavefront_picker</h3><p>STA/LTA wavefront detection and interactive picking on raw DAS waterfalls, with bad-channel rejection.</p><span class="ar" aria-hidden="true">↗</span></a></li>
+    <li><a href="https://github.com/WANGYuhan2002/yuhan_das_spectra" target="_blank" rel="noopener" data-img="../v3-shared/figs/sp-ppsd.webp"><h3>yuhan_das_spectra</h3><p>Spectra of seafloor DAS: noise PSD and PPSD, earthquake spectra by magnitude, noise against ERA5 wind and waves.</p><span class="ar" aria-hidden="true">↗</span></a></li>
+  </ul>
+  <p class="src mono">All on GitHub · English / 中文</p>
+</section>
+
+<!-- ============================ also ============================ -->
+<section class="sec" id="also">
+  <h2 class="label mono"><b>05</b> Also</h2>
+  <div class="also">
+    <a class="blk" href="../v2a/lab/" data-r>
+      <div class="media paper"><canvas id="labwave" class="needs-cv" aria-hidden="true"></canvas></div>
+      <div class="txt">
+        <span class="mono dim dots"><span>Runs in your browser</span></span>
+        <h3>Wave Lab</h3>
+        <p>Six experiments on one finite-difference solver: a playground, arrays and DAS, time reversal, tomography, ambient noise and elastic waves.</p>
+        <span class="go mono">Open the lab →</span>
+      </div>
+    </a>
+    <a class="blk" href="https://wangyuhan2002.github.io/2026-tomo-workshop/" target="_blank" rel="noopener" data-r>
+      <div class="media"><img src="../v2a/assets/tsc-2026.webp" width="960" height="540" loading="lazy" alt="Workshop illustration: a seismogram crossing a globe shaded by seismic velocity anomalies."></div>
+      <div class="txt">
+        <span class="mono dim dots"><span>30–31&nbsp;July&nbsp;2026</span><span>ETH&nbsp;Zürich &amp;&nbsp;online</span></span>
+        <h3>Tomographic Summer Chill</h3>
+        <p>A two-day workshop on multi-scale tomography of the Earth, hosted by SWP. Co-organised with Andreas&nbsp;Fichtner.</p>
+        <span class="go mono">Visit the site ↗</span>
+      </div>
+    </a>
+  </div>
+</section>
+
+<!-- ============================ off duty ============================ -->
+<section class="sec" id="off">
+  <h2 class="label mono"><b>06</b> Off duty</h2>
+  <div class="off-top">
+    <p class="big" data-lines><span class="ln"><span>Night skies,</span></span><span class="ln"><span>landscapes,</span></span><span class="ln"><span><em>folk songs.</em></span></span></p>
+    <div class="offgrid">
+      <div data-r><h3 class="mono">Looking</h3><p>I photograph night skies, star trails and landscapes, and used to paint in Chinese ink wash and oil. Also travelling and cycling.</p></div>
+      <div data-r><h3 class="mono">Reading</h3><p>Shen Congwen, Yu Hua, Su Shi, Tao Yuanming; Russell, Thoreau, Hesse, Kafka.</p></div>
+      <div data-r><h3 class="mono">Listening</h3><p>Li Zhi, Yao Shisan, Li Jian, Coldplay, Bob Dylan; Einaudi, Morricone, Zimmer, Shore.</p></div>
+    </div>
+  </div>
+  <div class="reel" data-r>
+    <div class="reel-track" id="reel">
+      <figure><img src="../v3-shared/photos/star-trails-sm.webp" srcset="../v3-shared/photos/star-trails-sm.webp 800w, ../v3-shared/photos/star-trails.webp 2000w" sizes="(max-width:760px) 430px, 510px" width="800" height="599" loading="lazy" alt="Star trails over a hillside with a utility pole."><figcaption class="mono">Star trails</figcaption></figure>
+      <figure><img src="../v3-shared/photos/heluoping-sm.webp" srcset="../v3-shared/photos/heluoping-sm.webp 800w, ../v3-shared/photos/heluoping.webp 2000w" sizes="(max-width:760px) 570px, 680px" width="800" height="450" loading="lazy" alt="A wooden walkway along a stream below misty hills."><figcaption class="mono">Yaoluoping, Anhui</figcaption></figure>
+      <figure><img src="../v3-shared/photos/zhanjiang-window-sm.webp" srcset="../v3-shared/photos/zhanjiang-window-sm.webp 533w, ../v3-shared/photos/zhanjiang-window.webp 1332w" sizes="(max-width:760px) 214px, 260px" width="533" height="800" loading="lazy" alt="An open wooden window in a warm room, looking onto old houses."><figcaption class="mono">Zhanjiang</figcaption></figure>
+      <figure><img src="../v3-shared/photos/xiuning-bridge-sm.webp" srcset="../v3-shared/photos/xiuning-bridge-sm.webp 800w, ../v3-shared/photos/xiuning-bridge.webp 2000w" sizes="(max-width:760px) 570px, 680px" width="800" height="450" loading="lazy" alt="A stone arch bridge with a bus crossing it, reflected in a calm river below a wooded hill."><figcaption class="mono">Xiuning, Anhui</figcaption></figure>
+      <figure><img src="../v3-shared/photos/guilin-karst-sm.webp" srcset="../v3-shared/photos/guilin-karst-sm.webp 800w, ../v3-shared/photos/guilin-karst.webp 2000w" sizes="(max-width:760px) 570px, 680px" width="800" height="450" loading="lazy" alt="Karst hills under a blue sky with flowers in the foreground."><figcaption class="mono">Guilin</figcaption></figure>
+      <figure><img src="../v3-shared/photos/night-house-sm.webp" srcset="../v3-shared/photos/night-house-sm.webp 508w, ../v3-shared/photos/night-house.webp 1269w" sizes="(max-width:760px) 214px, 260px" width="508" height="800" loading="lazy" alt="An old house under a starry sky."><figcaption class="mono">House under the stars</figcaption></figure>
+      <figure><img src="../v3-shared/photos/chaohu-sunset-sm.webp" srcset="../v3-shared/photos/chaohu-sunset-sm.webp 800w, ../v3-shared/photos/chaohu-sunset.webp 2000w" sizes="(max-width:760px) 570px, 680px" width="800" height="450" loading="lazy" alt="A red sun setting over a lake, with people sitting at a railing."><figcaption class="mono">Chaohu, Anhui</figcaption></figure>
+      <figure><img src="../v3-shared/photos/waterfall-sm.webp" srcset="../v3-shared/photos/waterfall-sm.webp 800w, ../v3-shared/photos/waterfall.webp 2000w" sizes="(max-width:760px) 570px, 680px" width="800" height="450" loading="lazy" alt="A stream running over a low weir in a green valley."><figcaption class="mono">Mountain stream</figcaption></figure>
+      <figure><img src="../v3-shared/photos/zhanjiang-sea-sm.webp" srcset="../v3-shared/photos/zhanjiang-sea-sm.webp 800w, ../v3-shared/photos/zhanjiang-sea.webp 2000w" sizes="(max-width:760px) 570px, 680px" width="800" height="450" loading="lazy" alt="Palm trees by the sea under evening clouds."><figcaption class="mono">Zhanjiang</figcaption></figure>
+      <figure><img src="../v3-shared/photos/birds-on-wires-sm.webp" srcset="../v3-shared/photos/birds-on-wires-sm.webp 800w, ../v3-shared/photos/birds-on-wires.webp 2000w" sizes="(max-width:760px) 570px, 680px" width="800" height="450" loading="lazy" alt="A postcard: three birds on power lines in front of a pink cloud, with handwritten titles."><figcaption class="mono">Birds on wires · a postcard I made</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ contact ============================ -->
+<section class="sec contact" id="contact">
+  <h2 class="label mono"><b>07</b> Contact</h2>
+  <p class="big" data-lines><span class="ln"><span>Let’s talk <em>waves.</em></span></span></p>
+  <div class="reach">
+    <a class="mailto" data-mail href="https://cos.ethz.ch/people/person-detail.MzMzOTkx.TGlzdC8xNDQwLC0xMzkxMTI4OTM0.html"><span data-mail-text>Write to me</span></a>
+    <ul class="links mono">
+      <li><a href="https://github.com/WANGYuhan2002" target="_blank" rel="noopener">GitHub ↗</a></li>
+      <li><a href="https://scholar.google.com/citations?user=DLRFdHEAAAAJ&amp;hl=en" target="_blank" rel="noopener">Google Scholar ↗</a></li>
+      <li><a href="https://orcid.org/0000-0001-6451-1166" target="_blank" rel="noopener">ORCID ↗</a></li>
+      <li><a href="https://www.linkedin.com/in/yuhan-wang-aa2564214/" target="_blank" rel="noopener">LinkedIn ↗</a></li>
+      <li><a href="https://cos.ethz.ch/people/person-detail.MzMzOTkx.TGlzdC8xNDQwLC0xMzkxMTI4OTM0.html" target="_blank" rel="noopener">ETH profile ↗</a></li>
+    </ul>
+  </div>
+  <figure class="record" id="recordFig" aria-hidden="true">
+    <canvas id="record"></canvas>
+    <figcaption class="mono"><span class="dots" id="recStats"><span>Record of your visit</span></span><span class="dots"><span>Scroll velocity since you arrived</span><span>down fills the lobe</span></span></figcaption>
+  </figure>
+</section>
+</main>
+
+<footer class="mono">
+  <span>© 2026 Yuhan Wang · Zürich</span>
+  <span><span class="needs-cv">The name above is a wiggle plot drawn&nbsp;live · </span><a href="../../index.html">draft v3f · all drafts</a></span>
+</footer>
+
+<div class="peek" id="peek" aria-hidden="true"><img alt="" id="peekImg"><canvas id="peekCv"></canvas></div>
+
+<!-- Each block below is its own script, so an error in one can never stop the others. -->
+<script>
+/* ---------- theme (I inverts) ---------- */
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeBtn'), meta=document.querySelector('meta[name="theme-color"]');
+  function set(t,save){
+    root.setAttribute('data-theme',t);
+    if(meta) meta.setAttribute('content',t==='light'?'#f2f0ea':'#0b0b0c');
+    if(btn) btn.setAttribute('aria-pressed',String(t==='light'));
+    if(save){try{localStorage.setItem('yw-v3f-theme',t)}catch(e){}}
+    document.dispatchEvent(new CustomEvent('themechange'));
+  }
+  function flip(){set(root.getAttribute('data-theme')==='light'?'dark':'light',true)}
+  set(root.getAttribute('data-theme')==='light'?'light':'dark',false);
+  if(btn) btn.addEventListener('click',function(e){e.stopPropagation(); flip()});
+  addEventListener('keydown',function(e){
+    if(e.repeat||e.metaKey||e.ctrlKey||e.altKey) return;
+    if((e.key==='i'||e.key==='I')&&!/input|textarea|select/i.test(e.target.tagName)&&!e.target.isContentEditable) flip();
+  });
+})();
+</script>
+<script>
+/* ---------- e-mail: assembled at runtime, never in the page source ----------
+   The visible text gets a <wbr> after the @, the only place a forced line break may fall. */
+(function(){
+  var part=['yuhan.wang','eaps.ethz.ch'], addr=part.join('@');
+  document.querySelectorAll('[data-mail]').forEach(function(a){a.href='mailto:'+addr});
+  document.querySelectorAll('[data-mail-text]').forEach(function(s){
+    s.textContent=part[0]+'@'; s.appendChild(document.createElement('wbr')); s.appendChild(document.createTextNode(part[1]));
+  });
+})();
+</script>
+<script>
+/* ---------- reveals, accordion, hover peek, photo reel ---------- */
+(function(){
+  var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var els=document.querySelectorAll('[data-r],[data-lines],[data-stagger]');
+  if(!('IntersectionObserver' in window)||reduce){els.forEach(function(e){e.classList.add('in')})}
+  else{
+    var io=new IntersectionObserver(function(en){en.forEach(function(x){if(!x.isIntersecting) return; x.target.classList.add('in'); io.unobserve(x.target)})},{rootMargin:'0px 0px -10% 0px',threshold:0.12});
+    els.forEach(function(e){
+      var p=e.parentElement;
+      if(e.hasAttribute('data-r')&&p&&/offgrid|also/.test(p.className)) e.style.transitionDelay=(Array.prototype.indexOf.call(p.children,e)*80)+'ms';
+      io.observe(e);
+    });
+  }
+
+  /* figure that floats above the hovered row or tool (pointer devices only) */
+  var peek=document.getElementById('peek'), pimg=document.getElementById('peekImg'), px=0,py=0,tx=0,ty=0,praf=0,host=null;
+  function hide(){peek.classList.remove('on'); host=null; if(window.YWScheme) YWScheme.peek(null)}
+  function target(e){
+    var r=host.getBoundingClientRect(), pw=peek.offsetWidth, ph=peek.offsetHeight, edge=innerWidth-(document.querySelector('.strip').offsetWidth||0);
+    tx=Math.max(pw/2+16,Math.min(edge-pw/2-16,e.clientX+120));
+    ty=r.top-14-ph/2; if(r.top<ph+28) ty=r.bottom+14+ph/2;
+  }
+  function follow(){praf=0; px+=(tx-px)*0.2; py+=(ty-py)*0.2; peek.style.left=px+'px'; peek.style.top=py+'px'; if(Math.abs(tx-px)+Math.abs(ty-py)>0.5) praf=requestAnimationFrame(follow)}
+  if(peek&&matchMedia('(hover:hover)').matches){
+    document.querySelectorAll('[data-img],[data-scheme]:not(canvas)').forEach(function(el){
+      var src=el.getAttribute('data-img'), kind=el.getAttribute('data-scheme'), box=el.closest('.row')||el;
+      el.addEventListener('pointerenter',function(e){
+        if(box.classList.contains('open')) return;
+        if(kind&&!(window.YWScheme&&YWScheme.ok)) return;   /* no canvas: no blank paper box */
+        host=box; peek.classList.toggle('sch',!!kind);
+        if(kind){if(window.YWScheme) YWScheme.peek(kind)} else pimg.src=src;
+        target(e); px=tx; py=ty; peek.style.left=px+'px'; peek.style.top=py+'px'; peek.classList.add('on');
+      });
+      el.addEventListener('pointermove',function(e){if(host!==box) return; target(e); if(!praf) praf=requestAnimationFrame(follow)});
+      el.addEventListener('pointerleave',hide);
+    });
+    addEventListener('scroll',hide,{passive:true});
+  }
+
+  /* accordion */
+  document.querySelectorAll('.row').forEach(function(row){
+    var b=row.querySelector('.row-h'), body=row.querySelector('.row-b');
+    if(!b||!body) return;
+    body.inert=true;
+    b.addEventListener('click',function(){var open=!row.classList.contains('open'); row.classList.toggle('open',open); b.setAttribute('aria-expanded',String(open)); body.inert=!open; hide()});
+  });
+
+  /* duplicate the photo reel for a seamless loop */
+  var reel=document.getElementById('reel');
+  if(reel&&!reduce){Array.prototype.slice.call(reel.children).forEach(function(f){var c=f.cloneNode(true); c.setAttribute('aria-hidden','true'); reel.appendChild(c)})}
+})();
+</script>
+<script>
+/* ---------- the renderer: a gather of seismic traces whose amplitude follows a word ----------
+   Each trace is drawn as a variable-area wiggle: positive lobes filled, the whole trace as a hairline.
+   Under the letters the traces carry a strong oscillation; a "shot" sends a fast, weak P ring and a slower,
+   stronger S ring of accent-coloured lobes across the gather. Used by the hero and by section 03. */
+(function(){
+  var FAM='Anton, Impact, Haettenschweiler, "Arial Narrow Bold", "Arial Black", sans-serif', CAP=0.73, LG=0.2;
+  var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var mc=document.createElement('canvas').getContext('2d');
+  function textW(l,tr){if(!mc) return l.length*48; mc.font='400 100px '+FAM; return mc.measureText(l).width+(tr||0)*100*(l.length-1)}
+  function ricker(u){var a=u*u; return (1-2*a)*Math.exp(-a)}
+
+  function Gather(cv,o){
+    var ctx=cv.getContext&&cv.getContext('2d'); if(!ctx) return null;
+    var G={W:0,H:0,N:0,gap:12.5}, W=0,H=0,dpr=1,N=0,gap=12.5,sc=1,step=3,cols=0,top0=0,M=[],D=null,R=null,F=null,Z=null;
+    var col={fg:'#f2f0ea',accent:'#c6ff3d'}, shots=[], ptr={x:-9999,y:-9999,t:-1e9};
+    var raf=0, vis=o.visible!==false, t0=performance.now(), rev=null;
+
+    function colors(){var cs=getComputedStyle(document.documentElement); col.fg=cs.getPropertyValue('--fg').trim()||col.fg; col.accent=cs.getPropertyValue('--accent').trim()||col.accent}
+    function mask(f){
+      /* the letters are rasterised at about 200 px per em whatever their size, so a phone keeps the narrow counters too */
+      M=[]; var s=Math.min(Math.max(0.5,200/f.size),1600/W), mw=Math.max(8,Math.round(W*s)), mh=Math.max(8,Math.round(H*s));
+      var c=document.createElement('canvas'); c.width=mw; c.height=mh;
+      var g=c.getContext('2d',{willReadFrequently:true}); if(!g) return;
+      g.scale(s,s); g.fillStyle='#fff'; g.textBaseline='alphabetic'; g.font='400 '+f.size+'px '+FAM;
+      function each(draw){
+        f.lines.forEach(function(l,i){
+          var y=f.y+i*f.size*(CAP+LG), tr=(f.track||0)*f.size;
+          g.textAlign=f.align;
+          if(!tr){draw(l,f.x,y); return}
+          /* tracked: set letter by letter so there is air between Anton's tight capitals */
+          var ws=l.split('').map(function(ch){return g.measureText(ch).width}), tot=ws.reduce(function(a,b){return a+b},0)+tr*(l.length-1);
+          var x=f.align==='center'?f.x-tot/2:(f.align==='right'?f.x-tot:f.x); g.textAlign='left';
+          l.split('').forEach(function(ch,j){draw(ch,x,y); x+=ws[j]+tr});
+        });
+      }
+      each(function(t,x,y){g.fillText(t,x,y)});
+      /* erode: shave the glyph edges so Anton's slit-like counters stay open between the lobes (an N no longer reads as M).
+         The thinnest horizontal stroke, the crossbar of A, is 0.137 em, 0.087 em after the full 0.05 em, so it spans more than
+         a trace spacing down to 9 traces per cap height: full strength from 11, fading out by 8, where it could slip between two */
+      var er=(f.erode||0)*Math.max(0,Math.min(1,(f.size*CAP/gap-8)/3));
+      if(er>0){g.globalCompositeOperation='destination-out'; g.lineJoin='round'; g.strokeStyle='#000'; g.lineWidth=f.size*er; each(function(t,x,y){g.strokeText(t,x,y)}); g.globalCompositeOperation='source-over'}
+      var img=g.getImageData(0,0,mw,mh).data;
+      for(var k=0;k<N;k++){
+        var row=new Float32Array(cols), yy=Math.min(mh-1,Math.max(0,Math.round((top0+k*gap)*s)));
+        for(var i=0;i<cols;i++){var xx=Math.min(mw-1,Math.round(i*step*s)); row[i]=img[(yy*mw+xx)*4+3]/255}
+        M.push(row);
+      }
+    }
+    function layout(force){
+      var r=cv.getBoundingClientRect(), w=Math.max(2,Math.round(r.width)), h=Math.max(2,Math.round(r.height));
+      if(!force&&w===W&&h===H) return;
+      W=G.W=w; H=G.H=h; dpr=Math.min(window.devicePixelRatio||1,2);
+      cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
+      var f=o.fit(W,H,textW);
+      /* trace spacing follows the letter size, so every screen gets the same number of traces per letter */
+      gap=G.gap=Math.max(o.gmin||7,Math.min(o.gmax||40,f.size*CAP/o.tpc)); sc=gap/12.5;
+      N=G.N=Math.max(4,Math.floor((H-gap)/gap)); top0=(H-(N-1)*gap)/2;
+      step=Math.max(W<700?2.5:3,W/640); cols=Math.ceil(W/step)+1;
+      D=new Float32Array(cols); R=new Float32Array(cols); F=new Float32Array(cols); Z=new Float32Array(cols);
+      mask(f);
+      if(o.onLayout) o.onLayout(G);
+    }
+    function frame(now){
+      raf=0;
+      var t=reduce?4:(now-t0)/1000, i,k,s;
+      ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+      var ramp=200*sc, xf=-1;
+      if(rev!==null) xf=reduce?1e9:((now-rev)/1000-(o.delay||0))/(o.dur||1.2)*(W+ramp);
+      shots=shots.filter(function(q){return now-q.t<5500});
+      var live=shots.map(function(q){return {x:q.x,y:q.y,a:(now-q.t)/1000,amp:q.amp}}), has=live.length>0;
+      var amp=gap*0.86, c=Math.max(W,H)*0.3, clip=gap*1.9, xmax=(cols-1)*step, wP=24*sc, wS=32*sc;
+      var pk=reduce?0:Math.exp(-(now-ptr.t)/700), pr2=Math.pow(230*sc,2), pw=9000*sc*sc;
+      /* lobe mix under the letters: the base level keeps the counters of N, A and G open (lower values read N as M);
+         narrow screens get the solid fill */
+      var nz=o.noise?o.noise(W):1, solid=o.narrow&&W<700, L0=solid?0.66:0.58, L1=solid?0.3:0.36, L2=solid?0.14:0.17;
+      ctx.lineWidth=1; ctx.lineJoin='round';
+      for(k=0;k<N;k++){
+        var y0=top0+k*gap, row=M[k]||Z, ph=k*0.4, any=false, anyL=false, dyp=y0-ptr.y, near=pk>0.01&&dyp*dyp<pr2;
+        for(i=0;i<cols;i++){
+          var x=i*step, xs=x/sc, m=row[i], rv=xf-x; rv=rv<=0?0:(rv>=ramp?1:rv/ramp); m*=rv;
+          var d=nz*(0.05*Math.sin(xs*0.027+k*1.7+t*0.9)+0.035*Math.sin(xs*0.071-t*1.3+k*0.6)+0.03*Math.sin(xs*0.19+t*2.1+k*2.3));
+          if(near){var dx=x-ptr.x, p2=dx*dx+dyp*dyp; if(p2<pr2) d+=0.55*pk*Math.exp(-p2/pw)*Math.sin(xs*0.17-t*7+k*0.9)}
+          if(m>0.004){d+=m*(L0+L1*Math.sin(xs*0.36-ph*1.3-t*3.4)+L2*Math.sin(xs*0.83+ph*2.1+t*5.1)); anyL=true}
+          var r=0;
+          if(has){for(s=0;s<live.length;s++){var Q=live[s], ex=x-Q.x, ey=y0-Q.y, dist=Math.sqrt(ex*ex+ey*ey), sp=1/(1+dist/650);
+            var u=(dist-c*Q.a)/wP; if(u>-3&&u<3) r+=0.8*Q.amp*ricker(u)*Math.exp(-Q.a*0.5)*sp;
+            u=(dist-c*0.56*Q.a)/wS; if(u>-3&&u<3) r+=1.7*Q.amp*ricker(u)*Math.exp(-Q.a*0.42)*sp}}
+          if(r!==0) any=true;
+          R[i]=r; F[i]=m; var v=(d+r)*amp; D[i]=v>clip?clip:(v<-clip?-clip:v);
+        }
+        /* with o.accent (section 03) every lobe of the letters, edges included, is filled in the accent colour
+           and left out of the foreground fill, so no foreground specks show along the glyph edges */
+        var acc=o.accent&&anyL;
+        ctx.fillStyle=col.fg; ctx.beginPath(); ctx.moveTo(0,y0);
+        for(i=0;i<cols;i++){var dv=acc&&F[i]>0.004?0:D[i]; ctx.lineTo(i*step,y0-(dv>0?dv:0))}
+        ctx.lineTo(xmax,y0); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle=col.fg; ctx.globalAlpha=.5; ctx.beginPath(); ctx.moveTo(0,y0-D[0]);
+        for(i=1;i<cols;i++) ctx.lineTo(i*step,y0-D[i]);
+        ctx.stroke(); ctx.globalAlpha=1;
+        if(acc){ctx.fillStyle=col.accent; ctx.beginPath(); ctx.moveTo(0,y0);
+          for(i=0;i<cols;i++){var lv=F[i]>0.004?D[i]:0; ctx.lineTo(i*step,y0-(lv>0?lv:0))}
+          ctx.lineTo(xmax,y0); ctx.closePath(); ctx.fill()}
+        if(any){ctx.fillStyle=col.accent; ctx.beginPath(); ctx.moveTo(0,y0);
+          for(i=0;i<cols;i++){var q=R[i]*amp; ctx.lineTo(i*step,y0-(q>0?(q>clip?clip:q):0))}
+          ctx.lineTo(xmax,y0); ctx.closePath(); ctx.fill()}
+      }
+      if(o.onFrame) o.onFrame(now,G);
+      if(!reduce&&vis&&!document.hidden&&!raf) raf=requestAnimationFrame(frame);
+    }
+    function kick(){if(!raf) raf=requestAnimationFrame(frame)}
+
+    G.layout=function(force){layout(force); kick()};
+    G.fire=function(x,y,a,age){if(reduce) shots.length=0; shots.push({x:x,y:y,t:performance.now()-(age||0),amp:a||1}); while(shots.length>5) shots.shift(); kick()};
+    G.reveal=function(at){if(rev===null){rev=at||performance.now(); kick()}};
+    G.visible=function(v){vis=v; if(v) kick()};
+    G.pointer=function(x,y){ptr.x=x; ptr.y=y; ptr.t=performance.now(); kick()};
+    G.leave=function(){ptr.x=ptr.y=-9999};
+    document.addEventListener('themechange',function(){colors(); kick()});
+    document.addEventListener('visibilitychange',function(){if(!document.hidden) kick()});
+    var rt=0; addEventListener('resize',function(){clearTimeout(rt); rt=setTimeout(function(){G.layout()},120)});
+    colors(); layout(true); kick();
+    return G;
+  }
+  window.YWGather=Gather; window.YWType={CAP:CAP,LG:LG,FAM:FAM};
+})();
+</script>
+<script>
+/* ---------- schematic gathers for rows 02 and 03, printed on the paper mat like the other figures ----------
+   sum: twelve DAS channels and, in accent, their sum along the fibre, which is what one integrated measurement sees.
+   arc: a plane compressional wave crossing a bend; the axial strain scales with cos² of the angle between the fibre and
+   the direction of travel, so the channels where the fibre lies parallel to the wavefront record almost nothing. */
+(function(){
+  var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches, INK='#0b0b0c', ACC='#1b2cff', paper='#f2f0ea';
+  function colors(){paper=getComputedStyle(document.documentElement).getPropertyValue('--paper').trim()||paper}
+  function ricker(u){var a=u*u; return (1-2*a)*Math.exp(-a)}
+  function noise(x,k,t){return 0.06*Math.sin(x*0.21+k*1.9+t*2.3)+0.045*Math.sin(x*0.53-k*0.7-t*3.1)}
+  function trace(g,xs,ys,y0,clipA,fill,alpha){ /* variable area: positive lobes filled, the whole trace as a hairline */
+    var i; g.fillStyle=fill; g.beginPath(); g.moveTo(xs[0],y0);
+    for(i=0;i<xs.length;i++){var v=Math.min(clipA,ys[i]); g.lineTo(xs[i],y0-(v>0?v:0))}
+    g.lineTo(xs[xs.length-1],y0); g.closePath(); g.fill();
+    g.strokeStyle=INK; g.globalAlpha=alpha||.45; g.lineWidth=1; g.beginPath();
+    for(i=0;i<xs.length;i++){var u=Math.max(-clipA,Math.min(clipA,ys[i])); if(i) g.lineTo(xs[i],y0-u); else g.moveTo(xs[i],y0-u)}
+    g.stroke(); g.globalAlpha=1;
+  }
+  var DRAW={
+    sum:function(g,w,h,t){
+      var m=Math.max(10,w*0.045), K=12, top=m, bot=h*0.64, gap=(bot-top)/K, A=gap*1.05, xs=[], x, k, i, loop=0.16+0.03*Math.sin(t*0.6);
+      for(x=m;x<=w-m;x+=2) xs.push(x);
+      var span=w-2*m, wl=Math.max(5,w*0.016), S=new Float32Array(xs.length);
+      for(k=0;k<K;k++){
+        var xa=m+span*(loop+0.042*k), y0=top+(k+0.8)*gap, ys=[];
+        for(i=0;i<xs.length;i++){var r=ricker((xs[i]-xa)/wl); S[i]+=r; ys.push((0.95*r+noise(xs[i],k,t))*A)}
+        trace(g,xs,ys,y0,A*1.6,INK,.4);
+      }
+      g.strokeStyle=INK; g.globalAlpha=.25; g.setLineDash([3,4]); g.beginPath(); g.moveTo(m,bot+gap*0.6); g.lineTo(w-m,bot+gap*0.6); g.stroke(); g.setLineDash([]); g.globalAlpha=1;
+      var ys2=[], y1=h*0.87, A2=gap*0.55;
+      for(i=0;i<xs.length;i++) ys2.push((S[i]+noise(xs[i],K,t)*2)*A2);
+      trace(g,xs,ys2,y1,A2*5,ACC,.6);
+      g.fillStyle=ACC; g.font='500 '+Math.round(Math.max(11,w*0.032))+'px "DM Mono", ui-monospace, monospace'; g.textBaseline='middle'; g.fillText('Σ',m*0.2,y1-gap*0.5);
+    },
+    arc:function(g,w,h,t){
+      var m=Math.max(10,w*0.045), K=13, r=Math.min(h*0.36,w*0.17), cx=m+r*0.15, cy=h/2, k, i, x;
+      var loop=(t*0.3)%1.7-0.35, front=cx-r*0.35+loop*r*1.7;   /* one crossing every ~6 s */
+      g.strokeStyle=INK; g.lineWidth=2; g.beginPath(); g.arc(cx,cy,r,-Math.PI/2,Math.PI/2); g.stroke(); g.lineWidth=1;
+      if(front>cx-r*0.4&&front<cx+r*1.3){
+        g.strokeStyle=ACC; g.globalAlpha=.9; g.beginPath(); g.moveTo(front,cy-r*1.2); g.lineTo(front,cy+r*1.2); g.stroke(); g.globalAlpha=1;
+        g.fillStyle=ACC; g.beginPath(); g.moveTo(front+7,cy-r*1.2); g.lineTo(front,cy-r*1.2-4); g.lineTo(front,cy-r*1.2+4); g.fill();
+      }
+      var gx0=cx+r+m*1.8, gw=w-m-gx0, xs=[]; for(x=gx0;x<=w-m;x+=2) xs.push(x);
+      var gap=(h-2*m)/K, A=gap*1.1, wl=Math.max(5,w*0.016);
+      for(k=0;k<K;k++){
+        var ph=-Math.PI/2+Math.PI*k/(K-1), px=cx+r*Math.cos(ph), py=cy+r*Math.sin(ph), s2=Math.sin(ph)*Math.sin(ph);
+        g.fillStyle=INK; g.globalAlpha=0.2+0.8*s2; g.beginPath(); g.arc(px,py,2.6,0,6.3); g.fill(); g.globalAlpha=1;
+        var y0=m+(k+0.8)*gap, xa=gx0+gw*(0.08+loop*0.62)+(px-cx)*1.4, ys=[], ev=[];
+        for(i=0;i<xs.length;i++){var e=s2*ricker((xs[i]-xa)/wl); ev.push(e*A); ys.push((e+noise(xs[i],k,t))*A)}
+        trace(g,xs,ys,y0,A*1.6,INK,.4);
+        g.fillStyle=ACC; g.beginPath(); g.moveTo(xs[0],y0);
+        for(i=0;i<xs.length;i++){var q=Math.min(A*1.6,ev[i]); g.lineTo(xs[i],y0-(q>0?q:0))}
+        g.lineTo(xs[xs.length-1],y0); g.closePath(); g.fill();
+      }
+    }
+  };
+  function View(cv){
+    var g=cv.getContext&&cv.getContext('2d'); if(!g) return null;
+    var v={kind:cv.getAttribute('data-scheme'),vis:false,raf:0,w:0,h:0,dpr:1};
+    v.size=function(){v.dpr=Math.min(devicePixelRatio||1,2); v.w=cv.clientWidth; v.h=cv.clientHeight; if(v.w&&v.h){cv.width=Math.round(v.w*v.dpr); cv.height=Math.round(v.h*v.dpr)}};
+    v.draw=function(now){
+      v.raf=0; if(!v.w||!DRAW[v.kind]) return;
+      g.setTransform(v.dpr,0,0,v.dpr,0,0); g.fillStyle=paper; g.fillRect(0,0,v.w,v.h);
+      DRAW[v.kind](g,v.w,v.h,reduce?1.2:now/1000);
+      if(v.vis&&!reduce&&!document.hidden) v.raf=requestAnimationFrame(v.draw);
+    };
+    v.kick=function(){if(!v.raf) v.raf=requestAnimationFrame(v.draw)};
+    return v;
+  }
+  var views=[];
+  document.querySelectorAll('canvas[data-scheme]').forEach(function(cv){
+    var v=View(cv); if(!v) return; views.push(v); v.size();
+    if('IntersectionObserver' in window) new IntersectionObserver(function(en){v.vis=en[0].isIntersecting; if(v.vis){v.size(); v.kick()}}).observe(cv);
+    else {v.vis=true; v.kick()}
+  });
+  var pc=document.getElementById('peekCv'), pv=pc?View(pc):null;
+  window.YWScheme={ok:!!pv, peek:function(kind){
+    if(!pv) return;
+    if(!kind){pv.vis=false; return}
+    pc.setAttribute('data-scheme',kind); pv.kind=kind; pv.vis=true; pv.size(); pv.kick();
+  }};
+  colors();
+  document.addEventListener('themechange',function(){colors(); views.forEach(function(v){v.kick()})});
+  var rt=0; addEventListener('resize',function(){clearTimeout(rt); rt=setTimeout(function(){views.forEach(function(v){v.size(); v.kick()})},150)});
+})();
+</script>
+<script>
+/* ---------- hero: the name as a variable-area wiggle plot ---------- */
+(function(){
+  var cv=document.getElementById('gather'), hero=document.getElementById('hero');
+  if(!cv||!hero) return;
+  /* if the renderer is missing or there is no 2-D context, set the name as type instead (CSS keys on .nocanvas) */
+  if(!window.YWGather){document.documentElement.classList.add('nocanvas'); return}
+  var Y=window.YWType, reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var head=document.getElementById('plotHead'), hint=document.getElementById('hintText'), btn=document.getElementById('shotBtn');
+  var bl=hero.querySelector('.bl'), br=hero.querySelector('.br');
+  var count=0, lastAuto=-1e9, lastUser=-1e9, first=true, tRev=null, started=false, nm=null, band=[0,0,0,0], under=0;
+  function pad4(n){return ('000'+n).slice(-4)}
+  function label(g){if(head) head.textContent='Gather '+pad4(Math.max(1,count))+' · '+g.N+' traces'}   /* ' · variable area' follows in its own span */
+  if(hint&&matchMedia('(hover:none)').matches) hint.textContent='Tap anywhere: fire a shot';
+  /* shots go off in the open field above or below the name, never inside it or between its words, where the first small
+     ring would read as part of a letter */
+  function spot(){
+    var a=Math.max(0,band[1]-band[0]), b=Math.max(0,band[3]-band[2]), r=Math.random()*(a+b);
+    return a+b<1?under:(r<a?band[0]+r:band[2]+r-a);
+  }
+
+  var G=YWGather(cv,{
+    fit:function(W,H,tw){
+      var lines=(W/H<1.2)?['YUHAN','WANG']:['YUHAN WANG'], n=lines.length, tr=n>1?0.045:0.03, maxW=0;   /* a little air between Anton's capitals */
+      lines.forEach(function(l){maxW=Math.max(maxW,tw(l,tr))});
+      var size=Math.min(100*W*(n>1?0.9:0.93)/maxW, H*(n>1?0.52:0.5)/(n*Y.CAP+(n-1)*Y.LG));
+      /* the open field runs from the top veil (16 %) to the statement, or to the hint where that sits higher. The name sits a
+         little above the middle of the hero; on a short screen, where that would crowd the statement, it is centred in the field */
+      var block=size*(n*Y.CAP+(n-1)*Y.LG), fTop=H*0.16, fBot=Math.min(bl.offsetTop,br.offsetHeight?br.offsetTop:H);
+      var top=Math.min((H-block)/2-H*0.035,(fTop+fBot-block)/2);
+      nm={top:top,base:top+block,cap:size*Y.CAP,fTop:fTop,fBot:fBot};
+      /* the same erosion in every layout, one line or two, hairline or solid lobes (the renderer eases it off where traces are sparse) */
+      return {lines:lines,size:size,align:'center',x:W/2,y:top+size*Y.CAP,track:tr,erode:0.05};
+    },
+    tpc:16, gmin:7, delay:0.3, dur:1.2, narrow:true,
+    noise:function(W){return W>=760?1.6:1},
+    onLayout:function(g){
+      label(g);
+      /* the bottom veil (CSS) fades in a trace below the last baseline and is solid from just above the statement */
+      hero.style.setProperty('--name-bottom',Math.round(nm.base+g.gap)+'px');
+      hero.style.setProperty('--stmt-top',nm.fBot+'px');
+      var mg=2.6*g.gap, low=(nm.base+nm.fBot)/2;   /* mg: about the width of the S pulse; low: half-way down to the statement */
+      band=[nm.fTop,nm.top-mg,nm.base+mg,low];
+      under=Math.min(nm.base+nm.cap*0.35,low);   /* the first shot: in the open field just below the name */
+    },
+    onFrame:function(now,g){
+      if(reduce||tRev===null) return;
+      if((now-tRev)/1000>1.6&&now-lastAuto>7000&&now-lastUser>12000){
+        lastAuto=now;
+        if(first){first=false; g.fire(g.W*0.5,under,1)}
+        else g.fire(g.W*(0.18+0.64*Math.random()),spot(),0.85);
+      }
+    }
+  });
+  if(!G){document.documentElement.classList.add('nocanvas'); return}
+
+  function start(){if(started) return; started=true; G.layout(true); tRev=performance.now(); G.reveal(tRev)}
+  if(document.fonts&&document.fonts.load){
+    document.fonts.load('400 100px Anton').then(function(){if(started) G.layout(true); else start()},start);
+    setTimeout(start,1500);
+    /* the statement's height, and so the field, settles once its own fonts are in */
+    if(document.fonts.ready) document.fonts.ready.then(function(){if(started) G.layout(true)});
+  } else start();
+
+  function shoot(x,y){
+    lastUser=performance.now(); count++; label(G);
+    if(hint) hint.textContent='Shot '+pad4(count)+' fired · P, then S';
+    G.fire(x,y,1.15,reduce?900:0);
+  }
+  hero.addEventListener('click',function(e){
+    if(e.target.closest('a,button')) return;
+    var r=hero.getBoundingClientRect(); shoot(e.clientX-r.left,e.clientY-r.top);
+  });
+  if(btn) btn.addEventListener('click',function(e){e.stopPropagation(); shoot(G.W/2,under)});
+  hero.addEventListener('pointermove',function(e){var r=hero.getBoundingClientRect(); G.pointer(e.clientX-r.left,e.clientY-r.top)});
+  hero.addEventListener('pointerleave',G.leave);
+  if('IntersectionObserver' in window) new IntersectionObserver(function(en){G.visible(en[0].isIntersecting)},{threshold:0}).observe(hero);
+})();
+</script>
+<script>
+/* ---------- 03: the detection count, drawn by the same renderer; click it to fire a shot ---------- */
+(function(){
+  var cv=document.getElementById('count'), wrap=document.getElementById('countWrap');
+  if(!cv||!wrap) return;
+  var side=false;
+  var G=window.YWGather&&YWGather(cv,{
+    /* narrow screens: a little tracking keeps the 3 and the 2 apart, and the hero's solid fill (narrow:true) */
+    fit:function(W,H,tw){
+      var Y=window.YWType, l='17,325', tr=W<700?0.05:0; side=W>=560&&!matchMedia('(max-width:760px)').matches;
+      var size=Math.min(H*0.6/Y.CAP, 100*W*(side?0.66:0.94)/tw(l,tr));
+      return {lines:[l],size:size,align:'left',x:size*0.02,y:(H+size*Y.CAP)/2,track:tr};
+    },
+    tpc:19, gmin:5, delay:0, dur:1.4, accent:true, visible:false, narrow:true,
+    onFrame:function(now,g){ /* one shot of its own, once the number has been read: 3 s in, arriving from a corner
+                                (a source inside the empty part would draw a closed ring that reads as a seventh digit) */
+      if(tR&&!fired&&now-tR>3000&&!reduce){fired=true; if(side) g.fire(g.W,-g.H*0.05,1); else g.fire(g.W,g.H,0.95)}
+    }
+  });
+  var tR=0, fired=false, reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!G){wrap.classList.add('nocanvas'); return}
+  var hs=wrap.querySelector('.hint-s'); if(hs&&matchMedia('(hover:none)').matches) hs.textContent='Tap the number: fire a shot';
+  function reveal(){if(!tR){tR=performance.now(); G.layout(true); G.reveal(tR)}}
+  if(document.fonts&&document.fonts.load) document.fonts.load('400 100px Anton').then(function(){G.layout(true)},function(){});
+  if('IntersectionObserver' in window){
+    new IntersectionObserver(function(en){var e=en[0]; G.visible(e.isIntersecting); if(e.intersectionRatio>=0.4) reveal()},{threshold:[0,0.4,1]}).observe(cv);
+  } else {G.visible(true); reveal()}
+  cv.addEventListener('click',function(e){var r=cv.getBoundingClientRect(); G.fire(e.clientX-r.left,e.clientY-r.top,1.1)});
+  cv.addEventListener('pointermove',function(e){var r=cv.getBoundingClientRect(); G.pointer(e.clientX-r.left,e.clientY-r.top)});
+  cv.addEventListener('pointerleave',G.leave);
+})();
+</script>
+<script>
+/* ---------- 01: the portrait as a variable-area wiggle plot ----------
+   Printed like a seismogram on paper: black ink on the paper colour, trace amplitude following the darkness of
+   the photograph, so the face is drawn the way the name is. Hover, or tap, lifts the record off the photograph. */
+(function(){
+  var fig=document.getElementById('portrait'); if(!fig) return;
+  var cv=document.createElement('canvas'), g=cv.getContext&&cv.getContext('2d'); if(!g) return;
+  var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches, touch=matchMedia('(hover:none)').matches;
+  var src=new Image(), L=null, LW=200, LH=250, w=0,h=0,dpr=1,N=0,gap=6,cols=0,B=[],PH=[],vis=false,raf=0,last=0, paper='#f2f0ea', cap=null, kb=false;
+  var INK='#0b0b0c', STEP=1.5;
+  function capText(){ /* the caption names the gesture that works for this visitor, and what it will show */
+    if(!cap) return;
+    var on=fig.classList.contains('show'), act=kb?'press Enter':(touch?'tap':'click');
+    cap.textContent=on?'Photograph · '+act+' for the traces':(w>420?'Portrait · ':'')+N+' traces · '+(kb?'press Enter':(touch?'tap':'hover'))+' for the photo';
+  }
+  function colors(){paper=getComputedStyle(document.documentElement).getPropertyValue('--paper').trim()||paper}
+  function lum(u,v){ /* bilinear sample, u and v in 0..1 */
+    var x=Math.max(0,Math.min(LW-1.001,u*(LW-1))), y=Math.max(0,Math.min(LH-1.001,v*(LH-1))), i=x|0, j=y|0, fx=x-i, fy=y-j, o=j*LW+i;
+    return (L[o]*(1-fx)+L[o+1]*fx)*(1-fy)+(L[o+LW]*(1-fx)+L[o+LW+1]*fx)*fy;
+  }
+  function size(){
+    dpr=Math.min(devicePixelRatio||1,2); w=fig.clientWidth; h=fig.clientHeight; if(!w||!h||!L) return;
+    cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr);
+    N=Math.max(30,Math.min(130,Math.round(h/6))); gap=h/N; STEP=Math.max(1.5,w/330); cols=Math.ceil(w/STEP)+1; B=[]; PH=[];
+    for(var k=0;k<N;k++){
+      var row=new Float32Array(cols), v=((k+0.82)*gap-gap*0.45)/h, r=Math.sin((k+1)*12.9898)*43758.5453;
+      for(var i=0;i<cols;i++){var d=1-lum(i*STEP/w,v); row[i]=Math.pow(Math.max(0,Math.min(1,(d-0.04)/0.86)),1.3)}
+      B.push(row); PH.push((r-Math.floor(r))*6.2832);
+    }
+    capText();
+  }
+  function draw(now){
+    raf=0; if(!B.length) return;
+    if(now-last<30&&last){raf=requestAnimationFrame(draw); return}   /* it only drifts: 30 frames a second are plenty */
+    last=now;
+    var t=reduce?0:now/1000, A=gap*1.3, i,k;
+    g.setTransform(dpr,0,0,dpr,0,0); g.fillStyle=paper; g.fillRect(0,0,w,h);
+    g.strokeStyle=INK; g.globalAlpha=.22; g.lineWidth=1; g.beginPath();
+    for(k=0;k<N;k++){var yb=Math.round((k+0.82)*gap)+0.5; g.moveTo(0,yb); g.lineTo(w,yb)}
+    g.stroke(); g.globalAlpha=1; g.fillStyle=INK;
+    for(k=0;k<N;k++){
+      var y0=(k+0.82)*gap, row=B[k], ph=PH[k]-t*0.9;
+      g.beginPath(); g.moveTo(0,y0);
+      for(i=0;i<cols;i++){var x=i*STEP, b=row[i]; if(b<0.01){g.lineTo(x,y0); continue}
+        var c=0.5+0.5*Math.sin(x*0.75+ph)+0.18*Math.sin(x*0.13+ph*0.7+t*0.4);
+        g.lineTo(x,y0-A*b*(0.3+0.7*(c>0?c:0)))}
+      g.lineTo(w,y0); g.closePath(); g.fill();
+    }
+    if(vis&&!reduce&&!document.hidden&&!fig.classList.contains('show')&&!(!touch&&fig.matches(':hover'))) raf=requestAnimationFrame(draw);
+  }
+  function kick(){if(!raf) raf=requestAnimationFrame(draw)}
+  src.onload=function(){
+    try{
+      var c=document.createElement('canvas'); c.width=LW; c.height=LH;
+      var x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(src,0,0,LW,LH);
+      var d=x.getImageData(0,0,LW,LH).data; L=new Float32Array(LW*LH);
+      for(var i=0;i<LW*LH;i++) L[i]=(0.2126*d[i*4]+0.7152*d[i*4+1]+0.0722*d[i*4+2])/255;
+    }catch(e){return}
+    cv.setAttribute('aria-hidden','true'); fig.appendChild(cv);
+    cap=document.createElement('figcaption'); cap.className='mono'; cap.setAttribute('aria-hidden','true'); fig.appendChild(cap);
+    /* a toggle button: click, tap, Enter or Space swaps the traces and the photograph */
+    fig.classList.add('wig'); fig.tabIndex=0; fig.setAttribute('role','button'); fig.setAttribute('aria-pressed','false');
+    fig.setAttribute('aria-label','Portrait of Yuhan Wang: show the photograph');
+    colors(); size(); kick();
+    function toggle(){var on=fig.classList.toggle('show'); fig.setAttribute('aria-pressed',String(on)); capText(); if(!on) kick()}
+    fig.addEventListener('click',toggle);
+    fig.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault(); toggle()}});
+    fig.addEventListener('focus',function(){try{kb=fig.matches(':focus-visible')}catch(err){kb=false} capText()});
+    fig.addEventListener('blur',function(){kb=false; capText()});
+    fig.addEventListener('pointerleave',kick);
+    var rt=0; addEventListener('resize',function(){clearTimeout(rt); rt=setTimeout(function(){size(); kick()},150)});
+    document.addEventListener('themechange',function(){colors(); kick()});
+    document.addEventListener('visibilitychange',function(){if(!document.hidden) kick()});
+    if('IntersectionObserver' in window) new IntersectionObserver(function(en){vis=en[0].isIntersecting; if(vis) kick()}).observe(fig); else {vis=true; kick()}
+  };
+  src.src='../v3-shared/portrait-sm.webp';
+})();
+</script>
+<script>
+/* ---------- Wave Lab tile: two interfering circular waves, drawn as variable-area traces ---------- */
+(function(){
+  var lc=document.getElementById('labwave'); if(!lc||!lc.getContext) return;
+  var g=lc.getContext('2d'); if(!g) return;
+  var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches, w=0,h=0,dpr=1,vis=false,raf=0,fg='#f2f0ea';
+  function colors(){fg=getComputedStyle(document.documentElement).getPropertyValue('--fg').trim()||fg}
+  function size(){dpr=Math.min(devicePixelRatio||1,2); w=lc.clientWidth; h=lc.clientHeight; lc.width=Math.round(w*dpr); lc.height=Math.round(h*dpr)}
+  function draw(now){
+    raf=0; var t=reduce?2:now/1000, gp=11, A=gp*0.95, cl=gp*1.7;
+    g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h); g.fillStyle=fg; g.strokeStyle=fg; g.lineWidth=1;
+    var s1x=w*0.3,s1y=h*0.55,s2x=w*0.72,s2y=h*0.4;
+    for(var y=gp*1.5;y<h-gp*0.5;y+=gp){
+      var pts=[];
+      for(var x=0;x<=w+3;x+=3){var a=Math.hypot(x-s1x,y-s1y), b=Math.hypot(x-s2x,y-s2y);
+        var v=A*0.75*(Math.sin(a*0.11-t*2.4)/(1+a*0.012)+Math.sin(b*0.11-t*2.4)/(1+b*0.012)); pts.push(v>cl?cl:(v<-cl?-cl:v))}
+      g.globalAlpha=.9; g.beginPath(); g.moveTo(0,y);
+      for(var i=0;i<pts.length;i++) g.lineTo(i*3,y-(pts[i]>0?pts[i]:0));
+      g.lineTo((pts.length-1)*3,y); g.closePath(); g.fill();
+      g.globalAlpha=.4; g.beginPath(); g.moveTo(0,y-pts[0]);
+      for(i=1;i<pts.length;i++) g.lineTo(i*3,y-pts[i]);
+      g.stroke();
+    }
+    g.globalAlpha=1;
+    if(vis&&!reduce&&!document.hidden) raf=requestAnimationFrame(draw);
+  }
+  colors(); size(); raf=requestAnimationFrame(draw);
+  addEventListener('resize',function(){size(); if(!raf) raf=requestAnimationFrame(draw)});
+  document.addEventListener('themechange',function(){colors(); if(!raf) raf=requestAnimationFrame(draw)});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden&&!raf) raf=requestAnimationFrame(draw)});
+  if('IntersectionObserver' in window) new IntersectionObserver(function(en){vis=en[0].isIntersecting; if(vis&&!raf) raf=requestAnimationFrame(draw)}).observe(lc);
+})();
+</script>
+<script>
+/* ---------- your scroll, recorded: the right-edge strip draws it live, and section 07 plays the whole visit back ----------
+   Velocity is sampled once per frame while the page moves (px per second, lightly smoothed). Nothing leaves the page. */
+(function(){
+  var sc=document.getElementById('scrolltrace'), rc=document.getElementById('record'), rf=document.getElementById('recordFig'), stats=document.getElementById('recStats');
+  var g=sc&&sc.getContext?sc.getContext('2d'):null, rg=rc&&rc.getContext?rc.getContext('2d'):null;
+  var fg='#f2f0ea', ac='#c6ff3d', ln='rgba(242,240,234,.16)';
+  var T0=performance.now(), hist=[], total=0, peak=0, last=window.scrollY, lastT=T0, vs=0, vel=0, raf=0, idle=0;
+  var w=0,h=0,dpr=1,buf=[], rw=0,rh=0, recVis=false, clock=0;
+  function colors(){var cs=getComputedStyle(document.documentElement); fg=cs.getPropertyValue('--fg').trim()||fg; ac=cs.getPropertyValue('--accent').trim()||ac; ln=cs.getPropertyValue('--line').trim()||ln}
+
+  /* strip */
+  function size(){
+    if(g){dpr=Math.min(devicePixelRatio||1,2); w=sc.clientWidth; h=sc.clientHeight; if(w&&h){sc.width=Math.round(w*dpr); sc.height=Math.round(h*dpr); buf=[]; for(var i=0;i<Math.ceil(h/3)+2;i++) buf.push(0)}}
+    if(rg){rw=rc.clientWidth; rh=rc.clientHeight; if(rw&&rh){rc.width=Math.round(rw*dpr); rc.height=Math.round(rh*dpr)}}
+    drawStrip(); drawRec(performance.now());
+  }
+  function xof(v){return w/2+Math.max(-w/2+3,Math.min(w/2-3,v*0.55))}
+  function drawStrip(){
+    if(!g||!w) return;
+    g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h); g.lineWidth=1; g.strokeStyle=fg; g.beginPath();
+    for(var i=0;i<buf.length;i++){var x=xof(buf[i]); if(i===0) g.moveTo(x,0); else g.lineTo(x,i*3)}
+    g.stroke(); g.fillStyle=ac; g.beginPath(); g.arc(xof(buf[0]),3,2.5,0,6.3); g.fill();
+  }
+
+  /* record */
+  function mmss(ms){var s=Math.floor(ms/1000); return ('0'+Math.floor(s/60)).slice(-2)+':'+('0'+(s%60)).slice(-2)}
+  function amp(v){var a=Math.min(1,Math.log(1+Math.abs(v)/90)/Math.log(1+9000/90)); return v<0?-a:a}
+  function smooth(a){var o=new Float32Array(a.length), k=[1,2,3,2,1]; for(var i=0;i<a.length;i++){var sum=0,wt=0; for(var j=-2;j<=2;j++){var q=i+j; if(q<0||q>=a.length) continue; sum+=a[q]*k[j+2]; wt+=k[j+2]} o[i]=sum/wt} return o}
+  function drawRec(now){
+    if(stats) stats.innerHTML='<span>Record of your visit</span><span><b>'+mmss(now-T0)+'</b></span><span><b>'+Math.round(total).toLocaleString('en-US')+'</b>&nbsp;px&nbsp;scrolled</span><span>peak&nbsp;<b>'+(Math.round(peak/10)*10).toLocaleString('en-US')+'</b>&nbsp;px/s</span>';
+    if(!rg||!rw) return;
+    var span=Math.max(now-T0,20000), cols=Math.max(2,Math.floor(rw/2)), up=new Float32Array(cols), dn=new Float32Array(cols), i;
+    for(i=0;i<hist.length;i++){var c=Math.min(cols-1,Math.floor(hist[i][0]/span*cols)), v=hist[i][1]; if(v>up[c]) up[c]=v; if(v<dn[c]) dn[c]=v}
+    up=smooth(up); dn=smooth(dn);
+    var base=rh*0.7, A=rh*0.66, B=rh*0.26, pen=Math.min(rw,(now-T0)/span*rw), cw=rw/cols;
+    rg.setTransform(dpr,0,0,dpr,0,0); rg.clearRect(0,0,rw,rh);
+    rg.strokeStyle=ln; rg.lineWidth=1; rg.beginPath(); rg.moveTo(0,base+0.5); rg.lineTo(rw,base+0.5);
+    for(var m=60000;m<span;m+=60000){var tx=Math.round(m/span*rw)+0.5; rg.moveTo(tx,base-4); rg.lineTo(tx,base+5)}
+    rg.stroke();
+    rg.fillStyle=fg; rg.beginPath(); rg.moveTo(0,base);
+    for(i=0;i<cols;i++){var x=(i+0.5)*cw; if(x>pen) break; rg.lineTo(x,base-A*amp(up[i]))}
+    rg.lineTo(Math.min(pen,cols*cw),base); rg.closePath(); rg.fill();
+    rg.strokeStyle=fg; rg.globalAlpha=.6; rg.beginPath(); rg.moveTo(0,base);
+    for(i=0;i<cols;i++){var x2=(i+0.5)*cw; if(x2>pen) break; rg.lineTo(x2,base-B*amp(dn[i]))}
+    rg.stroke(); rg.globalAlpha=1;
+    rg.fillStyle=ac; rg.beginPath(); rg.arc(Math.min(rw-4.5,Math.max(4.5,pen-2)),base,3.5,0,6.3); rg.fill();   /* inset by its radius: never clipped at the edge */
+  }
+
+  function tick(now){
+    raf=0; var y=window.scrollY, dv=y-last, dt=Math.max(8,now-lastT); last=y; lastT=now;
+    var v=Math.max(-20000,Math.min(20000,dv*1000/dt)); vs+=(v-vs)*0.45; if(Math.abs(vs)<1) vs=0;
+    total+=Math.abs(dv); if(Math.abs(vs)>peak) peak=Math.abs(vs);
+    if(vs!==0||(hist.length&&hist[hist.length-1][1]!==0)) hist.push([now-T0,vs]);
+    vel+=(dv-vel)*0.4;
+    if(buf.length){buf.unshift(vel+(Math.random()-.5)*0.5); buf.pop(); drawStrip()}
+    if(recVis) drawRec(now);
+    idle=(Math.abs(vel)<0.05&&vs===0)?idle+1:0;
+    if(idle<(buf.length||40)+20&&!document.hidden) raf=requestAnimationFrame(tick);
+  }
+  addEventListener('scroll',function(){idle=0; if(!raf) raf=requestAnimationFrame(tick)},{passive:true});
+  addEventListener('resize',size);
+  document.addEventListener('themechange',function(){colors(); drawStrip(); drawRec(performance.now())});
+  if(rf&&rg){
+    rf.classList.add('on');
+    if('IntersectionObserver' in window) new IntersectionObserver(function(en){
+      recVis=en[0].isIntersecting; clearInterval(clock);
+      if(recVis){drawRec(performance.now()); clock=setInterval(function(){drawRec(performance.now())},1000)}
+    }).observe(rf);
+  }
+  colors(); size();
+})();
+</script>
+</body>
+</html>

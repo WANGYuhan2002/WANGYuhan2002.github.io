@@ -1,0 +1,583 @@
+<!doctype html>
+<!-- v3c · 地听 (listening to the ground): an ink handscroll.
+     Wide screens: the page unrolls sideways (wheel, drag, arrow keys); the landscape is painted in code
+     (js/painting.js) and its ridgelines follow a real seismogram. Small screens: an ordinary vertical page,
+     with the painting as bands between the sections. Without JavaScript everything is still readable. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Yuhan Wang 王雨寒 · 地听 · fibre-optic seismology, ETH Zürich</title>
+<meta name="description" content="Yuhan Wang, doctoral student in the Seismology &amp; Wave Physics group at ETH Zürich. A handscroll in eight parts: fibre-optic seismology on the seafloor, papers, tools, a workshop and photographs. Its ridgelines follow a real seismogram.">
+<meta name="theme-color" content="#a3ab9d">
+<script>document.documentElement.className += ' js';</script>
+<link rel="icon" href="img/seal-64.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- the webfonts never hold up the first paint (a reader who cannot reach Google gets the fallback fonts at once) -->
+<link id="gf" rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600&display=swap"></noscript>
+<style>
+:root{
+  --paper:#f3ecdd; --leaf:#fbf7ec; --ink:#1c1a17; --ink2:#463f36; --muted:#5c5448; --line:rgba(28,26,23,.22);
+  --red:#c8102e; --silk:#a3ab9d; --silk2:#8d9788; --gold:#b39a62;
+  --brush:"Ma Shan Zheng","STKaiti","Kaiti SC","KaiTi","Kaiti TC","BiauKai",serif;
+  --zh:"Noto Serif SC","Songti SC","STSong","SimSun",serif;
+  --serif:"EB Garamond","Cormorant Garamond",Georgia,"Times New Roman",serif;
+  --display:"Cormorant Garamond","EB Garamond",Georgia,serif;
+  --st:28px; --sb:50px; --mount:clamp(84px, 8.2vw, 112px);
+  --inkcur:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'><path d='M13 3c3.4 5 5.8 8.2 5.8 11.5a5.8 5.8 0 1 1-11.6 0C7.200 11.2 9.600 8 13 3z' fill='%231c1a17' fill-opacity='.86' stroke='%23f3ecdd' stroke-width='1.2'/></svg>") 13 22;
+  --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600'><filter id='a' x='0' y='0' width='100%' height='100%'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' seed='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .34  0 0 0 0 .27  0 0 0 0 .17  0 0 0 .55 -.17'/></filter><rect width='600' height='600' filter='url(%23a)'/></svg>");
+  --fibres:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600'><filter id='b' x='0' y='0' width='100%' height='100%'><feTurbulence type='fractalNoise' baseFrequency='.007 .12' numOctaves='3' seed='8' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .46  0 0 0 0 .37  0 0 0 0 .22  0 0 0 .42 -.14'/></filter><rect width='600' height='600' filter='url(%23b)'/></svg>");
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+/* smooth only once the page has settled (handscroll.js adds .smooth): the browser's own jump to a #part at load
+   must not glide, or it would end after the correction for late fonts and undo it */
+@media (prefers-reduced-motion:no-preference){html.smooth{scroll-behavior:smooth}}
+body{margin:0; color:var(--ink); background:var(--paper); font-family:var(--serif); font-size:18px; line-height:1.56;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; font-variant-numeric:oldstyle-nums}
+img{display:block; max-width:100%}
+a{color:inherit; text-decoration:underline; text-decoration-color:rgba(28,26,23,.34); text-decoration-thickness:1px; text-underline-offset:.2em; transition:text-decoration-color .25s}
+a:hover{text-decoration-color:var(--ink)}
+:focus-visible{outline:1.5px solid var(--ink); outline-offset:3px; border-radius:2px}
+[lang|="zh"]{font-family:var(--zh)}
+p{margin:0}
+p, li, figcaption{text-wrap:pretty}
+.skip{position:absolute; left:8px; top:-60px; z-index:90; padding:6px 12px; background:var(--leaf); border:1px solid var(--ink)}
+.skip:focus{top:36px}
+
+/* ---------- silk borders of the mounting ---------- */
+.silk{background-color:var(--silk); color:#22201b;
+  background-image:repeating-linear-gradient(45deg, rgba(255,255,255,.085) 0 1.5px, transparent 1.5px 9px), repeating-linear-gradient(-45deg, rgba(30,40,30,.07) 0 1.5px, transparent 1.5px 9px), var(--grain)}
+.silk-top{position:sticky; top:0; z-index:30; height:var(--st); display:flex; align-items:center; justify-content:space-between; padding:0 14px;
+  font:500 11.5px/1 var(--serif); letter-spacing:.14em; text-transform:uppercase; box-shadow:0 1px 0 var(--gold), 0 2px 0 rgba(28,26,23,.5)}
+.silk-top > *{white-space:nowrap}
+.silk-top a{text-decoration:none}
+@media (max-width:520px){.silk-top{font-size:10.5px; letter-spacing:.1em; padding:0 10px} #seedno{display:none}}
+.silk-top a:hover{text-decoration:underline}
+.silk-top [lang|="zh"]{letter-spacing:.2em; font-size:12px}
+#repaint{font:inherit; letter-spacing:inherit; text-transform:inherit; color:inherit; background:none; border:0; padding:6px 4px; cursor:pointer}
+#repaint:hover{text-decoration:underline}
+#seedno{opacity:.62; font-variant-numeric:tabular-nums lining-nums}
+.silk-bottom{display:none}
+
+/* ---------- paper ---------- */
+#stage{position:relative}
+.paper{display:none}
+body{background-image:var(--fibres), var(--grain); background-size:600px 600px}
+#paint{display:none}
+
+/* ---------- shared pieces ---------- */
+.tzh{margin:0; font-family:var(--brush); font-weight:400; line-height:1.02; writing-mode:vertical-rl; letter-spacing:.03em; color:var(--ink)}
+.sig{display:flex; flex-direction:column; align-items:center; margin:0; font-family:var(--brush); line-height:1}
+.sig-name{writing-mode:vertical-rl; letter-spacing:.12em; font-family:var(--brush)}
+.seal{mix-blend-mode:multiply; transform:rotate(-2.5deg)}
+.name{margin:0; font-family:var(--display); font-weight:500; letter-spacing:.005em; line-height:1}
+.line{font-style:italic; color:var(--ink2)}
+.gloss{color:var(--ink2)}
+.gloss b{font-weight:500; color:var(--ink)}
+.hint{color:var(--muted); font-style:italic}
+.only-h{display:none}
+.note{margin:0; color:var(--ink2); font-size:.86em; line-height:1.42; font-style:italic}
+.note small{display:block; margin-top:.5em; font-size:.9em; color:var(--muted); font-style:normal}
+.ctitle{margin:0; font-weight:400}
+.ctitle .zh{font-family:var(--brush); line-height:1; white-space:nowrap; flex:none}
+.ctitle .en{font:500 .7em/1 var(--serif); letter-spacing:.32em; text-transform:uppercase; color:var(--muted)}
+.years{list-style:none; margin:0; padding:0}
+.years li{display:grid; grid-template-columns:6.4em 1fr; gap:.2em .6em; padding:.34em 0; border-top:1px solid var(--line); font-size:.93em; line-height:1.4}
+.years li:last-child{border-bottom:1px solid var(--line)}
+.years b{font-weight:500; font-variant-numeric:lining-nums tabular-nums; color:var(--ink2)}
+.small{font-size:.9em; color:var(--ink2)}
+.num{display:block; font-family:var(--display); font-weight:600; line-height:.86; letter-spacing:-.012em; font-variant-numeric:lining-nums}
+.num.red{color:var(--red)}
+.count span{display:block; margin-top:.5em; font-size:.92em; line-height:1.35; color:var(--ink2); max-width:17em}
+.count .num{font-size:5.5em}
+.count.minor .num{font-size:2.7em; color:var(--ink)}
+.triad{list-style:none; margin:0; padding:0; display:flex; gap:1.5em}
+.triad li{display:flex; flex-direction:column; gap:.3em; font-size:.84em; line-height:1.25; color:var(--ink2); max-width:6.5em}
+.triad b{font-family:var(--brush); font-weight:400; font-size:2.5em; line-height:1; color:var(--ink)}
+.refs{font-size:.9em; color:var(--ink2)}
+.event b{display:block; font-weight:500; font-size:1.25em; line-height:1.2; margin-bottom:.25em}
+.pubs,.tools{list-style:none; margin:0; padding:0}
+.pubs li{padding-top:.55em; border-top:1px solid var(--line)}
+.pubs .meta{font-size:.76em; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); font-variant-numeric:lining-nums}
+.pubs .ttl{margin:.22em 0 .25em; font-size:1.07em; line-height:1.3; font-weight:500}
+.pubs .ttl a{text-decoration-color:rgba(28,26,23,.2)}
+.pubs .au{font-size:.92em; line-height:1.38; color:var(--ink2)}
+.pubs .gist{margin-top:.3em; font-size:.92em; line-height:1.38; font-style:italic; color:var(--muted)}
+.nowrap{white-space:nowrap}
+.tools li{padding-top:.5em; border-top:1px solid var(--line); font-size:.94em; line-height:1.4}
+.tools b{display:block; font-weight:500; font-size:1.08em}
+.tools span{color:var(--ink2)}
+.tools .lab b{font-size:1.3em; line-height:1.15; margin-bottom:.1em}
+/* album leaves */
+.leaf{margin:0}
+.leaf .mat{display:block; width:100%; padding:7px; background:var(--leaf); border:0; cursor:zoom-in; font:inherit; color:inherit;
+  box-shadow:0 0 0 1px rgba(60,50,35,.3), 0 0 0 6px var(--silk), 0 0 0 7px rgba(40,35,28,.4), 0 14px 24px -14px rgba(40,30,15,.5); transition:transform .5s cubic-bezier(.2,.7,.2,1), box-shadow .5s}
+.leaf .mat:hover{transform:translateY(-3px)}
+.leaf img{width:100%; height:auto; filter:saturate(.84) contrast(.97) sepia(.07); transition:filter .5s}
+.leaf .mat:hover img,.leaf .mat:focus-visible img{filter:none}
+.leaf.still .mat{cursor:default}
+.leaf.still .mat:hover{transform:none}
+.leaf figcaption{margin-top:14px; font-size:.82em; line-height:1.3; color:var(--ink2)}
+.leaf figcaption [lang|="zh"]{margin-right:.2em; color:var(--ink)}
+/* implements: four tools shown as prints of their own figures; the colour comes back on hover */
+.implements{display:grid}
+.imp .mat{cursor:pointer}
+.imp img{filter:grayscale(1) sepia(.18) contrast(.92); mix-blend-mode:multiply}
+.imp .mat:hover img{filter:none; mix-blend-mode:normal}
+.imp figcaption{margin-top:10px; font-size:.86em; line-height:1.34}
+.imp figcaption b{font-family:var(--brush); font-weight:400; font-size:1.6em; line-height:1; color:var(--ink); margin-right:.1em; vertical-align:-.1em}
+.imp figcaption a{font-weight:500; color:var(--ink)}
+.imp figcaption span{display:block; margin-top:.15em}
+.inscr{font-size:.92em; line-height:1.48; color:var(--ink2)}
+.inscr b{font-family:var(--brush); font-weight:400; font-size:1.7em; line-height:1; color:var(--ink); margin-right:.05em; vertical-align:-.12em}
+.inscr [lang|="zh"]{white-space:nowrap}
+.inscr em{font-style:normal; letter-spacing:.1em; text-transform:uppercase; font-size:.82em; color:var(--muted); margin-right:.2em}
+.links{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:.1em 1.4em; font-size:.96em}
+.links li{padding:.26em 0; border-top:1px solid var(--line)}
+.mail{font-family:var(--display); font-weight:500; font-size:1.7em; line-height:1.15; text-decoration-color:rgba(28,26,23,.25)}
+html:not(.hs) .mail{font-size:min(1.7em,7.4vw); overflow-wrap:anywhere}
+.epi{font-style:italic; color:var(--ink2)}
+.epi cite{display:block; margin-top:.3em; font-style:normal; font-size:.86em; color:var(--muted)}
+.credit{font-size:.8em; line-height:1.42; color:var(--muted)}
+.dateline{font-family:var(--brush); font-size:1.5em; line-height:1.45; letter-spacing:.14em; writing-mode:vertical-rl; white-space:nowrap}
+/* the workshop leaf is mounted as a round fan (团扇), cropped to the globe */
+.fan{margin:0}
+.fan .mat{position:relative; display:block; overflow:hidden; padding:0; border-radius:50%; background:#d9d2c0;
+  box-shadow:0 0 0 7px var(--leaf), 0 0 0 8px rgba(60,50,35,.3), 0 0 0 14px var(--silk), 0 0 0 15px rgba(40,35,28,.4), 0 16px 26px -14px rgba(40,30,15,.55)}
+.fan img{position:absolute; max-width:none; width:auto; height:117%; left:-88.3%; top:-9.2%; filter:saturate(.5) sepia(.22) contrast(.94) brightness(1.03)}
+.fan .mat::after{content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle at 50% 42%, transparent 58%, rgba(243,236,221,.22) 86%, rgba(243,236,221,.4)); box-shadow:inset 0 0 0 1px rgba(60,50,35,.25)}
+.fan::after{content:""; display:block; width:9px; height:calc(var(--fan) * .3); margin:15px auto 0; border-radius:2px 2px 4px 4px;
+  background:linear-gradient(90deg,#3a2a1e,#7a5a43 45%,#4a3324); box-shadow:0 0 0 1px rgba(40,30,15,.25)}
+
+/* ---------- vertical page (small screens, and the fallback without JavaScript) ---------- */
+html:not(.hs) .hero-view{position:relative; min-height:calc(100svh - var(--st)); overflow:hidden}
+html:not(.hs) .hero .band{position:absolute; inset:0; width:100%; height:100%}
+html:not(.hs) .hero-in{position:relative; display:grid; grid-template-columns:auto auto 1fr; column-gap:14px; padding:7.5svh 20px 0}
+html:not(.hs) .tzh{grid-column:2; grid-row:1; font-size:min(15.5svh,30vw)}
+html:not(.hs) .sig{grid-column:1; grid-row:1; margin-top:min(13svh,25vw); font-size:min(4.2svh,8vw)}
+html:not(.hs) .seal{width:min(5.6svh,11vw); height:auto; margin-top:.45em}
+html:not(.hs) .gloss{grid-column:3; grid-row:1; font-size:15px; line-height:1.4; padding-top:.4em; max-width:11.5em}
+html:not(.hs) .gloss .hint{display:block; margin-top:.8em}
+html:not(.hs) .name{grid-column:1/-1; grid-row:2; margin-top:.36em; font-size:min(5.6svh,11.2vw)}
+html:not(.hs) .line{grid-column:1/-1; grid-row:3; margin-top:.3em; font-size:min(18px,4.5vw); max-width:14.6em}   /* one line in EB Garamond; a wider fallback wraps instead of reaching into the hills */
+html:not(.hs) .note{padding:18px 22px 6px; max-width:36em; margin:0 auto}
+html:not(.hs) .band{display:block; width:100%; height:clamp(170px,50vw,250px);
+  -webkit-mask-image:linear-gradient(to bottom, transparent, #000 14%, #000 84%, transparent); mask-image:linear-gradient(to bottom, transparent, #000 14%, #000 84%, transparent)}
+html:not(.hs) .hero .band{-webkit-mask-image:linear-gradient(to bottom, #000 90%, transparent); mask-image:linear-gradient(to bottom, #000 90%, transparent)}
+html:not(.hs) .colophon{max-width:640px; margin:0 auto; padding:6px 22px 44px}
+html:not(.hs) .ctitle{display:flex; flex-wrap:wrap; align-items:baseline; gap:.3em .8em; margin:0 0 .9em}
+html:not(.hs) .ctitle .zh{font-size:min(2.7em, 15.5vw)}
+html:not(.hs) .cbody > * + *, html:not(.hs) .flow > * + *, html:not(.hs) .grp > * + *{margin-top:1.05em}
+html:not(.hs) section{scroll-margin-top:calc(var(--st) + 14px)}
+html:not(.hs) .tally{display:grid; gap:1.1em}
+html:not(.hs) .count .num{font-size:4.6em}
+html:not(.hs) .count.minor .num{font-size:2.3em; color:var(--ink2)}
+html:not(.hs) .leaf.portrait{max-width:230px}
+html:not(.hs) .leaves{display:grid; grid-template-columns:1fr 1fr; gap:26px 22px; padding:6px 6px 0}
+html:not(.hs) .leaves .wide{grid-column:1/-1}
+html:not(.hs) .leaves .tall{grid-row:span 2}
+html:not(.hs) .implements{grid-template-columns:1fr 1fr; gap:24px 22px; padding:6px 6px 0}
+html:not(.hs) .imp img{width:100%; height:auto; aspect-ratio:4/3; object-fit:contain}
+html:not(.hs) .imp figcaption b{display:block; margin-bottom:.12em}
+html:not(.hs) .imp figcaption a{overflow-wrap:anywhere}
+html:not(.hs) .fan{--fan:min(68vw, 280px); padding:14px 0 4px}
+html:not(.hs) .fan .mat{width:var(--fan); height:var(--fan); margin:0 auto}
+html:not(.hs) .dateline{writing-mode:horizontal-tb; font-size:min(1.2em,5.3vw); line-height:1.35; letter-spacing:.08em}
+html:not(.hs) .lastcol{display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; margin-top:1.6em; padding-top:1.1em; border-top:1px solid var(--line)}
+html:not(.hs) .seal2{width:62px; height:auto; flex:none}
+html:not(.hs) .mount{display:none}
+html:not(.hs) #track{padding-bottom:30px}
+html:not(.js) .band, html:not(.js) .note, html:not(.js) .gloss .hint, html:not(.js) #repaint{display:none}
+html:not(.js) .hero-view{min-height:0; padding-bottom:20px}
+
+/* ---------- handscroll (wide screens) ---------- */
+html.hs, html.hs body{height:100%; overflow:hidden}
+html.hs body{background:var(--silk2); overscroll-behavior:none}
+html.hs .silk-top{position:fixed; left:0; right:0}
+html.hs .silk-bottom{display:block; position:fixed; left:0; right:0; bottom:0; height:var(--sb); z-index:30; box-shadow:0 -1px 0 var(--gold), 0 -2px 0 rgba(28,26,23,.5)}
+html.hs #stage{position:fixed; left:0; right:0; top:var(--st); bottom:var(--sb); overflow:hidden; touch-action:none; background:var(--paper)}
+html.hs .paper{display:block; position:absolute; top:0; bottom:0; left:0; right:-600px; background-color:var(--paper); background-image:var(--fibres), var(--grain); background-size:600px 600px; will-change:transform}
+html.hs #stage::after{content:""; position:absolute; inset:0; z-index:5; pointer-events:none;
+  background:linear-gradient(to bottom, rgba(110,85,45,.13), transparent 6%, transparent 94%, rgba(110,85,45,.15)), radial-gradient(130% 100% at 50% 45%, rgba(255,250,236,.3), transparent 62%)}
+html.hs #paint{display:block; position:absolute; inset:0; width:100%; height:100%; transition:opacity .6s ease}
+html.hs #paint.out{opacity:0}
+html.hs .band{display:none}
+html.hs #track{position:absolute; left:0; top:0; height:100%; width:max-content; display:flex; align-items:flex-start; z-index:2;
+  padding:calc(var(--H) * .085) calc(var(--mount) + 24px + 16vw) 0 0; font-size:clamp(17px, calc(var(--H) * .0222), 20px)}
+html.hs.ink #stage{cursor:var(--inkcur), crosshair}
+html.dragging, html.dragging *{-webkit-user-select:none; user-select:none}
+html.hs .mount{position:absolute; top:0; bottom:0; width:var(--mount); background-color:var(--silk);
+  background-image:repeating-linear-gradient(45deg, rgba(255,255,255,.085) 0 1.5px, transparent 1.5px 9px), repeating-linear-gradient(-45deg, rgba(30,40,30,.07) 0 1.5px, transparent 1.5px 9px), var(--grain)}
+html.hs .mount::before{content:""; position:absolute; top:0; bottom:0; width:24px;
+  background:linear-gradient(90deg,#241812,#5b4130 28%,#7a5a43 46%,#4a3324 70%,#1e140f); box-shadow:0 0 18px rgba(0,0,0,.4)}
+html.hs .mount.start{left:0; box-shadow:1px 0 0 var(--gold), 2px 0 0 rgba(28,26,23,.5), 12px 0 22px -12px rgba(40,30,15,.5)}
+html.hs .mount.start::before{left:0}
+html.hs .mount.end{right:0; box-shadow:-1px 0 0 var(--gold), -2px 0 0 rgba(28,26,23,.5), -12px 0 22px -12px rgba(40,30,15,.5)}
+html.hs .mount.end::before{right:0}
+html.hs .only-h{display:inline}
+html.hs .only-v{display:none}
+
+html.hs .hero{flex:none; position:relative; width:var(--W); min-height:10px}
+html.hs .hero-view{display:contents}
+html.hs .hero-in{position:relative; display:grid; grid-template-columns:auto auto minmax(0,1fr); column-gap:1.05em; align-items:start;
+  margin-left:calc(var(--mount) + clamp(26px,4vw,62px)); font-size:calc(1em * var(--hf, 1));   /* --hf < 1 only with a wide fallback font (handscroll.js fitHero) */
+  /* the seal column and the brush title grow with the height of the window (.068 and .204 of it), so the hero grows
+     with it too: the gloss beside them always keeps its 9.3 em (with the two gaps, 11.4 em) */
+  width:max(clamp(318px,30vw,470px), calc(var(--H) * .272 * var(--hk, 1) + 11.4em))}
+html.hs .hero-in::before, html.hs .colophon::before{content:""; position:absolute; z-index:-1; pointer-events:none; height:calc(var(--H) * .55 + 4.2em)}
+html.hs .hero-in::before{inset:-2em -3em auto -3em; background:radial-gradient(closest-side, rgba(243,236,221,.92), rgba(243,236,221,.8) 58%, rgba(243,236,221,0))}
+/* behind an inscription the paper is washed clear right to its edges (the vertical labels sit there) */
+html.hs .colophon::before{inset:-2.2em -4em auto -4em;
+  background:linear-gradient(90deg, rgba(243,236,221,0), rgba(243,236,221,.84) 4em, rgba(243,236,221,.84) calc(100% - 4em), rgba(243,236,221,0));
+  -webkit-mask-image:linear-gradient(transparent, #000 2.2em, #000 calc(100% - 2.6em), transparent); mask-image:linear-gradient(transparent, #000 2.2em, #000 calc(100% - 2.6em), transparent)}
+/* --hk < 1 on short screens (set by handscroll.js) so that the hero always ends above the water */
+html.hs .tzh{grid-column:2; grid-row:1; font-size:calc(var(--H) * .2 * var(--hk, 1))}
+html.hs .sig{grid-column:1; grid-row:1; margin-top:calc(var(--H) * .135 * var(--hk, 1)); font-size:calc(var(--H) * .051 * var(--hk, 1))}
+html.hs .seal{width:calc(var(--H) * .068 * var(--hk, 1)); height:auto; margin-top:.4em}
+html.hs .gloss{grid-column:3; grid-row:1; align-self:stretch; display:flex; flex-direction:column; justify-content:space-between; padding:.5em 0 .3em; font-size:.88em; line-height:1.42}
+html.hs .name{grid-column:1/-1; grid-row:2; margin-top:.34em; font-size:3.15em}
+html.hs .line{grid-column:1/-1; grid-row:3; margin-top:.3em; font-size:calc(1.2em * var(--lk, 1)); white-space:nowrap}   /* one line: a wider fallback font is set smaller (--lk, handscroll.js fitHero) */
+html.hs .note{position:absolute; top:calc(var(--H) * -.05); left:var(--xp, 46vw); width:15em}
+html.hs .note::before{content:""; position:absolute; z-index:-1; inset:-.5em -.7em; border-radius:2em; pointer-events:none;   /* a far peak may rise behind it */
+  background:rgba(243,236,221,.6); box-shadow:0 0 1.6em 1.1em rgba(243,236,221,.6)}
+@media (max-width:1150px){html.hs .note{width:13em; font-size:.8em}}
+
+html.hs .colophon{flex:none; position:relative; display:flex; align-items:flex-start; gap:1.9em; margin-left:var(--gap,44vw)}
+/* a title ends above the water (handscroll.js fitTitles): the label below it, or beside it (.side), or none (.noen) */
+html.hs .ctitle{flex:none; writing-mode:vertical-rl; display:flex; align-items:center; gap:.9em; max-height:calc(var(--H) * .535)}
+html.hs .ctitle .zh{font-size:calc(3.4em * var(--tk, 1)); letter-spacing:.07em}
+html.hs .ctitle .en{flex:none}
+html.hs .ctitle::after{content:""; width:1px; flex:0 1 3.2em; min-height:0; background:var(--line)}
+html.hs .ctitle.side{flex-direction:column; align-items:flex-start; gap:.38em; max-height:none}
+html.hs .ctitle.side .en{margin-top:1.15em}
+html.hs .ctitle.side::after, html.hs .ctitle.noen .en{display:none}
+html.hs .cbody{display:flex; align-items:flex-start; gap:2.6em}
+html.hs .flow{display:flex; flex-direction:column; flex-wrap:wrap; align-content:flex-start; height:calc(var(--H) * .55); column-gap:2.5em; row-gap:.8em; width:var(--col,26em)}
+html.hs .flow > *{width:var(--col,26em); flex:none}
+html.hs .tally{--col:17em}
+html.hs .tally .triad{margin-top:.5em}
+html.hs .pubs{--col:20.5em; row-gap:.75em}
+html.hs .tools{--col:20em; row-gap:.55em}
+html.hs .leaf.portrait{--col:calc(var(--H) * .245)}
+html.hs .leaf.portrait .mat{width:calc(var(--H) * .245)}
+html.hs .gather{--col:19em}
+html.hs .fan{--fan:calc(var(--H) * .36); flex:none; display:flex; flex-direction:column; align-items:center; padding-top:14px}
+html.hs .fan .mat{width:var(--fan); height:var(--fan)}
+/* two rows of leaves that end above the water; the tall leaf is exactly two rows high */
+html.hs .leaves{--lh:min(calc(var(--H) * .176), calc((var(--H) * .523 - 60px - 2.132em) / 2));
+  display:grid; grid-auto-flow:column; grid-template-rows:repeat(2,auto); gap:calc(var(--H) * .032) 1.7em; padding:8px 8px 0; align-content:start; justify-content:start}
+html.hs .leaves .leaf .mat{width:auto}
+html.hs .leaves .leaf img{height:var(--lh); width:auto; max-width:none}
+html.hs .leaves .tall{grid-row:span 2}
+html.hs .leaves .tall img{height:calc(2 * var(--lh) + var(--H) * .032 + 26px + 1.066em)}
+html.hs .leaves figcaption{margin-top:12px; max-width:16em}
+html.hs .implements{--ih:min(calc(var(--H) * .15), calc(var(--H) * .2475 - 28px - 2.9em));
+  grid-template-columns:repeat(2,auto); gap:calc(var(--H) * .03) 1.6em; padding:8px 8px 0; align-content:start}
+html.hs .imp .mat{width:fit-content}
+html.hs .imp img{height:var(--ih); width:auto; max-width:none}
+html.hs .imp figcaption{max-width:15em}
+html.hs .cable-note{display:block; position:absolute; left:6.5em; top:calc(var(--H) * .668); width:22em; margin:0; font-size:.9em; font-style:italic; color:var(--ink2); padding-left:1.1em; border-left:1px solid rgba(200,16,46,.55)}
+html.hs .cable-note b{font-weight:500; font-style:normal; color:var(--red); font-variant-numeric:lining-nums}
+html.hs .words{--col:15.5em}
+html.hs .last{--col:19em}
+html.hs .grp > * + *{margin-top:.8em}
+/* 落款 keeps to two columns: lower links (.low), then wider columns (.wide) when a column would reach the water */
+html.hs .last.low .links, html.hs .last.wide .links{grid-template-columns:repeat(3,auto)}
+html.hs .last.wide{--col:23.5em}
+@media (max-width:1100px){html.hs .last{--col:17em} html.hs .last .mail{font-size:1.5em}}
+html.hs .seal2{width:calc(var(--H) * .085); height:auto}
+html.hs .lastcol{flex:none; display:flex; flex-direction:column; gap:.7em; align-items:center}
+html.hs .dateline{font-size:min(1.42em, calc(var(--H) * .036))}
+/* short screens: the implements go into one row, the other tools into two balanced columns */
+@media (max-height:760px){
+  html.hs .implements{--ih:calc(var(--H) * .2); grid-template-columns:repeat(4,auto)}
+  html.hs .tools{display:grid; grid-template-columns:repeat(2,18em); gap:.55em 2.2em; height:auto; align-content:start}
+  html.hs .tools > *{width:auto}
+}
+
+/* ---------- the progress mark: a small roller on a line ---------- */
+.silk-bottom ol{list-style:none; margin:0; padding:0}
+.silk-bottom .rail{position:absolute; left:64px; right:84px; top:14px; height:1px; background:rgba(28,26,23,.5)}
+.silk-bottom li{position:absolute; top:0; transform:translateX(-50%); white-space:nowrap}
+.silk-bottom li::before{content:""; position:absolute; left:50%; top:10px; width:1px; height:9px; background:rgba(28,26,23,.6)}
+.silk-bottom a{display:block; padding:23px 6px 5px; text-decoration:none; font-size:13px; line-height:1.1; color:#22201b; opacity:.8; transition:opacity .3s}
+.silk-bottom a i{font:500 10px/1 var(--serif); letter-spacing:.16em; text-transform:uppercase; margin-left:.25em; font-style:normal}
+.silk-bottom.tight a i{display:none}
+.silk-bottom a:hover, .silk-bottom a[aria-current]{opacity:1}
+.silk-bottom a[aria-current] [lang]{font-weight:600}
+#roller{position:absolute; top:8.5px; left:64px; width:30px; height:11px; margin-left:-15px; border-radius:2px;
+  background:linear-gradient(#fbf6e8,#e4d8bd 55%,#b9aa88); box-shadow:0 0 0 1px rgba(28,26,23,.7), 0 3px 5px -1px rgba(0,0,0,.4); will-change:transform; pointer-events:none}
+#roller::before, #roller::after{content:""; position:absolute; top:-2px; bottom:-2px; width:4px; background:#2a1c14; border-radius:1px}
+#roller::before{left:-4px} #roller::after{right:-4px}
+
+/* ---------- the viewer for photographs ---------- */
+#viewer{width:100vw; height:100vh; height:100dvh; max-width:none; max-height:none; margin:0; padding:0; border:0; background:rgba(24,22,19,.93); color:#efe7d6}
+#viewer::backdrop{background:rgba(24,22,19,.6)}
+#viewer figure{margin:0; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:5vh 64px 5vh}
+#viewer img{max-width:100%; max-height:78vh; width:auto; height:auto; padding:10px; background:var(--leaf); box-shadow:0 0 0 7px var(--silk), 0 0 0 8px rgba(0,0,0,.6), 0 30px 60px -20px rgba(0,0,0,.8)}
+#viewer figcaption{font-size:17px; text-align:center}
+#viewer figcaption [lang|="zh"]{margin-right:.3em}
+#viewer button{position:absolute; background:none; border:0; color:inherit; font:500 13px/1 var(--serif); letter-spacing:.16em; text-transform:uppercase; cursor:pointer; padding:14px}
+#viewer button:focus-visible{outline-color:#efe7d6}
+#viewer .vclose{top:10px; right:12px}
+#viewer .vprev, #viewer .vnext{top:50%; transform:translateY(-50%); font-family:var(--display); font-size:44px; letter-spacing:0; padding:18px}
+#viewer .vprev{left:6px} #viewer .vnext{right:6px}
+@media (max-width:640px){#viewer figure{padding:8vh 14px} #viewer .vprev, #viewer .vnext{top:auto; bottom:8px; transform:none}}
+
+/* ---------- unrolling ---------- */
+#cover{position:fixed; top:var(--st); bottom:var(--sb); left:0; width:calc(100vw + 80px); z-index:40; pointer-events:none; will-change:transform;
+  background-color:#e9dfc8; background-image:var(--fibres), var(--grain); background-size:600px 600px; box-shadow:-30px 0 40px -18px rgba(40,30,15,.55)}
+#cover i{position:absolute; left:-17px; top:-3px; bottom:-3px; width:42px; border-radius:21px/8px;
+  background:linear-gradient(90deg,#a99c7e,#efe6d0 26%,#fbf6e8 42%,#dccfb2 68%,#8f8266); box-shadow:0 0 0 1px rgba(40,30,15,.35), 8px 0 22px rgba(40,30,15,.35)}
+</style>
+</head>
+<body>
+<a class="skip" href="#about">Skip to the text</a>
+
+<div class="silk silk-top">
+  <a href="../../index.html">draft v3c · all drafts</a>
+  <button id="repaint" type="button" title="Paint the landscape again with another seed"><span lang="zh-Hans">重绘</span> · repaint <span id="seedno"></span></button>
+</div>
+
+<div id="stage">
+  <div class="paper" aria-hidden="true"></div>
+  <canvas id="paint" aria-hidden="true"></canvas>
+
+  <main id="track">
+    <div class="mount start" aria-hidden="true"></div>
+
+    <!-- 1 · 卷首 -->
+    <section class="hero" id="title" aria-label="Title">
+      <div class="hero-view">
+      <canvas class="band hero-band" aria-hidden="true"></canvas>
+      <div class="hero-in">
+        <p class="tzh" lang="zh-Hans">地听</p>
+        <p class="sig"><span class="sig-name" lang="zh-Hans">王雨寒</span><img class="seal" src="img/seal-160.webp" srcset="img/seal-160.webp 160w, img/seal-320.webp 320w" sizes="(min-width: 800px) and (min-height: 560px) and (min-aspect-ratio: 11/10) 7vh, 11vw" width="160" height="160" alt="Yuhan Wang’s personal seal, stamped in vermilion"></p>
+        <div class="gloss">
+          <p><b lang="zh-Hans">地听</b> (dì tīng), ‘listening to the ground’.</p>
+          <p class="hint"><span class="only-h">A handscroll in eight parts. Scroll, drag or use the arrow keys, and touch the water.</span><span class="only-v">A scroll in eight parts. Touch the water.</span></p>
+        </div>
+        <h1 class="name">Yuhan Wang</h1>
+        <p class="line">Fibre-optic seismology at ETH Zürich.</p>
+      </div>
+      </div>
+      <p class="note" id="pnote">The fine line at the water’s edge is a seismogram, and the ridgelines follow it: the M&nbsp;8.8 Kamchatka earthquake of 29&nbsp;July 2025, recorded at Sulz, Switzerland. <span class="only-h">Here, about 12&nbsp;minutes later, the P&nbsp;wave arrives.</span><span class="only-v">At the mark P above, the P&nbsp;wave arrives, about 12&nbsp;minutes later.</span>
+        <small>Time and swings are not to scale. Data: Swiss Seismological Service</small></p>
+    </section>
+
+    <!-- 2 · 自述 -->
+    <canvas class="band" aria-hidden="true"></canvas>
+    <section class="colophon" id="about" aria-labelledby="t-about" style="--gap:25vw">
+      <h2 class="ctitle" id="t-about"><span class="zh" lang="zh-Hans">自述</span><span class="en">About</span></h2>
+      <div class="cbody">
+        <div class="flow">
+          <p>I am a doctoral student in the Seismology &amp; Wave Physics group at ETH Zürich, supervised by Andreas Fichtner. I work on fibre-optic seismology: distributed acoustic sensing (DAS) turns a telecom cable into a dense seismic array, on the seafloor and under cities. I also build open tools around this work.</p>
+          <ul class="years">
+            <li><b>2025 –</b><span>Doctoral student, Department of Earth and Planetary Sciences, ETH Zürich</span></li>
+            <li><b>2023 – 2025</b><span>MSc, Earth and Planetary Sciences, ETH Zürich</span></li>
+            <li><b>2022</b><span>A summer with the same group in Zürich: roadside DAS in Athens, ambient-noise tomography, site amplification</span></li>
+            <li><b>2019 – 2023</b><span>BSc in geophysics, minor in mathematics, School of the Gifted Young, University of Science and Technology of China. First DAS work there, with Huajian Yao’s group</span></li>
+          </ul>
+          <figure class="leaf portrait still">
+            <span class="mat"><img src="../v3-shared/portrait-sm.webp" width="480" height="600" alt="Portrait of Yuhan Wang"></span>
+            <figcaption><span lang="zh-Hans">王雨寒</span> Yuhan Wang</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 · 海底听震 -->
+    <canvas class="band" aria-hidden="true"></canvas>
+    <section class="colophon" id="seafloor" aria-labelledby="t-seafloor" style="--gap:50vw">
+      <h2 class="ctitle" id="t-seafloor"><span class="zh" lang="zh-Hans">海底听震</span><span class="en">Seafloor</span></h2>
+      <div class="cbody">
+        <div class="flow tally">
+          <p class="count"><b class="num red">17,325</b><span>microearthquakes in two months, found with one telecom cable on the seafloor</span></p>
+          <p class="count minor"><b class="num">893</b><span>in the regional catalogue for the same period</span></p>
+          <ul class="triad">
+            <li><b lang="zh-Hans">五</b>five template events</li>
+            <li><b lang="zh-Hans">一</b>one cable</li>
+            <li><b lang="zh-Hans">二</b>two months of data</li>
+          </ul>
+        </div>
+        <div class="flow">
+          <p>The Kefalonia Transform Fault, in the Ionian Sea off Greece, breaks in earthquakes above magnitude&nbsp;6 every 10 to 20&nbsp;years. Networks on land resolve its small earthquakes poorly.</p>
+          <p>From 24&nbsp;April to 22&nbsp;June 2024, a telecom cable on the seafloor between Kefalonia and Ithaca served as a DAS array. We scanned the two months with a matched filter built from five template events. It found 17,325 microearthquakes, nearly 20&nbsp;times the regional catalogue. They come in episodic swarms, and one cluster holds over 72&nbsp;% of the detections. Near the template clusters the magnitude of completeness drops by about 2&nbsp;units.</p>
+          <p>The cable runs 15&nbsp;km, from land under the sea to land, and its fibre has 1872&nbsp;channels, one every 8.17&nbsp;m. Each tick on the red line under the water stands for one of them. The small loops are real too: spare fibre stored in coils of 16 to 172&nbsp;m, found with tap tests, earthquake amplitudes and passing vehicles.</p>
+          <p class="refs">Preprint: <a href="https://doi.org/10.22541/essoar.15006791/v1"><i>Persistent Faulting Activity Along the Kefalonia Transform Fault Revealed by Seafloor DAS</i></a>, ESS Open Archive, 2026. Presented at the <a href="https://doi.org/10.5194/egusphere-egu25-2886">EGU General Assembly 2025</a>. Code: <a href="https://github.com/WANGYuhan2002/yuhan-mfdas">yuhan-mfdas</a>, <a href="https://github.com/WANGYuhan2002/yuhan_das_spectra">yuhan_das_spectra</a> and <a href="https://github.com/WANGYuhan2002/das_wavefront_picker">das_wavefront_picker</a>, with a <a href="https://doi.org/10.5281/zenodo.20715241">Zenodo archive of the code</a>; the <a href="https://github.com/WANGYuhan2002/das-channel-mapping-skill">channel map</a>.</p>
+        </div>
+      </div>
+      <p class="cable-note only-h" aria-hidden="true">The red line is the fibre: <b>1872</b> channels, one tick every <b>8.17&nbsp;m</b>, along <b>15&nbsp;km</b> of cable.</p>
+    </section>
+
+    <!-- 4 · 著述 -->
+    <canvas class="band" aria-hidden="true"></canvas>
+    <section class="colophon" id="papers" aria-labelledby="t-papers" style="--gap:70vw">
+      <h2 class="ctitle" id="t-papers"><span class="zh" lang="zh-Hans">著述</span><span class="en">Papers</span></h2>
+      <div class="cbody">
+        <ol class="flow pubs">
+          <li>
+            <p class="meta">2026 · <i>Seismological Research Letters</i></p>
+            <p class="ttl"><a href="https://doi.org/10.1785/0220260220">Calibrating Microwave-Frequency Fiber Interferometry Against Collocated DAS: Earthquakes, Ocean Waves, and Traffic</a></p>
+            <p class="au">Yuhan Wang, Adonis Bogris, Christos Simos, Iraklis Simos, Nikolaos S. Melis, Stavros Deligiannidis, Andreas Fichtner</p>
+            <p class="gist">One integrated fibre measurement compared with the DAS channels beside it, on the Kefalonia cable. <a href="https://doi.org/10.5281/zenodo.20553635">Code and data</a>.</p>
+          </li>
+          <li>
+            <p class="meta">2026 · preprint, ESS Open Archive</p>
+            <p class="ttl"><a href="https://doi.org/10.22541/essoar.15006791/v1">Persistent Faulting Activity Along the Kefalonia Transform Fault Revealed by Seafloor DAS</a></p>
+            <p class="au">Yuhan Wang, Men-Andrin Meier, Adonis Bogris, Christos Simos, Iraklis Simos, Nikolaos S. Melis, Andreas Fichtner</p>
+          </li>
+          <li>
+            <p class="meta">2026 · preprint</p>
+            <p class="ttl"><a href="https://doi.org/10.5281/zenodo.23354895">Geometric Filtering in Curved Fibre-Optic Sensing — I. Planar-Arc Response and a Deployment Decision Map</a></p>
+            <p class="au">Yuhan Wang, Andreas Fichtner</p>
+            <p class="gist">How the curvature of a cable filters the wavefield it records, and what that means for laying out a deployment.</p>
+          </li>
+          <li>
+            <p class="meta">2026 · data and code</p>
+            <p class="ttl"><a href="https://doi.org/10.5281/zenodo.24190285">Shallow Subsurface Imaging for Seismic Hazard using Dark Fibers in Athens, Greece</a></p>
+            <p class="au">Daniel C. Bowden, Lu Tian, Yuhan Wang, Krystyna T. Smolinski, Konstantinos Lentas, Nikolaos S. Melis, Adonis Bogris, Christos Simos, et al.</p>
+            <p class="gist">My part began as a summer project in 2022, shown at the <a href="https://agu.confex.com/agu/fm22/meetingapp.cgi/Paper/1081677">AGU Fall Meeting 2022</a>.</p>
+          </li>
+          <li>
+            <p class="meta">2025 · EGU General Assembly, Vienna</p>
+            <p class="ttl"><a href="https://doi.org/10.5194/egusphere-egu25-2886">Mapping fault dynamics: very high seismicity detected along the Kefalonia Transform Fault with DAS and template matching</a></p>
+            <p class="au">Yuhan Wang, Andreas Fichtner</p>
+          </li>
+          <li class="more">
+            <p class="au">The full list: <a href="https://scholar.google.com/citations?user=DLRFdHEAAAAJ&amp;hl=en">Google Scholar</a>, <a href="https://orcid.org/0000-0001-6451-1166">ORCID <span class="nowrap">0000-0001-6451-1166</span></a>.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- 5 · 器用 -->
+    <canvas class="band" aria-hidden="true"></canvas>
+    <section class="colophon" id="tools" aria-labelledby="t-tools" style="--gap:42vw">
+      <h2 class="ctitle" id="t-tools"><span class="zh" lang="zh-Hans">器用</span><span class="en">Tools</span></h2>
+      <div class="cbody">
+        <div class="implements">
+          <figure class="leaf imp"><a class="mat" href="https://github.com/WANGYuhan2002/seismohub" tabindex="-1" aria-hidden="true"><img src="img/sh-library.webp" width="720" height="450" loading="lazy" alt=""></a><figcaption><b lang="zh-Hans">一</b> <a href="https://github.com/WANGYuhan2002/seismohub">SeismoHub</a><span>A literature hub for seismology.</span></figcaption></figure>
+          <figure class="leaf imp"><a class="mat" href="https://github.com/WANGYuhan2002/yuhan_das_spectra" tabindex="-1" aria-hidden="true"><img src="img/sp-eq.webp" width="720" height="540" loading="lazy" alt=""></a><figcaption><b lang="zh-Hans">二</b> <a href="https://github.com/WANGYuhan2002/yuhan_das_spectra">yuhan_das_spectra</a><span>Spectra of seafloor DAS.</span></figcaption></figure>
+          <figure class="leaf imp"><a class="mat" href="https://github.com/WANGYuhan2002/das_wavefront_picker" tabindex="-1" aria-hidden="true"><img src="img/wp-wiggle.webp" width="720" height="435" loading="lazy" alt=""></a><figcaption><b lang="zh-Hans">三</b> <a href="https://github.com/WANGYuhan2002/das_wavefront_picker">das_wavefront_picker</a><span>Wavefront picking on raw DAS.</span></figcaption></figure>
+          <figure class="leaf imp"><a class="mat" href="https://github.com/WANGYuhan2002/das-channel-mapping-skill" tabindex="-1" aria-hidden="true"><img src="img/cm-kefalonia.webp" width="720" height="642" loading="lazy" alt=""></a><figcaption><b lang="zh-Hans">四</b> <a href="https://github.com/WANGYuhan2002/das-channel-mapping-skill">das-channel-mapping-skill</a><span>A Claude Code skill for channel maps.</span></figcaption></figure>
+        </div>
+        <ul class="flow tools">
+          <li class="lab"><b><a href="../v2a/lab/">Wave Lab</a></b><span>Six experiments in the browser on one finite-difference solver: playground, arrays and DAS, time reversal, tomography, ambient noise, elastic waves.</span></li>
+          <li><b><a href="https://wangyuhan2002.github.io/seismohub-lite/">SeismoHub Lite</a></b><span>A public, read-only daily snapshot: new seismology and wave-physics papers on one searchable page.</span></li>
+          <li><b><a href="https://github.com/WANGYuhan2002/paper-pdf-harvest">paper-pdf-harvest</a></b><span>Verified, licence-aware full-text PDFs for a reading list, from about twenty open channels.</span></li>
+          <li><b><a href="https://github.com/WANGYuhan2002/yuhan-mfdas">yuhan-mfdas</a></b><span>Matched-filter earthquake detection for the Kefalonia seafloor cable.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 6 · 雅集 -->
+    <canvas class="band" aria-hidden="true"></canvas>
+    <section class="colophon" id="gathering" aria-labelledby="t-gathering" style="--gap:46vw">
+      <h2 class="ctitle" id="t-gathering"><span class="zh" lang="zh-Hans">雅集</span><span class="en">Workshop</span></h2>
+      <div class="cbody">
+        <figure class="fan">
+          <span class="mat"><img src="../v2a/assets/tsc-2026.webp" width="960" height="540" loading="lazy" alt="Workshop illustration: a seismogram crossing a globe shaded by seismic velocity anomalies beneath Europe."></span>
+        </figure>
+        <div class="flow gather">
+          <p class="event"><b>Tomographic Summer Chill</b>A workshop on multi-scale tomography of the Earth, 30–31&nbsp;July 2026, at ETH Zürich and online. I co-organised it with Andreas Fichtner, and the Seismology &amp; Wave Physics group hosted it.</p>
+          <p class="refs"><a href="https://wangyuhan2002.github.io/2026-tomo-workshop/">The workshop site</a></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 · 行旅 -->
+    <canvas class="band" aria-hidden="true"></canvas>
+    <section class="colophon" id="travels" aria-labelledby="t-travels" style="--gap:54vw">
+      <h2 class="ctitle" id="t-travels"><span class="zh" lang="zh-Hans">行旅</span><span class="en">Photographs</span></h2>
+      <div class="cbody">
+        <div class="leaves" id="leaves">
+          <figure class="leaf wide"><button class="mat" type="button" data-full="../v3-shared/photos/heluoping.webp"><img src="../v3-shared/photos/heluoping-sm.webp" width="800" height="450" loading="lazy" alt="A wooden walkway along a stream, with misty wooded hills behind. Lettered on the photo: 鷂落坪 (Yaoluoping), 2022/9/17, 黄昏時分 (dusk), 屋后的山溪 (the mountain stream behind the house)."></button><figcaption><span lang="zh-Hans">鹞落坪</span> Yaoluoping, Anhui</figcaption></figure>
+          <figure class="leaf"><button class="mat" type="button" data-full="../v3-shared/photos/xiuning-bridge.webp"><img src="../v3-shared/photos/xiuning-bridge-sm.webp" width="800" height="450" loading="lazy" alt="A stone arch bridge and its reflection in a calm river, below a wooded hill."></button><figcaption><span lang="zh-Hans">休宁</span> Xiuning, Anhui</figcaption></figure>
+          <figure class="leaf"><button class="mat" type="button" data-full="../v3-shared/photos/guilin-karst.webp"><img src="../v3-shared/photos/guilin-karst-sm.webp" width="800" height="450" loading="lazy" alt="Karst peaks under white clouds, with pink and white wild flowers in the foreground."></button><figcaption><span lang="zh-Hans">桂林</span> Guilin</figcaption></figure>
+          <figure class="leaf"><button class="mat" type="button" data-full="../v3-shared/photos/guilin-river.webp"><img src="../v3-shared/photos/guilin-river-sm.webp" width="800" height="450" loading="lazy" alt="A river with boats and a bridge below karst hills."></button><figcaption><span lang="zh-Hans">桂林</span> Guilin, the river</figcaption></figure>
+          <figure class="leaf tall"><button class="mat" type="button" data-full="../v3-shared/photos/zhanjiang-window.webp"><img src="../v3-shared/photos/zhanjiang-window-sm.webp" width="533" height="800" loading="lazy" alt="An open wooden window in a sunlit, empty room. Lettered on the wall in Chinese: the couplet 旧时风月静 / 江湖到此停 and the name 湛江, Zhanjiang."></button><figcaption><span lang="zh-Hans">湛江</span> Zhanjiang</figcaption></figure>
+          <figure class="leaf"><button class="mat" type="button" data-full="../v3-shared/photos/chaohu-sunset.webp"><img src="../v3-shared/photos/chaohu-sunset-sm.webp" width="800" height="450" loading="lazy" alt="A red sun setting over a lake, with people sitting at the railing."></button><figcaption><span lang="zh-Hans">巢湖</span> Chaohu, Anhui</figcaption></figure>
+          <figure class="leaf"><button class="mat" type="button" data-full="../v3-shared/photos/zhanjiang-sea.webp"><img src="../v3-shared/photos/zhanjiang-sea-sm.webp" width="800" height="450" loading="lazy" alt="Palm trees and a garden by the sea under a sunset sky."></button><figcaption><span lang="zh-Hans">湛江</span> Zhanjiang, by the sea</figcaption></figure>
+          <figure class="leaf"><button class="mat" type="button" data-full="../v3-shared/photos/star-trails.webp"><img src="../v3-shared/photos/star-trails-sm.webp" width="800" height="599" loading="lazy" alt="Star trails circling above a power pole and a lit house, with a dark hill behind. Lettered on the photo: 星辰流转 (the stars wheeling round)."></button><figcaption><span lang="zh-Hans">星辰流转</span> Star trails</figcaption></figure>
+          <figure class="leaf wide"><button class="mat" type="button" data-full="../v3-shared/photos/birds-on-wires.webp"><img src="../v3-shared/photos/birds-on-wires-sm.webp" width="800" height="450" loading="lazy" alt="Two magpies and a smaller bird on power lines in front of a pink cloud, on a postcard lettered ‘Mistery of Love’ (sic), ‘Yuhan’ and ‘End of Summer’."></button><figcaption>Birds on wires, a postcard I made</figcaption></figure>
+        </div>
+        <div class="flow words">
+          <p>I photograph night skies, mountains and rivers, and I used to paint, in Chinese ink wash and in oil. More photographs are on <a href="https://500px.com.cn/wangyuhan">500px</a>, and some videos on <a href="https://space.bilibili.com/325684069/video">Bilibili</a>.</p>
+          <p class="inscr"><b lang="zh-Hans">读</b> <em>Reading</em> Shen&nbsp;Congwen&nbsp;<span lang="zh-Hans">沈从文</span>, Yu&nbsp;Hua&nbsp;<span lang="zh-Hans">余华</span>, Su&nbsp;Shi&nbsp;<span lang="zh-Hans">苏轼</span>, Tao&nbsp;Yuanming&nbsp;<span lang="zh-Hans">陶渊明</span>; Bertrand Russell, Thoreau, Hermann Hesse, Kafka.</p>
+          <p class="inscr"><b lang="zh-Hans">听</b> <em>Listening</em> Folk and soundtracks: Li&nbsp;Zhi&nbsp;<span lang="zh-Hans">李志</span>, Yao&nbsp;Shisan&nbsp;<span lang="zh-Hans">尧十三</span>, Li&nbsp;Jian&nbsp;<span lang="zh-Hans">李健</span>, Coldplay, Bob Dylan; Ludovico Einaudi, Ennio Morricone, Hans Zimmer, Howard Shore.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 · 落款 -->
+    <canvas class="band" aria-hidden="true"></canvas>
+    <section class="colophon" id="contact" aria-labelledby="t-contact" style="--gap:44vw">
+      <h2 class="ctitle" id="t-contact"><span class="zh" lang="zh-Hans">落款</span><span class="en">Contact</span></h2>
+      <div class="cbody">
+        <!-- two columns: the epigraph and the credit, then the sign-off, the address and the links beside the
+             signature, so that on a narrow screen the end of the scroll shows them whole -->
+        <div class="flow last">
+          <div class="grp">
+            <p class="epi">“What is essential is invisible to the eyes.”<cite>Antoine de Saint-Exupéry, <i>The Little Prince</i>. My old homepage opened with this line.</cite></p>
+            <p class="credit">The landscape is painted in code, new every day; “repaint” makes another. The line at the water’s edge and the ridgelines follow the M&nbsp;8.8 Kamchatka earthquake of 29&nbsp;July 2025 as recorded at station CH.SULZ; data: Swiss Seismological Service, SED, at ETH Zürich. The album photographs and the seal are my own.</p>
+          </div>
+          <div class="grp">
+            <p>Zürich, November 2026. Write to me about fibres, faults and earthquakes, or about anything on this scroll.</p>
+            <p><a class="mail" data-mail href="https://cos.ethz.ch/people/person-detail.MzMzOTkx.TGlzdC8xNDQwLC0xMzkxMTI4OTM0.html"><span data-mail-text>E-mail, via my ETH page</span></a></p>
+            <ul class="links">
+              <li><a href="https://github.com/WANGYuhan2002">GitHub</a></li>
+              <li><a href="https://scholar.google.com/citations?user=DLRFdHEAAAAJ&amp;hl=en">Google Scholar</a></li>
+              <li><a href="https://orcid.org/0000-0001-6451-1166">ORCID</a></li>
+              <li><a href="https://www.linkedin.com/in/yuhan-wang-aa2564214/">LinkedIn</a></li>
+              <li><a href="https://cos.ethz.ch/people/person-detail.MzMzOTkx.TGlzdC8xNDQwLC0xMzkxMTI4OTM0.html">ETH profile</a></li>
+              <li><a href="https://cos.ethz.ch/">The group</a></li>
+            </ul>
+            <p class="small">Seismology &amp; Wave Physics, Institute of Geophysics, ETH Zürich, Sonneggstrasse&nbsp;5, 8092&nbsp;Zürich.</p>
+          </div>
+        </div>
+        <!-- the signature closes the scroll, as on a real handscroll -->
+        <div class="lastcol">
+          <p class="dateline" lang="zh-Hans">丙午年冬<br>王雨寒写于苏黎世</p>
+          <img class="seal seal2" src="img/seal-160.webp" srcset="img/seal-160.webp 160w, img/seal-320.webp 320w" sizes="(min-width: 800px) and (min-height: 560px) and (min-aspect-ratio: 11/10) 9vh, 62px" width="160" height="160" loading="lazy" alt="Yuhan Wang’s personal seal">
+        </div>
+      </div>
+    </section>
+
+    <div class="mount end" aria-hidden="true"></div>
+  </main>
+</div>
+
+<nav class="silk silk-bottom" aria-label="Parts of the scroll">
+  <span class="rail" aria-hidden="true"></span>
+  <ol id="marks">
+    <li><a href="#title"><span lang="zh-Hans">卷首</span> <i>Title</i></a></li>
+    <li><a href="#about"><span lang="zh-Hans">自述</span> <i>About</i></a></li>
+    <li><a href="#seafloor"><span lang="zh-Hans">海底听震</span> <i>Seafloor</i></a></li>
+    <li><a href="#papers"><span lang="zh-Hans">著述</span> <i>Papers</i></a></li>
+    <li><a href="#tools"><span lang="zh-Hans">器用</span> <i>Tools</i></a></li>
+    <li><a href="#gathering"><span lang="zh-Hans">雅集</span> <i>Workshop</i></a></li>
+    <li><a href="#travels"><span lang="zh-Hans">行旅</span> <i>Photographs</i></a></li>
+    <li><a href="#contact"><span lang="zh-Hans">落款</span> <i>Contact</i></a></li>
+  </ol>
+  <span id="roller" aria-hidden="true"></span>
+</nav>
+
+<dialog id="viewer" aria-label="Photograph">
+  <figure><img id="vimg" alt=""><figcaption id="vcap"></figcaption></figure>
+  <button class="vprev" type="button" aria-label="Previous photograph">‹</button>
+  <button class="vnext" type="button" aria-label="Next photograph">›</button>
+  <button class="vclose" type="button">Close</button>
+</dialog>
+
+<script src="../v3-shared/data/seismogram.js"></script>
+<script src="../v3-shared/data/cable.js"></script>
+<script src="js/painting.js"></script>
+<script src="js/handscroll.js"></script>
+</body>
+</html>

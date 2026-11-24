@@ -1,0 +1,459 @@
+<!doctype html>
+<!-- v3b · PLAKAT. A sequence of Swiss-style posters; the first one is shaken by a real earthquake.
+     Paper, ink, one red. Inter Tight / Inter / IBM Plex Mono. No build step: css/plakat.css + js/plakat.js.
+     Real data: ../v3-shared/data/seismogram.js (M 8.8 Kamchatka at CH.SULZ), cable.js, geo.js. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Yuhan Wang — fibre-optic seismology, ETH Zürich</title>
+<meta name="description" content="Yuhan Wang, doctoral student in the Seismology &amp; Wave Physics group at ETH Zürich. Fibre-optic seismology: telecom cables as dense seismic arrays, on the seafloor and under cities.">
+<meta name="theme-color" content="#f2efe8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23f2efe8'/%3E%3Ccircle cx='32' cy='32' r='17' fill='%23e4002b'/%3E%3C/svg%3E">
+<script>/* the reveals need js/plakat.js: if it has not started after 3 s, show everything */
+document.documentElement.className='js';setTimeout(function(){if(!window.__plakat)document.documentElement.className=''},3000)</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter+Tight:wght@500;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/plakat.css">
+</head>
+<body>
+<a class="skip" href="#about">Skip to content</a>
+
+<header class="top">
+  <a class="mark" href="#top">Yuhan Wang</a>
+  <nav aria-label="Posters">
+    <a href="#about" aria-label="01 About"><b>01</b><span>About</span></a>
+    <a href="#count" aria-label="02 17,325 earthquakes"><b>02</b><span>17&nbsp;325</span></a>
+    <a href="#research" aria-label="03 Research"><b>03</b><span>Research</span></a>
+    <a href="#cable" aria-label="04 Cable"><b>04</b><span>Cable</span></a>
+    <a href="#tools" aria-label="05 Tools"><b>05</b><span>Tools</span></a>
+    <a href="#offduty" aria-label="06 Off duty"><b>06</b><span>Off duty</span></a>
+    <a href="#contact" aria-label="07 Contact"><b>07</b><span>Contact</span></a>
+  </nav>
+  <i class="prog" id="prog" aria-hidden="true"></i>
+  <span class="top-r"><button class="gridtog" type="button" data-grid aria-pressed="false" title="Show the 12-column grid (G)">Grid</button><span class="clock" aria-hidden="true">Zürich <span id="clock">--:--:--</span></span></span>
+</header>
+
+<main>
+<!-- ============================== 00 · HERO ============================== -->
+<section class="hero" id="top" aria-label="Yuhan Wang. The real seismogram of the M 8.8 Kamchatka earthquake of 29 July 2025, recorded in Switzerland, moves the letters of the name.">
+  <i class="ruler" aria-hidden="true"></i>
+  <canvas id="heli" aria-hidden="true"></canvas>
+  <canvas id="heliInk" aria-hidden="true"></canvas>
+  <h1 class="name" aria-label="Yuhan Wang"><span class="w" aria-hidden="true"><span class="l">Y</span><span class="l">u</span><span class="l">h</span><span class="l">a</span><span class="l">n</span></span><span class="w" aria-hidden="true"><span class="l">W</span><span class="l">a</span><span class="l">n</span><span class="l">g</span></span></h1>
+  <canvas id="pen" aria-hidden="true"></canvas>
+  <canvas id="marks" aria-hidden="true"></canvas>
+
+  <div class="hero-side" data-q>
+    <p class="cap hero-role">Doctoral student · Seismology &amp; Wave Physics group</p>
+    <p class="hero-lead"><span class="nb">Fibre-optic</span> seismology at ETH Zürich.</p>
+    <dl class="readout">
+      <div><dt>UTC</dt><dd id="roUtc">29 Jul 23:36:42</dd></div>
+      <div><dt>After origin</dt><dd id="roT">11 min 50 s</dd></div>
+      <div><dt>Ground velocity</dt><dd id="roV">0.0 µm/s</dd></div>
+      <div><dt>Phase</dt><dd id="roP">P wave</dd></div>
+    </dl>
+    <div class="hero-ctl">
+      <button class="btn" id="btnP" type="button">Replay from P</button>
+      <button class="btn btn--ghost" id="btnPlay" type="button">Pause</button>
+      <p class="cap" id="speedNote">Playback ×60</p>
+    </div>
+    <p class="cap hero-hint"><span class="fine-only">Hover over the record to scrub time.</span><span class="touch-only">Drag along the record to scrub time.</span><span class="quake-hint"> <span class="fine-only">Click</span><span class="touch-only">Tap</span> anywhere on the page for a small earthquake of your own.</span></p>
+  </div>
+</section>
+
+<!-- the caption of the hero poster, under it: the panel stays short, so the playhead rarely passes beneath it -->
+<div class="hero-note grid">
+  <p class="cap hn-a">The name rides real ground motion: the <a href="https://earthquake.usgs.gov/earthquakes/eventpage/us6000qw60" target="_blank" rel="noopener">M&nbsp;8.8 Kamchatka earthquake</a> of 29&nbsp;July 2025, 23:24:52 UTC, recorded <span id="capDist">8609&nbsp;km</span> away at station CH.SULZ in Sulz&nbsp;AG, Switzerland. Vertical ground velocity, <span class="nb">0.008–0.4&nbsp;Hz</span>. <span id="capPeak"></span></p>
+  <p class="cap hn-b"><span id="letterNote"></span>Data: Swiss Seismological Service (SED) at ETH Zürich.</p>
+</div>
+
+<!-- ticker: real numbers, mono, one red rule -->
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-in">
+    <span>17&nbsp;325 microearthquakes</span><span>five templates</span><span>one seafloor cable</span><span>1872 channels × 8.17&nbsp;m</span><span>Kefalonia–Ithaca, Ionian Sea</span><span>Seismological Research Letters, 2026</span><span>Tomographic Summer Chill, 30–31 July 2026</span><span>SeismoHub</span><span>Wave Lab: six experiments in the browser</span><span>Seismology &amp; Wave Physics, ETH Zürich</span>
+    <span>17&nbsp;325 microearthquakes</span><span>five templates</span><span>one seafloor cable</span><span>1872 channels × 8.17&nbsp;m</span><span>Kefalonia–Ithaca, Ionian Sea</span><span>Seismological Research Letters, 2026</span><span>Tomographic Summer Chill, 30–31 July 2026</span><span>SeismoHub</span><span>Wave Lab: six experiments in the browser</span><span>Seismology &amp; Wave Physics, ETH Zürich</span>
+  </div>
+</div>
+
+<!-- ============================== 01 · ABOUT ============================== -->
+<section class="poster" id="about" aria-labelledby="h-about">
+  <div class="side-wrap" aria-hidden="true"><span class="side">Poster 01 / 07 — About</span></div>
+  <header class="p-head">
+    <p class="p-num" data-q aria-hidden="true">01</p>
+    <h2 class="p-title" id="h-about">About</h2>
+    <p class="p-meta">Zürich, Switzerland<br>Doctoral student since 2025</p>
+  </header>
+
+  <div class="grid about">
+    <p class="statement" data-q>
+      <span class="ln"><span>I turn telecom cables</span></span>
+      <span class="ln"><span>into dense seismic arrays:</span></span>
+      <span class="ln"><span>on the seafloor,</span></span>
+      <span class="ln"><span><em>under cities.</em></span></span>
+    </p>
+    <figure class="portrait rv" data-q>
+      <div class="portrait-img"><img src="../v3-shared/portrait.webp" srcset="../v3-shared/portrait-sm.webp 480w, ../v3-shared/portrait.webp 1200w" sizes="(max-width: 900px) 70vw, 32vw" width="1200" height="1500" alt="Portrait of Yuhan Wang" loading="lazy"></div>
+      <figcaption class="cap">Yuhan Wang <span lang="zh">王雨寒</span><br>Seismology &amp; Wave Physics, ETH Zürich</figcaption>
+    </figure>
+    <div class="about-text rv" data-q>
+      <p>I am a doctoral student in the <a href="https://cos.ethz.ch/" target="_blank" rel="noopener">Seismology &amp; Wave Physics group</a> at ETH Zürich, supervised by Andreas Fichtner. My field is <span class="nb">fibre-optic</span> seismology: distributed acoustic sensing (DAS) on cables that were laid for telephone calls and the internet.</p>
+      <p>So far that means two months of data from a seafloor cable between Kefalonia and Ithaca, a dark fibre under Athens, and the question of how a curved cable filters the waves it records. Around the science I build open tools: a literature hub for seismology, a wavefront picker, a <span class="nb">channel-mapping</span> skill and a wave laboratory that runs in the browser.</p>
+    </div>
+  </div>
+
+  <div class="edu" role="table" aria-label="Education">
+    <div class="edu-row edu-head" role="row"><span role="columnheader">Years</span><span role="columnheader">What</span><span role="columnheader">Where, with whom</span></div>
+    <div class="edu-row rv" role="row" data-q><span class="edu-y" role="cell">2025–</span><span class="edu-w" role="cell">Doctoral student</span><span class="edu-x" role="cell">Department of Earth and Planetary Sciences, ETH Zürich. Seismology &amp; Wave Physics group, with Andreas Fichtner.</span></div>
+    <div class="edu-row rv" role="row" data-q><span class="edu-y" role="cell">2023–2025</span><span class="edu-w" role="cell">MSc, Earth and Planetary Sciences</span><span class="edu-x" role="cell">ETH Zürich.</span></div>
+    <div class="edu-row rv" role="row" data-q><span class="edu-y" role="cell">Summer 2022</span><span class="edu-w" role="cell">Summer research</span><span class="edu-x" role="cell">Seismology &amp; Wave Physics, ETH Zürich, with Andreas Fichtner and Daniel Bowden: Athens roadside DAS, <span class="nb">ambient-noise</span> tomography, site amplification.</span></div>
+    <div class="edu-row rv" role="row" data-q><span class="edu-y" role="cell">2019–2023</span><span class="edu-w" role="cell">BSc in geophysics, minor in mathematics</span><span class="edu-x" role="cell">University of Science and Technology of China, School of the Gifted Young. DAS work with Huajian Yao's group from 2021.</span></div>
+  </div>
+</section>
+
+<!-- ============================== 02 · 17 325 ============================== -->
+<section class="poster" id="count" aria-labelledby="h-count">
+  <div class="side-wrap" aria-hidden="true"><span class="side">Poster 02 / 07 — Kefalonia Transform Fault</span></div>
+  <header class="p-head">
+    <p class="p-num" data-q aria-hidden="true">02</p>
+    <h2 class="p-title" id="h-count">Hidden microseismicity<br>on the Kefalonia Transform&nbsp;Fault</h2>
+    <p class="p-meta">Seafloor DAS<br>24&nbsp;April – 22&nbsp;June 2024</p>
+  </header>
+
+  <p class="big-n fit" data-q aria-label="17,325"><span class="fit-in" id="bigN" aria-hidden="true">17&nbsp;325</span></p>
+
+  <div class="grid count-lead">
+    <p class="lead-xl" data-q>
+      <span class="ln"><span>microearthquakes in two months,</span></span>
+      <span class="ln"><span>found with five templates</span></span>
+      <span class="ln"><span>and one seafloor cable.</span></span>
+    </p>
+    <p class="count-vs rv" data-q>The regional catalogue lists <strong>893</strong> events for the same period. The matched filter on the cable finds nearly <strong>20&nbsp;times</strong> as many.</p>
+  </div>
+
+  <div class="dots" data-q>
+    <figure class="dots-f dots-a"><figcaption class="cap"><span><i></i>893 · regional catalogue</span></figcaption><canvas id="dotsA" width="470" height="190" aria-hidden="true"></canvas></figure>
+    <figure class="dots-f dots-b"><figcaption class="cap"><span><i></i>17&nbsp;325 · matched filter on the cable</span><em>1 dot = 1 earthquake</em></figcaption><canvas id="dotsB" width="2310" height="750" aria-hidden="true"></canvas></figure>
+    <p class="sr">Two dot fields at the same scale: 893 dots for the regional catalogue and 17,325 dots for the matched-filter detections.</p>
+  </div>
+
+  <div class="grid facts">
+    <div class="fact rv" data-q><h3>Where</h3><p>The Kefalonia Transform Fault, Ionian Sea, Greece. It hosts repeated M&nbsp;&gt;&nbsp;6 ruptures every <span class="nb">10–20&nbsp;years</span>, but land networks resolve its small earthquakes poorly.</p></div>
+    <div class="fact rv" data-q><h3>Data</h3><p>Two months of DAS, 24&nbsp;April to 22&nbsp;June 2024, on a seafloor telecom cable between Kefalonia and Ithaca.</p></div>
+    <div class="fact rv" data-q><h3>Method</h3><p>A matched filter with five template events: stacked <span class="nb">cross-correlation</span>, MAD triggering, magnitudes.</p></div>
+    <div class="fact rv" data-q><h3>Result</h3><p>Episodic swarms; one cluster holds over 72&nbsp;% of the detections. The magnitude of completeness drops by about 2&nbsp;units near the template clusters.</p></div>
+  </div>
+
+  <p class="footnote grid"><span>Wang, Y., Meier, <span class="nb">M.-A.</span>, Bogris, A., Simos, C., Simos, I., Melis, N. S. &amp; Fichtner, A. (2026). Persistent Faulting Activity Along the Kefalonia Transform Fault Revealed by Seafloor DAS. ESS Open Archive. <a href="https://doi.org/10.22541/essoar.15006791/v1" target="_blank" rel="noopener">doi:10.22541/essoar.15006791/v1</a>. Code: <a class="nb" href="https://github.com/WANGYuhan2002/yuhan-mfdas" target="_blank" rel="noopener">yuhan-mfdas</a>, <a href="https://github.com/WANGYuhan2002/yuhan_das_spectra" target="_blank" rel="noopener">yuhan_das_spectra</a>, <a href="https://github.com/WANGYuhan2002/das_wavefront_picker" target="_blank" rel="noopener">das_wavefront_picker</a>; archive <a href="https://doi.org/10.5281/zenodo.20715241" target="_blank" rel="noopener">doi:10.5281/zenodo.20715241</a>.</span></p>
+</section>
+
+<!-- ============================== 03 · RESEARCH INDEX ============================== -->
+<section class="poster" id="research" aria-labelledby="h-research">
+  <div class="side-wrap" aria-hidden="true"><span class="side">Poster 03 / 07 — Research index</span></div>
+  <header class="p-head">
+    <p class="p-num" data-q aria-hidden="true">03</p>
+    <h2 class="p-title" id="h-research">Research index</h2>
+    <p class="p-meta">Papers, preprints, data<br>2025–2026</p>
+  </header>
+
+  <div class="idx-head grid cap" aria-hidden="true"><span>Year</span><span>Title, authors</span><span>Where</span><span>DOI</span></div>
+  <ol class="idx">
+    <li class="row" data-q data-fig="cm-fig4" data-cap="Traffic on the same cable: one hour of DAS on the land part. From das-channel-mapping-skill, not from the paper.">
+      <span class="row-y">2026</span>
+      <h3 class="row-t"><button type="button" aria-expanded="false" aria-controls="rx1">Calibrating <span class="nb">Microwave-Frequency</span> Fiber Interferometry Against Collocated DAS: Earthquakes, Ocean Waves, and Traffic</button>
+        <small>Y.&nbsp;Wang, A.&nbsp;Bogris, C.&nbsp;Simos, I.&nbsp;Simos, N.&nbsp;S.&nbsp;Melis, S.&nbsp;Deligiannidis, A.&nbsp;Fichtner</small></h3>
+      <span class="row-v">Seismological Research Letters<i>Paper</i></span>
+      <a class="row-d" href="https://doi.org/10.1785/0220260220" target="_blank" rel="noopener">10.1785/0220260220 <span aria-hidden="true">↗</span></a>
+      <div class="row-x" id="rx1" hidden><div class="row-x-in">
+        <p>Same cable, Kefalonia 2024: one integrated fibre measurement compared with the DAS channels beside it, for earthquakes, ocean waves and traffic. Code and data: <a href="https://doi.org/10.5281/zenodo.20553635" target="_blank" rel="noopener">doi:10.5281/zenodo.20553635</a>.</p>
+        <figure><img data-src="../v3-shared/figs/cm-fig4.webp" width="1800" height="1211" alt="One hour of DAS on the land part of the cable: every vehicle draws a slanted track across the channels."><figcaption class="cap">Traffic on the same cable: one hour of DAS on the land part. From <span class="nb">das-channel-mapping-skill</span>, not from the paper.</figcaption></figure>
+      </div></div>
+    </li>
+    <li class="row" data-q data-fig="sp-eq" data-cap="Earthquake spectra by magnitude over the noise at 11.0&nbsp;km along the cable. From yuhan_das_spectra.">
+      <span class="row-y">2026</span>
+      <h3 class="row-t"><button type="button" aria-expanded="false" aria-controls="rx2">Persistent Faulting Activity Along the Kefalonia Transform Fault Revealed by Seafloor DAS</button>
+        <small>Y.&nbsp;Wang, <span class="nb">M.-A.</span>&nbsp;Meier, A.&nbsp;Bogris, C.&nbsp;Simos, I.&nbsp;Simos, N.&nbsp;S.&nbsp;Melis, A.&nbsp;Fichtner</small></h3>
+      <span class="row-v">ESS Open Archive<i>Preprint</i></span>
+      <a class="row-d" href="https://doi.org/10.22541/essoar.15006791/v1" target="_blank" rel="noopener">10.22541/essoar.15006791/v1 <span aria-hidden="true">↗</span></a>
+      <div class="row-x" id="rx2" hidden><div class="row-x-in">
+        <p>Five template events, two months of seafloor DAS, 17&nbsp;325 microearthquakes: nearly 20&nbsp;times the 893 of the regional catalogue. The detections come in episodic swarms; one cluster holds over 72&nbsp;% of them.</p>
+        <figure><img data-src="../v3-shared/figs/sp-eq.webp" width="1800" height="1351" alt="Median power spectral density of earthquakes by magnitude bin at 11.0 km along the cable, drawn over the ambient-noise distribution."><figcaption class="cap">Earthquake spectra by magnitude over the noise at 11.0&nbsp;km along the cable. From yuhan_das_spectra.</figcaption></figure>
+      </div></div>
+    </li>
+    <li class="row" data-q data-fig="arc" data-cap="A drawing for this page, not a figure from the preprint.">
+      <span class="row-y">2026</span>
+      <h3 class="row-t"><button type="button" aria-expanded="false" aria-controls="rx3">Geometric Filtering in Curved <span class="nb">Fibre-Optic</span> Sensing&nbsp;— I. <span class="nb">Planar-Arc</span> Response and a Deployment Decision Map</button>
+        <small>Y.&nbsp;Wang, A.&nbsp;Fichtner</small></h3>
+      <span class="row-v">Zenodo<i>Preprint</i></span>
+      <a class="row-d" href="https://doi.org/10.5281/zenodo.23354895" target="_blank" rel="noopener">10.5281/zenodo.23354895 <span aria-hidden="true">↗</span></a>
+      <div class="row-x" id="rx3" hidden><div class="row-x-in">
+        <p>How the curvature of a cable filters the wavefield it records, and what that means for laying out a deployment.</p>
+      </div></div>
+    </li>
+    <li class="row" data-q>
+      <span class="row-y">2026</span>
+      <h3 class="row-t"><button type="button" aria-expanded="false" aria-controls="rx4">Shallow Subsurface Imaging for Seismic Hazard using Dark Fibers in Athens, Greece</button>
+        <small>D.&nbsp;C.&nbsp;Bowden, L.&nbsp;Tian, Y.&nbsp;Wang, K.&nbsp;T.&nbsp;Smolinski, K.&nbsp;Lentas, N.&nbsp;S.&nbsp;Melis, A.&nbsp;Bogris, C.&nbsp;Simos, et&nbsp;al.</small></h3>
+      <span class="row-v">Zenodo<i>Data and code</i></span>
+      <a class="row-d" href="https://doi.org/10.5281/zenodo.24190285" target="_blank" rel="noopener">10.5281/zenodo.24190285 <span aria-hidden="true">↗</span></a>
+      <div class="row-x" id="rx4" hidden><div class="row-x-in">
+        <p>This started as my 2022 summer project with the group: <span class="nb">ambient-noise</span> tomography and site amplification from roadside DAS in Athens. Presented at the <a href="https://agu.confex.com/agu/fm22/meetingapp.cgi/Paper/1081677" target="_blank" rel="noopener">AGU Fall Meeting 2022</a>.</p>
+      </div></div>
+    </li>
+    <li class="row" data-q data-fig="wp-wiggle" data-cap="One S wavefront picked on a DAS gather. From das_wavefront_picker, not from the abstract.">
+      <span class="row-y">2025</span>
+      <h3 class="row-t"><button type="button" aria-expanded="false" aria-controls="rx5">Mapping fault dynamics: very high seismicity detected along the Kefalonia Transform Fault with DAS and template matching</button>
+        <small>Y.&nbsp;Wang, A.&nbsp;Fichtner</small></h3>
+      <span class="row-v">EGU General Assembly 2025, Vienna<i>Abstract</i></span>
+      <a class="row-d" href="https://doi.org/10.5194/egusphere-egu25-2886" target="_blank" rel="noopener">10.5194/egusphere-egu25-2886 <span aria-hidden="true">↗</span></a>
+      <div class="row-x" id="rx5" hidden><div class="row-x-in">
+        <p>The conference abstract on the Kefalonia detections, EGU General Assembly 2025, Vienna.</p>
+        <figure><img data-src="../v3-shared/figs/wp-wiggle.webp" width="1559" height="942" alt="Wiggle traces of a DAS gather from 8 to 14 km along the cable with one picked S wavefront, drawn as a green line."><figcaption class="cap">One S wavefront picked on a DAS gather. From das_wavefront_picker, not from the abstract.</figcaption></figure>
+      </div></div>
+    </li>
+  </ol>
+  <p class="idx-note grid cap"><span><span class="fine-only">Hover over a row for a figure. </span>Select a row for the summary. Full list on <a href="https://scholar.google.com/citations?user=DLRFdHEAAAAJ&amp;hl=en" target="_blank" rel="noopener">Google Scholar</a> and <a href="https://orcid.org/0000-0001-6451-1166" target="_blank" rel="noopener">ORCID</a>.</span></p>
+</section>
+
+<!-- ============================== 04 · THE CABLE ============================== -->
+<section class="poster poster--ink" id="cable" aria-labelledby="h-cable" data-dot="red">
+  <div class="side-wrap" aria-hidden="true"><span class="side">Poster 04 / 07 — The cable</span></div>
+  <header class="p-head">
+    <p class="p-num" data-q aria-hidden="true">04</p>
+    <h2 class="p-title" id="h-cable">Where exactly<br>is channel 1000?</h2>
+    <p class="p-meta">Kefalonia–Ithaca<br>Ionian Sea, Greece</p>
+  </header>
+
+  <div class="grid trio" data-q>
+    <p class="trio-n"><b>1872</b><span>channels</span></p>
+    <p class="trio-n"><b>8.17<small> m</small></b><span>from one channel to the next</span></p>
+    <p class="trio-n"><b>15.29<small> km</small></b><span>of fibre: land, sea, land</span></p>
+  </div>
+
+  <figure class="cable-map" data-q>
+    <div id="cableMap" class="cable-svg" role="img" aria-label="Line drawing of the cable route from Kefalonia across the strait to Ithaca, with the coils of spare fibre marked as red rings."></div>
+    <p class="cable-tip cap" id="cableTip" aria-hidden="true"></p>
+    <figcaption class="cap">The route, redrawn by eye from my channel map: good for a drawing, not for science. Red line: the seafloor part. Rings: spare fibre stored at one point on the ground, with its length. <span class="fine-only">Move along the cable to read the channel.</span><span class="touch-only">Touch the cable to read the channel.</span></figcaption>
+  </figure>
+
+  <div class="grid cable-text" data-q>
+    <p class="lead">The interrogator counts its channels along the fibre. Seismology needs them on the ground.</p>
+    <div class="cable-copy">
+      <p>From the interrogator to the beach manhole there are 7.32&nbsp;km of fibre on 6.44&nbsp;km of ground. 0.71&nbsp;km of the difference is spare fibre stored at eight points, in coils of 16 to 172&nbsp;m. Every channel behind a coil sits further along the fibre than along the road.</p>
+      <p>I find the coils with three signals: tap tests, earthquake amplitudes and passing vehicles. The result is a channel map with uncertainties.</p>
+    </div>
+    <div class="cable-aside">
+      <div class="bars" aria-hidden="true">
+        <div class="bar bar-f"><i></i><span>7.32&nbsp;km of fibre</span></div>
+        <div class="bar bar-g"><i></i><span>6.44&nbsp;km of ground</span></div>
+      </div>
+      <p><a class="arrow" href="https://github.com/WANGYuhan2002/das-channel-mapping-skill" target="_blank" rel="noopener">das-channel-mapping-skill <span aria-hidden="true">↗</span></a></p>
+    </div>
+  </div>
+
+  <figure class="strip-fig" data-q>
+    <div class="strip" id="strip" aria-hidden="true"></div>
+    <figcaption class="cap grid"><span>The same cable as the interrogator counts it, channel 0 to 1872. Red bar: the seafloor part. Taller red marks: channels inside a coil of spare fibre.</span></figcaption>
+  </figure>
+</section>
+
+<!-- ============================== 05 · TOOLS ============================== -->
+<section class="poster" id="tools" aria-labelledby="h-tools">
+  <div class="side-wrap" aria-hidden="true"><span class="side">Poster 05 / 07 — Tools</span></div>
+  <header class="p-head">
+    <p class="p-num" data-q aria-hidden="true">05</p>
+    <h2 class="p-title" id="h-tools">Tools</h2>
+    <p class="p-meta">Open source on GitHub<br>English / <span lang="zh">中文</span></p>
+  </header>
+
+  <div class="grid tools">
+    <article class="tool tool--xl rv" data-q>
+      <a class="tool-shot" href="https://github.com/WANGYuhan2002/seismohub" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true"><img src="../v3-shared/figs/sh-library.webp" width="1800" height="1125" alt="" loading="lazy"></a>
+      <div class="tool-body">
+        <p class="cap">T–01 · Literature</p>
+        <h3>SeismoHub</h3>
+        <p>A <span class="nb">self-hosted</span>, <span class="nb">local-first</span> literature hub for seismology: paper trackers, AI reading with <span class="nb">paragraph-anchored</span> citations, <span class="nb">licence-aware</span> PDF harvesting. One FastAPI process, one SQLite file.</p>
+        <a class="arrow" href="https://github.com/WANGYuhan2002/seismohub" target="_blank" rel="noopener" aria-label="SeismoHub on GitHub">GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+    </article>
+    <div class="tool-col">
+      <article class="tool rv" data-q>
+        <p class="cap">T–02 · Literature</p>
+        <h3>SeismoHub Lite</h3>
+        <p>The public, <span class="nb">read-only</span> daily snapshot: new seismology and <span class="nb">wave-physics</span> papers on one searchable page.</p>
+        <a class="arrow" href="https://wangyuhan2002.github.io/seismohub-lite/" target="_blank" rel="noopener" aria-label="Open the site of SeismoHub Lite">Open the site <span aria-hidden="true">↗</span></a>
+      </article>
+      <article class="tool rv" data-q>
+        <p class="cap">T–03 · Literature</p>
+        <h3>paper-pdf-harvest</h3>
+        <p>Verified, <span class="nb">licence-aware</span> <span class="nb">full-text</span> PDFs for a reading list, from about twenty open channels.</p>
+        <a class="arrow" href="https://github.com/WANGYuhan2002/paper-pdf-harvest" target="_blank" rel="noopener" aria-label="paper-pdf-harvest on GitHub">GitHub <span aria-hidden="true">↗</span></a>
+      </article>
+      <article class="tool tool--spec rv" data-q>
+        <div class="tool-spec" aria-hidden="true"><b>5 <i>→</i> 17&nbsp;325</b><span>templates → detections</span></div>
+        <p class="cap">T–04 · DAS</p>
+        <h3>yuhan-mfdas</h3>
+        <p><span class="nb">Matched-filter</span> earthquake detection for the Kefalonia seafloor cable: templates, stacked <span class="nb">cross-correlation</span>, MAD triggering, magnitudes.</p>
+        <a class="arrow" href="https://github.com/WANGYuhan2002/yuhan-mfdas" target="_blank" rel="noopener" aria-label="yuhan-mfdas on GitHub">GitHub <span aria-hidden="true">↗</span></a>
+      </article>
+    </div>
+    <article class="tool tool--fig rv" data-q>
+      <a class="tool-thumb" href="https://github.com/WANGYuhan2002/yuhan_das_spectra" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true"><img src="../v3-shared/figs/sp-ppsd.webp" width="1800" height="1070" alt="" loading="lazy"></a>
+      <p class="cap">T–05 · DAS</p>
+      <h3>yuhan_das_spectra</h3>
+      <p>Spectra of seafloor DAS: noise PSD and PPSD, earthquake spectra by magnitude, noise against ERA5 wind and waves.</p>
+      <a class="arrow" href="https://github.com/WANGYuhan2002/yuhan_das_spectra" target="_blank" rel="noopener" aria-label="yuhan_das_spectra on GitHub">GitHub <span aria-hidden="true">↗</span></a>
+    </article>
+    <article class="tool tool--fig rv" data-q>
+      <a class="tool-thumb" href="https://github.com/WANGYuhan2002/das_wavefront_picker" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true"><img src="../v3-shared/figs/wp-main.webp" width="1648" height="942" alt="" loading="lazy"></a>
+      <p class="cap">T–06 · DAS</p>
+      <h3>das_wavefront_picker</h3>
+      <p>STA/LTA wavefront detection and interactive picking on raw DAS waterfalls, with <span class="nb">bad-channel</span> rejection.</p>
+      <a class="arrow" href="https://github.com/WANGYuhan2002/das_wavefront_picker" target="_blank" rel="noopener" aria-label="das_wavefront_picker on GitHub">GitHub <span aria-hidden="true">↗</span></a>
+    </article>
+    <article class="tool tool--fig rv" data-q>
+      <a class="tool-thumb" href="https://github.com/WANGYuhan2002/das-channel-mapping-skill" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true"><img src="../v3-shared/figs/cm-demo.webp" width="1300" height="880" alt="" loading="lazy"></a>
+      <p class="cap">T–07 · DAS</p>
+      <h3>das-channel-mapping-skill</h3>
+      <p>A Claude Code skill that finds the excess fibre along a cable and delivers the channel map with uncertainties.</p>
+      <a class="arrow" href="https://github.com/WANGYuhan2002/das-channel-mapping-skill" target="_blank" rel="noopener" aria-label="das-channel-mapping-skill on GitHub">GitHub <span aria-hidden="true">↗</span></a>
+    </article>
+  </div>
+
+  <div class="grid duo">
+    <article class="lab" data-q data-dot="red">
+      <div class="lab-art" id="labArt" aria-hidden="true"></div>
+      <p class="cap">T–08 · In the browser</p>
+      <h3><a href="../v2a/lab/">Wave Lab</a></h3>
+      <p>Six experiments on one <span class="nb">finite-difference</span> solver. They run in your browser; nothing to&nbsp;install.</p>
+      <ol class="lab-list">
+        <li><a href="../v2a/lab/#play"><b>01</b>Playground</a></li>
+        <li><a href="../v2a/lab/#arrays"><b>02</b>Arrays &amp; DAS</a></li>
+        <li><a href="../v2a/lab/#tr"><b>03</b>Time reversal</a></li>
+        <li><a href="../v2a/lab/#tomo"><b>04</b>Tomography</a></li>
+        <li><a href="../v2a/lab/#noise"><b>05</b>Ambient noise</a></li>
+        <li><a href="../v2a/lab/#elastic"><b>06</b>Elastic waves</a></li>
+      </ol>
+      <a class="arrow" href="../v2a/lab/">Open the Wave Lab <span aria-hidden="true">→</span></a>
+    </article>
+    <article class="tsc" data-q data-dot="ink">
+      <div class="tsc-art" id="tscArt" aria-hidden="true"></div>
+      <p class="cap">Workshop · co-organiser</p>
+      <h3><a href="https://wangyuhan2002.github.io/2026-tomo-workshop/" target="_blank" rel="noopener">Tomographic<br>Summer<br>Chill</a></h3>
+      <p class="tsc-date">30–31&nbsp;July 2026<br>ETH Zürich &amp; online</p>
+      <p>A workshop on <span class="nb">multi-scale</span> tomography of the Earth. <span class="nb">Co-organised</span> with Andreas Fichtner, hosted by the Seismology &amp; Wave Physics group.</p>
+      <a class="arrow" href="https://wangyuhan2002.github.io/2026-tomo-workshop/" target="_blank" rel="noopener" aria-label="Workshop site of the Tomographic Summer Chill">Workshop site <span aria-hidden="true">↗</span></a>
+    </article>
+  </div>
+</section>
+
+<!-- ============================== 06 · OFF DUTY ============================== -->
+<section class="poster" id="offduty" aria-labelledby="h-off">
+  <div class="side-wrap" aria-hidden="true"><span class="side">Poster 06 / 07 — Off duty</span></div>
+  <header class="p-head">
+    <p class="p-num" data-q aria-hidden="true">06</p>
+    <h2 class="p-title" id="h-off">Off duty</h2>
+    <p class="p-meta">Photographs by Yuhan Wang<br><span class="fine-only">Hover for colour</span><span class="touch-only">Tap for colour</span></p>
+  </header>
+
+  <figure class="off-quote grid rv" data-q>
+    <blockquote><p><span class="hang">“</span>What is essential is invisible to the eyes.”</p></blockquote>
+    <figcaption class="cap">Antoine de <span class="nb">Saint-Exupéry</span>, <cite>The Little Prince</cite></figcaption>
+  </figure>
+
+  <ul class="photos" id="photos">
+    <li class="ph ph--xl" data-q><img class="c" src="../v3-shared/photos/star-trails.webp" srcset="../v3-shared/photos/star-trails-sm.webp 800w, ../v3-shared/photos/star-trails.webp 2000w" sizes="(max-width: 640px) 100vw, 50vw" width="2000" height="1498" alt="Star trails circling above a hillside, a utility pole in the foreground" loading="lazy"><span class="cap"><b>01</b>Star trails <span lang="zh">星辰流转</span></span></li>
+    <li class="ph ph--tall" data-q><img class="c" src="../v3-shared/photos/zhanjiang-window-sm.webp" width="533" height="800" alt="An open wooden window looking onto an old brick house, sunlight on the tiled floor" loading="lazy"><span class="cap"><b>02</b>Zhanjiang</span></li>
+    <li class="ph" data-q><img class="c" src="../v3-shared/photos/heluoping-sm.webp" width="800" height="450" alt="A wooden walkway and a bridge in a misty mountain village" loading="lazy"><span class="cap"><b>03</b>Yaoluoping<span class="cap-x">, Anhui</span> <span lang="zh">鹞落坪</span></span></li>
+    <li class="ph" data-q><img class="c" src="../v3-shared/photos/guilin-karst-sm.webp" width="800" height="450" alt="Karst hills behind a field of flowers" loading="lazy"><span class="cap"><b>04</b>Guilin</span></li>
+    <li class="ph ph--tall" data-q><img class="c" src="../v3-shared/photos/guilin-church-sm.webp" width="450" height="800" alt="A church spire against an evening sky" loading="lazy"><span class="cap"><b>05</b>Guilin</span></li>
+    <li class="ph" data-q><img class="c" src="../v3-shared/photos/xiuning-bridge-sm.webp" width="800" height="450" alt="A stone arch bridge reflected in a river" loading="lazy"><span class="cap"><b>06</b>Xiuning<span class="cap-x">, Anhui</span></span></li>
+    <li class="ph ph--xl" data-q><img class="c" src="../v3-shared/photos/zhanjiang-sea.webp" srcset="../v3-shared/photos/zhanjiang-sea-sm.webp 800w, ../v3-shared/photos/zhanjiang-sea.webp 2000w" sizes="(max-width: 640px) 100vw, 50vw" width="2000" height="1125" alt="Palm trees on a seaside lawn under an orange evening sky" loading="lazy"><span class="cap"><b>07</b>Zhanjiang</span></li>
+    <li class="ph" data-q><img class="c" src="../v3-shared/photos/waterfall-sm.webp" width="800" height="450" alt="A low waterfall in a mountain stream" loading="lazy"><span class="cap"><b>08</b>A mountain stream</span></li>
+    <li class="ph" data-q><img class="c" src="../v3-shared/photos/chaohu-sunset-sm.webp" width="800" height="450" alt="The sun setting over a lake, people at the railing" loading="lazy"><span class="cap"><b>09</b>Chaohu<span class="cap-x">, Anhui</span></span></li>
+    <li class="ph" data-q><img class="c" src="../v3-shared/photos/birds-on-wires-sm.webp" width="800" height="450" alt="A postcard I made: two birds on power lines in front of an evening cloud" loading="lazy"><span class="cap"><b>10</b>Birds on wires<span class="cap-x">, a postcard I made</span></span></li>
+    <li class="ph" data-q><img class="c" src="../v3-shared/photos/guilin-river-sm.webp" width="800" height="450" alt="Boats on a river below karst hills" loading="lazy"><span class="cap"><b>11</b>Guilin</span></li>
+    <li class="ph" data-q><img class="c" src="../v3-shared/photos/dusk-sm.webp" width="800" height="369" alt="A lone tree on the horizon at dusk" loading="lazy"><span class="cap"><b>12</b>Dusk</span></li>
+  </ul>
+
+  <div class="grid off-lists">
+    <div class="off-note rv" data-q>
+      <p class="lead">Night skies, landscapes, postcards. I&nbsp;used to paint, in Chinese ink wash and in oil. Otherwise: travelling and cycling.</p>
+      <p><a class="arrow" href="https://500px.com.cn/wangyuhan" target="_blank" rel="noopener">500px <span aria-hidden="true">↗</span></a><br><a class="arrow" href="https://space.bilibili.com/325684069/video" target="_blank" rel="noopener">Bilibili <span aria-hidden="true">↗</span></a></p>
+    </div>
+    <div class="off-list rv" data-q>
+      <h3 class="cap">Reading</h3>
+      <ul>
+        <li>Shen Congwen <span lang="zh">沈从文</span></li><li>Yu Hua <span lang="zh">余华</span></li><li>Su Shi <span lang="zh">苏轼</span></li><li>Tao Yuanming <span lang="zh">陶渊明</span></li><li>Bertrand Russell</li><li>Thoreau</li><li>Hermann Hesse</li><li>Kafka</li>
+      </ul>
+    </div>
+    <div class="off-list rv" data-q>
+      <h3 class="cap">Listening</h3>
+      <ul>
+        <li>Li Zhi <span lang="zh">李志</span></li><li>Yao Shisan <span lang="zh">尧十三</span></li><li>Li Jian <span lang="zh">李健</span></li><li>Coldplay</li><li>Bob Dylan</li><li>Ludovico Einaudi</li><li>Ennio Morricone</li><li>Hans Zimmer</li><li>Howard Shore</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== 07 · CONTACT ============================== -->
+<section class="poster poster--red" id="contact" aria-labelledby="h-contact" data-dot="ink">
+  <div class="side-wrap" aria-hidden="true"><span class="side">Poster 07 / 07 — Contact</span></div>
+  <header class="p-head">
+    <p class="p-num" data-q aria-hidden="true">07</p>
+    <h2 class="p-title" id="h-contact">Contact</h2>
+    <p class="p-meta">Sonneggstrasse 5<br>8092 Zürich, Switzerland</p>
+  </header>
+
+  <p class="gruezi fit" data-q><span class="fit-in" lang="de-CH">Grüezi.</span></p>
+
+  <div class="grid contact">
+    <div class="contact-mail" data-q>
+      <p class="cap">Fibres, earthquakes, tools: write to me.</p>
+      <a class="mail" data-mail href="https://cos.ethz.ch/people/person-detail.MzMzOTkx.TGlzdC8xNDQwLC0xMzkxMTI4OTM0.html"><span data-mail-text>E-mail on my ETH profile</span></a>
+    </div>
+    <ul class="links" data-q>
+      <li><a href="https://github.com/WANGYuhan2002" target="_blank" rel="noopener"><span>GitHub</span><span aria-hidden="true">↗</span></a></li>
+      <li><a href="https://scholar.google.com/citations?user=DLRFdHEAAAAJ&amp;hl=en" target="_blank" rel="noopener"><span>Google Scholar</span><span aria-hidden="true">↗</span></a></li>
+      <li><a href="https://orcid.org/0000-0001-6451-1166" target="_blank" rel="noopener"><span>ORCID</span><span aria-hidden="true">↗</span></a></li>
+      <li><a href="https://www.linkedin.com/in/yuhan-wang-aa2564214/" target="_blank" rel="noopener"><span>LinkedIn</span><span aria-hidden="true">↗</span></a></li>
+      <li><a href="https://cos.ethz.ch/people/person-detail.MzMzOTkx.TGlzdC8xNDQwLC0xMzkxMTI4OTM0.html" target="_blank" rel="noopener"><span>ETH profile</span><span aria-hidden="true">↗</span></a></li>
+      <li><a href="https://cos.ethz.ch/" target="_blank" rel="noopener"><span>Seismology &amp; Wave Physics group</span><span aria-hidden="true">↗</span></a></li>
+    </ul>
+  </div>
+
+  <footer class="colophon grid cap">
+    <span>© 2026 Yuhan Wang, Zürich</span>
+    <span>Seismogram: Swiss Seismological Service (SED) at ETH Zürich, station CH.SULZ. Arrival times of P, PP, S and SS: iasp91. Rayleigh flag: 3.8&nbsp;km/s group velocity.</span>
+    <span>Set in Inter Tight, Inter and IBM Plex Mono on a <span class="nb">12-column</span> grid. <button class="linkbtn" id="gridBtn" type="button" data-grid aria-pressed="false">Show the grid</button></span>
+    <span><a href="../../index.html">Draft v3b · all drafts</a></span>
+  </footer>
+</section>
+</main>
+
+<!-- ink-to-paper duotone for the photographs: the colour comes back under the cursor or a tap -->
+<svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
+  <filter id="duo" color-interpolation-filters="sRGB">
+    <feColorMatrix type="matrix" values=".2126 .7152 .0722 0 0  .2126 .7152 .0722 0 0  .2126 .7152 .0722 0 0  0 0 0 1 0"/>
+    <feComponentTransfer>
+      <feFuncR type="table" tableValues=".05 .95"/>
+      <feFuncG type="table" tableValues=".05 .94"/>
+      <feFuncB type="table" tableValues=".05 .91"/>
+    </feComponentTransfer>
+  </filter>
+</svg>
+
+<figure id="peek" aria-hidden="true"><div class="peek-in"></div><figcaption class="cap"></figcaption></figure>
+<canvas id="quake" aria-hidden="true"></canvas>
+<div id="dot" aria-hidden="true"></div>
+<div class="gridlines" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+
+<script defer src="../v3-shared/data/seismogram.js"></script>
+<script defer src="../v3-shared/data/cable.js"></script>
+<script defer src="js/plakat.js"></script>
+<!-- only the cable locator needs geo.js: it comes last, so that it never holds up the hero -->
+<script defer src="../v3-shared/data/geo.js"></script>
+</body>
+</html>
